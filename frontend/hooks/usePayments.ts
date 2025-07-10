@@ -1,5 +1,5 @@
 import { useState, useCallback } from "react"
-import { Payment } from "@/models/dashboard"
+import { Payment } from "@/models/Member"
 
 export interface PaymentsFilters {
   dia?: number

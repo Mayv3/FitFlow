@@ -29,7 +29,7 @@ import { useCashRegister } from "@/hooks/useCashRegister"
 import { useDialogManager } from "@/hooks/useDialogManager"
 import { useAppData } from "@/context/AppDataContext"
 
-import { Member } from "@/models/dashboard";
+import { Member } from "@/models/Member";
 import EgresosSection from "@/components/dashboard/recepcionist/egresos/EgresosSection"
 import { format } from "date-fns"
 import DebtsSection from "@/components/dashboard/recepcionist/deudas/Deudas"

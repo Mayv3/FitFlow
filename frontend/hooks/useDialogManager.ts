@@ -1,6 +1,6 @@
 // hooks/useDialogManager.ts
 import { useState, useCallback } from "react"
-import { Member, Payment } from "@/models/dashboard"
+import { Member, Payment } from "@/models/Member"
 
 export type DialogsState = {
   addMember: boolean

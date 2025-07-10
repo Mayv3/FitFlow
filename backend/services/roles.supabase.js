@@ -13,7 +13,7 @@ export async function getRoleById(id) {
   const { data, error } = await supabase
     .from('roles')
     .select('*')
-    .eq('id', id)
+    .eq('dni', dni)
     .single()
   if (error) throw error
   return data

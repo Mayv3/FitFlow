@@ -5,94 +5,130 @@ import axios from "axios";
 import Cookies from "js-cookie";
 import { useRouter } from "next/navigation";
 import { useUser } from "@/context/UserContext";
-import Image from "next/image";
 import { FormEnterToTab } from "@/components/FormEnterToTab";
+
+// MUI
+import { TextField, Button, Typography, Paper, Box, CircularProgress } from "@mui/material";
 
 const LoginPage = () => {
   const [dni, setDni] = useState("");
+  const [password, setPassword] = useState("");
   const [errorMessage, setErrorMessage] = useState("");
-  const [loading, setLoading] = useState(false)
+  const [loading, setLoading] = useState(false);
   const router = useRouter();
   const { setUser } = useUser();
 
   const handleLogin = async (e: any) => {
-    e.preventDefault()
+    e.preventDefault();
     setErrorMessage("");
 
-    if (!dni.trim()) {
-      setErrorMessage("Por favor ingresá un DNI válido.");
+    if (!dni.trim() || !password.trim()) {
+      setErrorMessage("Por favor completá todos los campos.");
       return;
     }
+
     try {
-      setLoading(true)
-      const res = await axios.get(`${process.env.NEXT_PUBLIC_BACKEND_URL}/api/roles/${dni}`);
-      const data = res.data;
+      setLoading(true);
 
-      Cookies.set("dni", data.dni);
-      Cookies.set("nombre", data.nombre);
-      Cookies.set("rol", data.rol);
+      const res = await axios.post(`${process.env.NEXT_PUBLIC_BACKEND_URL}/api/auth/login`, {
+        dni,
+        password,
+      });
 
-      setUser(data);
+      const { token, user } = res.data;
 
-      if (data.rol === "Administrador") {
+      Cookies.set("token", token);
+      Cookies.set("dni", user.dni);
+      Cookies.set("rol", user.rol);
+
+      setUser(user);
+
+      if (user.rol === "dueño") {
         router.push("/dashboard/administrator");
-      } else if (data.rol === "Recepcionista") {
+      } else if (user.rol === "recepcionista") {
         router.push("/dashboard/receptionist");
       } else {
         router.push("/dashboard/member");
       }
-      setLoading(false)
+
+      setLoading(false);
     } catch (error) {
       console.error("Error en login:", error);
-      setErrorMessage("No se pudo encontrar un usuario con ese DNI.");
-      setLoading(false)
+      setErrorMessage("DNI o contraseña incorrectos.");
+      setLoading(false);
     }
   };
 
   return (
-    <div className="h-screen flex flex-col justify-center items-center bg-gradient-to-br from-orange-600 via-orange-500 to-orange-600 p-4 w-full">
-      <div className="bg-zinc-900 bg-opacity-90 p-10 rounded-2xl shadow-xl w-full max-w-sm flex flex-col justify-center items-center">
-        <Image
-          src="/gymspace-titulo.png"
-          alt="Logo"
-          width={380}
-          height={60}
-          className="mb-6"
-        />
+    <Box
+      sx={{
+        height: "100vh",
+        width: "100%",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        backgroundColor: theme => theme.palette.background.default,
+        p: 2,
+      }}
+    >
+      <Paper
+        elevation={10}
+        sx={{
+          p: 4,
+          maxWidth: 400,
+          width: "100%",
+          backgroundColor: theme => theme.palette.background.paper,
+          color: theme => theme.palette.text.primary,
+        }}
+      >
+        <Typography variant="h5" fontWeight="bold" gutterBottom>
+          Ingresar al sistema
+        </Typography>
+
         <FormEnterToTab>
-          <input
-            type="number"
+          <TextField
+            label="DNI"
+            variant="outlined"
+            fullWidth
             value={dni}
             onChange={(e) => setDni(e.target.value)}
-            placeholder="Ej: 34023002"
-            className="
-            bg-white text-black
-            placeholder:text-zinc-400
-            focus:outline-none focus:ring-2 focus:ring-orange-500 
-            p-3 w-full rounded-lg mb-4 transition
-          "
+            margin="normal"
           />
-          <button
-            disabled={loading}
+
+          <TextField
+            fullWidth
+            label="Contraseña"
+            type="password"
+            variant="outlined"
+            margin="normal"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+          />
+
+          <Button
+            variant="contained"
+            color="primary"
+            fullWidth
+            sx={{ mt: 2 }}
             onClick={handleLogin}
-            type="submit"
-            className="
-            w-full bg-orange-500 hover:bg-orange-600 
-            text-white py-3 rounded-lg 
-            transition
-          "
+            disabled={loading}
           >
-            {loading ? "Ingresando..." : "Ingresar"}
-          </button>
+            {loading ? <CircularProgress size={24} color="inherit" /> : "Ingresar"}
+          </Button>
 
           {errorMessage && (
-            <p className="text-red-400 mt-4 text-sm text-center font-medium">
+            <Typography
+              variant="body2"
+              color="error"
+              sx={{ mt: 2, textAlign: "center", fontWeight: 500 }}
+            >
               {errorMessage}
-            </p>
+            </Typography>
           )}
         </FormEnterToTab>
-      </div>
-    </div>
+      </Paper>
+    </Box>
+
   );
 };
 

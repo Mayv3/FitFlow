@@ -6,11 +6,6 @@ import {
   deleteAlumno
 } from '../services/alumnos.supabase.js'
 
-import dayjs from 'dayjs';
-import isSameOrAfter from 'dayjs/plugin/isSameOrAfter.js'
-dayjs.extend(isSameOrAfter)
-
-
 export const listAlumnos = async (_req, res) => {
   try {
     const alumnos = await getAllAlumnos()

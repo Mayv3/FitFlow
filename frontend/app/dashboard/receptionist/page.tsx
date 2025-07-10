@@ -27,7 +27,7 @@ import { useCashRegister } from "@/hooks/useCashRegister"
 import { useDialogManager } from "@/hooks/useDialogManager"
 import { useAppData } from "@/context/AppDataContext"
 
-import { Member } from "@/models/dashboard"
+import { Member } from "@/models/Member"
 import EgresosSection from "@/components/dashboard/recepcionist/egresos/EgresosSection"
 import DebtsSection from "@/components/dashboard/recepcionist/deudas/Deudas"
 import { ElClub } from "@/components/dashboard/recepcionist/elclub/ElClub"

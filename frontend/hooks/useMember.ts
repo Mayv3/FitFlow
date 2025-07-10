@@ -1,5 +1,5 @@
 import { useState, useCallback } from "react"
-import { Member } from "@/models/dashboard"
+import { Member } from "@/models/Member"
 
 export function useMembers() {
   const [members, setMembers] = useState<Member[]>([])

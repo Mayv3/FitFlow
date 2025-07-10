@@ -11,7 +11,7 @@ import { AddMemberDialog } from "@/components/dashboard/recepcionist/members/add
 import { EditMemberDialog } from "@/components/dashboard/recepcionist/members/edit-member-dialog"
 import { DeleteMemberDialog } from "@/components/dashboard/recepcionist/members/delete-member-dialog"
 import { useAppData } from "@/context/AppDataContext"
-import { Member } from "@/models/dashboard"
+import { Member } from "@/models/Member"
 
 interface Alumno {
   ID: string

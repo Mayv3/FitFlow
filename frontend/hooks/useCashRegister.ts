@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from "react"
-import { Payment } from "@/models/dashboard"
+import { Payment } from "@/models/Member"
 import dayjs from "dayjs"
 import { notify } from "@/lib/toast"
 

@@ -3,7 +3,4 @@
 # dependencies
 /node_modules
 
-/backend/session
-/.wwebjs_cachep
-
 .env

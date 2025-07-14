@@ -7,7 +7,6 @@ import { useRouter } from "next/navigation";
 import { useUser } from "@/context/UserContext";
 import { FormEnterToTab } from "@/components/FormEnterToTab";
 
-// MUI
 import { TextField, Button, Typography, Paper, Box, CircularProgress } from "@mui/material";
 
 const LoginPage = () => {
@@ -15,7 +14,9 @@ const LoginPage = () => {
   const [password, setPassword] = useState("");
   const [errorMessage, setErrorMessage] = useState("");
   const [loading, setLoading] = useState(false);
+
   const router = useRouter();
+
   const { setUser } = useUser();
 
   const handleLogin = async (e: any) => {

@@ -5,6 +5,7 @@ import 'react-toastify/dist/ReactToastify.css'
 import { ToastProvider } from '@/components/ToastProvider'
 import { Quicksand } from 'next/font/google'
 import { ThemeProvider } from '../themeProvider/ThemeProvider'
+import { AppDataProvider } from '@/context/AppDataContext';
 
 const quicksand = Quicksand({
   subsets: ['latin'],
@@ -29,13 +30,14 @@ export default function RootLayout({
         <link rel="icon" href="/Gymspace-logo-png.png" type="image/png" />
       </head>
       <body className="font-quicksand">
-        <ThemeProvider>
-          <UserProvider>
-            {children}
-            <ToastProvider />
-          </UserProvider>
-        </ThemeProvider>
-
+        <AppDataProvider>
+          <ThemeProvider>
+            <UserProvider>
+              {children}
+              <ToastProvider />
+            </UserProvider>
+          </ThemeProvider>
+        </AppDataProvider>
       </body>
     </html>
   )

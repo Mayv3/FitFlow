@@ -3,6 +3,7 @@
 import { SideBar } from "@/components/dashboard/header/SideBar";
 import { recepcionistTabs } from "@/components/dashboard/header/sideBarTabs";
 import { useAuthRole } from "@/hooks/useAuthRole";
+import { RECEPCIONISTA } from "@/const/roles";
 
 export default function ReceptionistLayout({
   children,
@@ -10,7 +11,7 @@ export default function ReceptionistLayout({
   children: React.ReactNode;
 }) {
 
-  useAuthRole('recepcionista')
+  useAuthRole(RECEPCIONISTA)
 
   return (
     <div style={{ display: 'flex' }}>

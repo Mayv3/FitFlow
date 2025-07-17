@@ -15,7 +15,9 @@ import {
 import { useTheme } from '@mui/material/styles';
 import AccountCircleIcon from '@mui/icons-material/AccountCircle';
 import { useRouter, usePathname } from 'next/navigation';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
+import { useLogout } from '@/hooks/useLogout';
+import LogoutIcon from '@mui/icons-material/Logout';
 
 type TabItem = {
   label: string;
@@ -28,12 +30,21 @@ type HeaderComponentProps = {
 };
 
 export const SideBar = ({ tabs }: HeaderComponentProps) => {
+  const scrollRef = useRef<HTMLDivElement>(null);
+
   const router = useRouter();
   const pathname = usePathname();
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
+  const logout = useLogout();
 
   const [selectedIndex, setSelectedIndex] = useState<number | null>(null);
+
+  useEffect(() => {
+    if (scrollRef.current) {
+      scrollRef.current.scrollLeft = 0;
+    }
+  }, []);
 
   useEffect(() => {
     const index = tabs.findIndex((tab) => tab.route === pathname);
@@ -57,7 +68,7 @@ export const SideBar = ({ tabs }: HeaderComponentProps) => {
         justifyContent: 'space-between',
         position: 'fixed',
         p: 2,
-        zIndex:'1000'
+        zIndex: '1000'
       }}
     >
       <List
@@ -106,7 +117,7 @@ export const SideBar = ({ tabs }: HeaderComponentProps) => {
         })}
       </List>
 
-      <Box>
+      <Box sx={{ display: 'flex' }}>
         <ListItemButton
           onClick={() => handleNavigate(999, '/perfil')}
           sx={{
@@ -134,8 +145,21 @@ export const SideBar = ({ tabs }: HeaderComponentProps) => {
             }}
           />
         </ListItemButton>
+        <ListItemButton
+          onClick={logout}
+          sx={{
+            borderRadius: 2,
+            mt: 1,
+            height: 48,
+            justifyContent: 'center',
+            '&:hover': {
+              bgcolor: selectedIndex === 999 ? '#fff' : 'rgba(255,255,255,0.1)',
+            },
+          }}
+        >
+          <LogoutIcon sx={{ color: 'white' }} fontSize="medium" />
+        </ListItemButton>
       </Box>
-
     </Box>
   );
 
@@ -153,43 +177,81 @@ export const SideBar = ({ tabs }: HeaderComponentProps) => {
       }}
       elevation={8}
     >
-      <BottomNavigation
-        showLabels={false}
-        value={selectedIndex}
-        onChange={(_, newIndex) => {
-          const item = newIndex === 999
-            ? { route: '/perfil' }
-            : tabs[newIndex];
-          handleNavigate(newIndex, item.route);
-        }}
+      <Box
+        ref={scrollRef}
         sx={{
-          bgcolor: 'primary.main',
-          borderTopLeftRadius: 16,
-          borderTopRightRadius: 16,
+          overflowX: 'auto',
+          overflowY: 'hidden',
+          whiteSpace: 'nowrap',
+          '&::-webkit-scrollbar': { display: 'none' },
         }}
       >
-        {tabs.map((tab, index) => (
+        <BottomNavigation
+          showLabels={false}
+          value={selectedIndex}
+          onChange={(_, newIndex) => {
+            if (newIndex === 999) {
+              handleNavigate(999, '/perfil');
+            } else if (newIndex === 21) {
+              setSelectedIndex(21);
+              logout();
+            } else {
+              const tab = tabs[newIndex];
+              if (tab) {
+                handleNavigate(newIndex, tab.route);
+              }
+            }
+          }}
+          sx={{
+            bgcolor: 'primary.main',
+            borderTopLeftRadius: 16,
+            borderTopRightRadius: 16,
+            display: 'inline-flex',
+          }}
+        >
+          {tabs.map((tab, index) => (
+            <BottomNavigationAction
+              key={index}
+              icon={tab.icon}
+              value={index}
+              sx={{
+                color: selectedIndex === index ? 'black' : 'white',
+                '&.Mui-selected': {
+                  color: 'black',
+                  bgcolor: 'white'
+                },
+              }}
+            />
+          ))}
           <BottomNavigationAction
-            key={index}
-            icon={tab.icon}
-            value={index}
+            icon={<AccountCircleIcon />}
+            value={999}
             sx={{
-              color: selectedIndex === index ? 'black' : 'white',
+              color: 'white',
               '&.Mui-selected': {
                 color: 'black',
                 bgcolor: 'white'
               },
             }}
           />
-        ))}
-        <BottomNavigationAction
-          icon={<AccountCircleIcon />}
-          value={999}
-          sx={{
+          <BottomNavigationAction
+            onClick={() => {
+              setSelectedIndex(21);
+              logout();
+            }}
+            icon={<LogoutIcon />}
+            value={21}
+            sx={{
+              color: 'white',
+              '&.Mui-selected': {
+                color: 'black',
+                bgcolor: 'white'
+              },
+            }}
+          />
+        </BottomNavigation>
+      </Box>
 
-          }}
-        />
-      </BottomNavigation>
     </Paper>
   );
 

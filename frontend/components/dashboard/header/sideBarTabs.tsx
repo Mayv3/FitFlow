@@ -8,7 +8,7 @@ export const adminTabs = [
   { label: 'Inicio', icon: <HomeIcon />, route: '/dashboard/administrator' },
   { label: 'Miembros', icon: <GroupIcon />, route: '/dashboard/administrator/members' },
   { label: 'Pagos', icon: <PaidIcon />, route: '/dashboard/administrator/payments' },
-  { label: 'Estadísticas', icon: <BarChartIcon />, route: '/dashboard/administrator/stats' },
+  { label: 'Estadísticas', icon: <BarChartIcon />, route: '/dashboard/administrator/stats'},
 ];
 
 export const recepcionistTabs = [

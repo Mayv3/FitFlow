@@ -37,6 +37,7 @@ export function GenericDataGrid<T extends { id: string | number }>({
         <DataGrid
           rows={rows}
           columns={columns}
+          disableColumnResize
           disableColumnMenu
           paginationMode={paginationMode}
           {...(paginationMode === 'server' && {

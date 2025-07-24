@@ -2,7 +2,7 @@ import type { Metadata } from 'next'
 import './globals.css'
 import { UserProvider } from "@/context/UserContext";
 import 'react-toastify/dist/ReactToastify.css'
-import { ToastProvider } from '@/components/ToastProvider'
+import { ToastProvider } from '@/components/ui/ToastProvider'
 import { Quicksand } from 'next/font/google'
 import { ThemeProvider } from '../themeProvider/ThemeProvider'
 import { ReactQueryProvider } from '@/providers/ReactQueryProvider';

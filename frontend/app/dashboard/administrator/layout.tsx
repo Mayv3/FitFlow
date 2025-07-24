@@ -1,5 +1,5 @@
-import { SideBar } from '@/components/dashboard/header/SideBar';
-import { adminTabs } from '@/components/dashboard/header/sideBarTabs';
+import { SideBar } from '@/components/ui/header/SideBar';
+import { adminTabs } from '@/components/ui/header/sideBarTabs';
 import { useAuthRole } from '@/hooks/useAuthRole';
 import { Box } from '@mui/material';
 import { ADMINISTRADOR } from '@/const/roles';

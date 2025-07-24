@@ -1,7 +1,7 @@
 'use client';
 
-import { SideBar } from "@/components/dashboard/header/SideBar";
-import { memberTabs } from "@/components/dashboard/header/sideBarTabs";
+import { SideBar } from "@/components/ui/header/SideBar";
+import { memberTabs } from "@/components/ui/header/sideBarTabs";
 import { useAuthRole } from "@/hooks/useAuthRole";
 import { SOCIO } from "@/const/roles";
 export const MemberLayout = ({ children }: { children: React.ReactNode }) => {

@@ -1,7 +1,7 @@
 'use client';
 
-import { SideBar } from "@/components/dashboard/header/SideBar";
-import { ownerTabs } from "@/components/dashboard/header/sideBarTabs";
+import { SideBar } from "@/components/ui/header/SideBar";
+import { ownerTabs } from "@/components/ui/header/sideBarTabs";
 import { useAuthRole } from "@/hooks/useAuthRole";
 import { OWNER } from "@/const/roles";
 

@@ -5,7 +5,7 @@ import axios from "axios";
 import Cookies from "js-cookie";
 import { useRouter } from "next/navigation";
 import { useUser } from "@/context/UserContext";
-import { FormEnterToTab } from "@/components/FormEnterToTab";
+import { FormEnterToTab } from "@/components/ui/FormEnterToTab";
 import { ADMINISTRADOR, RECEPCIONISTA, OWNER, SOCIO } from "@/const/roles";
 
 import { TextField, Button, Typography, Paper, Box, CircularProgress } from "@mui/material";
@@ -44,6 +44,7 @@ const LoginPage = () => {
       Cookies.set("dni", String(profile.dni))
       Cookies.set("rol", String(profile.role_id))
       Cookies.set("gym_id", profile.gym_id)
+      Cookies.set("name", String(profile.email))
       
       setUser({
         id: profile.auth_user_id,

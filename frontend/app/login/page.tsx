@@ -6,6 +6,7 @@ import Cookies from "js-cookie";
 import { useRouter } from "next/navigation";
 import { useUser } from "@/context/UserContext";
 import { FormEnterToTab } from "@/components/FormEnterToTab";
+import { ADMINISTRADOR, RECEPCIONISTA, OWNER, SOCIO } from "@/const/roles";
 
 import { TextField, Button, Typography, Paper, Box, CircularProgress } from "@mui/material";
 
@@ -51,12 +52,14 @@ const LoginPage = () => {
         gym_id: profile.gym_id,
       })
 
-      if (profile.role_id === 1) {
+      if (profile.role_id === ADMINISTRADOR) {
         router.push("/dashboard/administrator")
-      } else if (profile.role_id === 2) {
+      } else if (profile.role_id === RECEPCIONISTA) {
         router.push("/dashboard/receptionist")
-      } else {
+      } else if (profile.role_id === SOCIO) {
         router.push("/dashboard/member")
+      } else if (profile.role_id === 1) {
+        router.push("/dashboard/owner/register")
       }
 
     } catch (err: any) {

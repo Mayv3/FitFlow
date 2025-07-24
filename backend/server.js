@@ -9,6 +9,7 @@ import rolesRoutes from './routes/roles.routes.js';
 import asistenciasRoutes from './routes/asistencias.routes.js';
 import cajaRoutes from './routes/caja.routes.js';
 import authRoutes from './routes/auth.routes.js'
+import gymsRoutes from './routes/gyms.routes.js'
 
 import { verifyToken } from '../backend/middleware/auth.js'
 
@@ -25,6 +26,8 @@ app.use('/api/roles', rolesRoutes);
 app.use('/api/asistencias', asistenciasRoutes);
 app.use('/api/caja', cajaRoutes);
 app.use('/api/auth', authRoutes);
+app.use('/api/gyms', gymsRoutes)
+
 app.get('/ping', (req, res) => res.sendStatus(200));
 
 // router.get('/dashboard-admin', verifyToken, onlyRole('dueño'), handler)

@@ -22,3 +22,7 @@ export const memberTabs = [
   { label: 'Mi cuenta', icon: <GroupIcon />, route: '/dashboard/member' },
   { label: 'Pagos', icon: <PaidIcon />, route: '/dashboard/member/payments' },
 ];
+
+export const ownerTabs = [
+    { label: 'Registrar', icon: <GroupIcon />, route: '/dashboard/owner/register' },
+]

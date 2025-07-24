@@ -10,7 +10,7 @@ import { FormEnterToTab } from "@/components/FormEnterToTab";
 import { TextField, Button, Typography, Paper, Box, CircularProgress } from "@mui/material";
 
 const LoginPage = () => {
-  const [dni, setDni] = useState("");
+  const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [errorMessage, setErrorMessage] = useState("");
   const [loading, setLoading] = useState(false);
@@ -19,46 +19,53 @@ const LoginPage = () => {
 
   const { setUser } = useUser();
 
-  const handleLogin = async (e: any) => {
-    e.preventDefault();
-    setErrorMessage("");
+  const handleLogin = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setErrorMessage("")
 
-    if (!dni.trim() || !password.trim()) {
-      setErrorMessage("Por favor completá todos los campos.");
-      return;
+    if (!email.trim() || !password.trim()) {
+      setErrorMessage("Por favor completá todos los campos.")
+      return
     }
 
     try {
-      setLoading(true);
+      setLoading(true)
 
-      const res = await axios.post(`${process.env.NEXT_PUBLIC_BACKEND_URL}/api/auth/login`, {
-        dni,
-        password,
-      });
+      const res = await axios.post(
+        `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/auth/login`,
+        { email: `${email}`, password }
+      )
 
-      const { token, user } = res.data;
+      const { session, profile } = res.data
 
-      Cookies.set("token", token);
-      Cookies.set("dni", user.dni);
-      Cookies.set("rol", user.rol);
+      Cookies.set("token", session.access_token)
+      Cookies.set("dni", String(profile.dni))
+      Cookies.set("rol", String(profile.role_id))
+      Cookies.set("gym_id", profile.gym_id)
 
-      setUser(user);
+      setUser({
+        id: profile.auth_user_id,
+        name: session.user.email,
+        dni: profile.dni,
+        role_id: profile.role_id,
+        gym_id: profile.gym_id,
+      })
 
-      if (user.rol === "dueño") {
-        router.push("/dashboard/administrator");
-      } else if (user.rol === "recepcionista") {
-        router.push("/dashboard/receptionist");
+      if (profile.role_id === 1) {
+        router.push("/dashboard/administrator")
+      } else if (profile.role_id === 2) {
+        router.push("/dashboard/receptionist")
       } else {
-        router.push("/dashboard/member");
+        router.push("/dashboard/member")
       }
 
-      setLoading(false);
-    } catch (error) {
-      console.error("Error en login:", error);
-      setErrorMessage("DNI o contraseña incorrectos.");
-      setLoading(false);
+    } catch (err: any) {
+      console.error("Error en login:", err)
+      setErrorMessage(err.response?.data?.error || "DNI o contraseña incorrectos.")
+    } finally {
+      setLoading(false)
     }
-  };
+  }
 
   return (
     <Box
@@ -88,11 +95,11 @@ const LoginPage = () => {
 
         <FormEnterToTab>
           <TextField
-            label="DNI"
+            label="Email"
             variant="outlined"
             fullWidth
-            value={dni}
-            onChange={(e) => setDni(e.target.value)}
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
             margin="normal"
           />
 

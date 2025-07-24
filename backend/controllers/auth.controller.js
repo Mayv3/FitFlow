@@ -1,69 +1,42 @@
-import bcrypt from 'bcryptjs'
-import jwt from 'jsonwebtoken'
-import { supabase } from '../db/supabaseClient.js'
+import { registerUser, loginUser, logoutUser } from '../services/auth.supabase.js'
 
-export async function login(req, res) {
-  const { dni, password } = req.body;
+export async function handleRegisterUser(req, res) {
+  try {
+    const { email, password, dni, gym_id, role_id } = req.body
 
-  if (!dni || !password) {
-    return res.status(400).json({ error: 'DNI y contraseña son requeridos' });
+    if (!email || !password || !dni || !gym_id || !role_id) {
+      return res.status(400).json({ error: 'Faltan campos requeridos' })
+    }
+
+    const user = await registerUser({ email, password, dni, gym_id, role_id })
+
+    res.status(201).json({ message: 'Usuario registrado', user })
+  } catch (err) {
+    console.error('Error al registrar usuario:', err)
+    res.status(500).json({ error: err.message })
   }
-  console.log("DNI recibido en backend:", dni);
-  console.log("🔍 Buscando usuario con DNI:", dni);
+}
 
-  const { data: user, error } = await supabase
-    .from("users")
-    .select("*")
-    .eq("dni", String(dni).trim())
-    .single();
-
-  if (error || !user) {
-    console.log("❌ Usuario no encontrado");
-    return res.status(401).json({ error: "Usuario no encontrado" });
+export async function handleLoginUser(req, res) {
+  try {
+    const { email, password } = req.body
+    if (!email || !password) {
+      return res.status(400).json({ error: 'Faltan email o password' })
+    }
+    const { session, profile } = await loginUser({ email, password })
+    res.json({ session, profile })
+  } catch (err) {
+    console.error('Error en login:', err)
+    res.status(401).json({ error: err.message })
   }
+}
 
-  console.log("✅ Usuario encontrado:", user.email);
-
-  const { data: roleData, error: roleError } = await supabase
-    .from("roles")
-    .select("name")
-    .eq("id", user.role_id)
-    .single();
-
-  if (roleError || !roleData) {
-    console.log("❌ Error obteniendo el rol:", roleError);
-    return res.status(500).json({ error: "No se pudo obtener el rol del usuario" });
+export async function handleLogoutUser(req, res) {
+  try {
+    await logoutUser()
+    res.json({ message: 'Sesión cerrada correctamente' })
+  } catch (err) {
+    console.error('Error en logout:', err)
+    res.status(500).json({ error: err.message })
   }
-
-  console.log("🔑 Comparando contraseña...");
-
-  const valid = await bcrypt.compare(password, user.password_hash);
-
-  if (!valid) {
-    console.log("❌ Contraseña incorrecta");
-    return res.status(401).json({ error: 'Contraseña incorrecta' });
-  }
-
-  console.log("✅ Contraseña válida. Generando token...");
-
-  const token = jwt.sign(
-    {
-      id: user.id,
-      dni: user.dni,
-      role: roleData.name,
-      gym_id: user.gym_id,
-    },
-    process.env.JWT_SECRET,
-    { expiresIn: '7d' }
-  );
-
-  console.log("🟢 Login exitoso para:", user.dni);
-
-  res.json({
-    token,
-    user: {
-      dni: user.dni,
-      rol: roleData.name,
-    },
-  });
 }

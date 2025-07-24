@@ -8,13 +8,14 @@ import pagosRoutes from './routes/pagos.routes.js';
 import rolesRoutes from './routes/roles.routes.js';
 import asistenciasRoutes from './routes/asistencias.routes.js';
 import cajaRoutes from './routes/caja.routes.js';
-import authRoutes from './routes/auth.routes.js'; // ajustá la ruta según tu estructura
+import authRoutes from './routes/auth.routes.js'
 
-import { verifyToken, onlyRole} from '../backend/middleware/auth.js'
+import { verifyToken } from '../backend/middleware/auth.js'
 
 dotenv.config();
 
 const app = express();
+
 app.use(cors());
 app.use(express.json());
 
@@ -23,8 +24,8 @@ app.use('/api/pagos', pagosRoutes);
 app.use('/api/roles', rolesRoutes);
 app.use('/api/asistencias', asistenciasRoutes);
 app.use('/api/caja', cajaRoutes);
-app.get('/ping', (req, res) => res.sendStatus(200));
 app.use('/api/auth', authRoutes);
+app.get('/ping', (req, res) => res.sendStatus(200));
 
 // router.get('/dashboard-admin', verifyToken, onlyRole('dueño'), handler)
 

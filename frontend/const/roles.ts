@@ -1,3 +1,3 @@
-export const ADMINISTRADOR = 'administrador'
-export const RECEPCIONISTA = 'recepcionista'
-export const SOCIO = 'socio'
+export const ADMINISTRADOR = '1'
+export const RECEPCIONISTA = '2'
+export const SOCIO = '3'

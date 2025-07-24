@@ -4,9 +4,11 @@ import { createContext, useContext, useEffect, useState, ReactNode } from "react
 import Cookies from "js-cookie";
 
 type UserData = {
+  id: number;
   dni: string;
-  nombre: string;
-  rol: string;
+  name: string;
+  role_id: number;
+  gym_id: string 
 };
 
 type UserContextType = {
@@ -22,12 +24,20 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    const idStr = Cookies.get("id")
     const dni = Cookies.get("dni") || "";
-    const nombre = Cookies.get("nombre") || "";
-    const rol = Cookies.get("rol") || "";
+    const name = Cookies.get("name") || "";
+    const role_id = Cookies.get("rol") || "";
+    const gym_id = Cookies.get("gym_id") || ""
 
-    if (dni && nombre && rol) {
-      setUser({ dni, nombre, rol });
+    if (idStr && dni && name && role_id && gym_id) {
+      setUser({
+        id: Number(idStr),
+        dni,
+        name,
+        role_id: Number(role_id),
+        gym_id,
+      })
     }
 
     setLoading(false);

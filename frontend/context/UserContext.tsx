@@ -1,15 +1,7 @@
-"use client"
-
+'use client'
 import { createContext, useContext, useEffect, useState, ReactNode } from "react";
 import Cookies from "js-cookie";
-
-type UserData = {
-  id: number;
-  dni: string;
-  name: string;
-  role_id: number;
-  gym_id: string 
-};
+import UserData from "@/models/User";
 
 type UserContextType = {
   user: UserData | null;
@@ -24,24 +16,21 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const idStr = Cookies.get("id")
-    const dni = Cookies.get("dni") || "";
-    const name = Cookies.get("name") || "";
-    const role_id = Cookies.get("rol") || "";
-    const gym_id = Cookies.get("gym_id") || ""
+    const idStr    = Cookies.get("id")     || "";
+    const dni      = Cookies.get("dni")    || "";
+    const role_id  = Cookies.get("rol")    || "";
+    const gym_id   = Cookies.get("gym_id") || "";
 
-    if (idStr && dni && name && role_id && gym_id) {
+    if (idStr && dni && role_id && gym_id) {
       setUser({
-        id: Number(idStr),
+        id:       Number(idStr),
         dni,
-        name,
-        role_id: Number(role_id),
+        role_id:  Number(role_id),
         gym_id,
-      })
+      });
     }
 
     setLoading(false);
-
   }, []);
 
   return (

@@ -1,15 +1,15 @@
 import { Router } from 'express'
 import {
-  listAlumnos,
   getAlumno,
   addAlumno,
   editAlumno,
-  removeAlumno
+  removeAlumno,
+  handleListAlumnosByGym
 } from '../controllers/alumnos.controller.js'
 import { verifyToken } from '../middleware/auth.js'
 
 const router = Router()
-router.get('/', verifyToken, listAlumnos)
+router.get('/', verifyToken, handleListAlumnosByGym)
 router.get('/:dni', getAlumno)
 router.post('/', addAlumno)
 router.put('/:dni', editAlumno)

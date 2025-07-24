@@ -3,7 +3,7 @@
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 
-export function useAuthRole(expectedRole: string) {
+export function useAuthRole(expectedRole: number) {
   const router = useRouter();
 
   useEffect(() => {
@@ -12,7 +12,8 @@ export function useAuthRole(expectedRole: string) {
       return match ? decodeURIComponent(match[2]) : null;
     };
 
-    const rol = getCookie("rol");
+    const rolCookie = getCookie("rol");
+    const rol = rolCookie !== null ? Number(rolCookie) : null;
 
     if (rol !== expectedRole) {
       router.push("/login");

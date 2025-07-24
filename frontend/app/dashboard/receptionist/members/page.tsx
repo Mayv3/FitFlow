@@ -1,10 +1,12 @@
 'use client'
-import { useEffect } from 'react';
-import { useAppData } from '@/context/AppDataContext';
 import { GenericDataGrid } from '@/components/dashboard/tables/DataGrid';
 import { GridColDef } from '@mui/x-data-grid';
-import { Box, Typography, Paper } from '@mui/material';
+import { Box, Typography, Paper, CircularProgress } from '@mui/material';
 import { useFetchOnce } from '@/hooks/useFetchOnce';
+import { useAlumnosByGym } from '@/hooks/useAlumnosByGym';
+import { useUser } from '@/context/UserContext';
+import { useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation'
 
 const columns: GridColDef[] = [
   { field: 'id', headerName: 'ID', flex: 0.1 },
@@ -20,36 +22,72 @@ const columns: GridColDef[] = [
 ];
 
 export default function MembersPage() {
-  const { members, setMembers } = useAppData();
+  const router = useRouter()
+  const { user, loading: userLoading } = useUser()
+  const [page, setPage] = useState(1)
+  const pageSize = 20
 
-  const { data, loading, error } = useFetchOnce(
-    `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/alumnos`
-  );
+  const gymId = user?.gym_id ?? ''
+  const {
+    data,
+    isLoading,
+    isError,
+    error,
+    isFetching,
+  } = useAlumnosByGym(gymId, page, pageSize)
+
+  const alumnos = data?.items ?? []
+  const total = data?.total ?? 0
 
   useEffect(() => {
-    if (!members && data) {
-      setMembers(data);
+    console.log(data)
+    if (!user && !userLoading) {
+      router.push('/login')
     }
-  }, [members, data, setMembers]);
+  }, [user, userLoading, router])
 
-  if (!members && loading) return <p>Cargando...</p>;
-  if (!members && error) return <p>Error: {error}</p>;
+  if (userLoading || !user) {
+    return (
+      <Box sx={{ textAlign: 'center', mt: 4 }}>
+        <CircularProgress />
+      </Box>
+    )
+  }
+
+  if (isLoading) {
+    return (
+      <Box sx={{ textAlign: 'center', mt: 4 }}>
+        <CircularProgress />
+      </Box>
+    )
+  }
+
+  if (isError) {
+    return (
+      <Typography color="error" sx={{ textAlign: 'center', mt: 4 }}>
+        {(error as Error).message}
+      </Typography>
+    )
+  }
 
   return (
     <Box>
       <Typography variant="h4" gutterBottom>
         Lista de Miembros
       </Typography>
-
       <Paper sx={{ width: '100%' }}>
         <GenericDataGrid
           title="Miembros"
-          rows={members || []}
-          pageSizeOptions={[10]}
-          initialPagination={{ page: 0, pageSize: 10 }}
+          rows={alumnos}
           columns={columns}
+          paginationMode="server"
+          rowCount={total}
+          page={page - 1}
+          pageSize={pageSize}
+          onPaginationModelChange={({ page: newPage }) => setPage(newPage + 1)}
+          loading={isFetching}
         />
       </Paper>
     </Box>
-  );
+  )
 }

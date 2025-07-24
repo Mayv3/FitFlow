@@ -1,19 +1,37 @@
+import { supabaseAdmin } from '../db/supabaseClient.js'
 import {
-  getAllAlumnos,
   getAlumnoByDNI,
   createAlumno,
   updateAlumno,
   deleteAlumno
 } from '../services/alumnos.supabase.js'
 
-export const listAlumnos = async (_req, res) => {
-  try {
-    const alumnos = await getAllAlumnos()
-    res.json(alumnos)
-  } catch (error) {
-    res.status(500).json({ error: error.message })
+export async function handleListAlumnosByGym(req, res) {
+  const gymId = req.user.user_metadata.gym_id;
+  const page  = Number(req.query.page)  || 1;
+  const limit = Number(req.query.limit) || 50;
+  const from  = (page - 1) * limit;
+  const to    = from + limit - 1;
+
+  const { data, error, count } = await supabaseAdmin
+    .from('alumnos')
+    .select('*', { count: 'exact' })
+    .eq('gym_id', gymId)
+    .order('nombre', { ascending: true })
+    .range(from, to);
+
+  if (error) {
+    return res.status(500).json({ error: error.message });
   }
+
+  return res.status(200).json({
+    items: data,
+    total: count,
+    page,
+    limit,
+  });
 }
+
 
 export const getAlumno = async (req, res) => {
   try {

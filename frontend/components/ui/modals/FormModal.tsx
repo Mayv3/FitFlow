@@ -42,6 +42,7 @@ export const FormModal: React.FC<FormModalProps> = ({
     const [values, setValues] = useState<Record<string, any>>(initialValues);
 
     useEffect(() => {
+        console.log(initialValues)
         setValues(initialValues);
     }, [initialValues, open]);
 
@@ -96,10 +97,7 @@ export const FormModal: React.FC<FormModalProps> = ({
 
                             return (
                                 <Box
-                                    item
                                     key={field.name}
-                                    xs={12}
-                                    sm={4}
                                 >
                                     <TextField
                                         fullWidth

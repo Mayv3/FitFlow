@@ -1,0 +1,73 @@
+
+ export const inputFieldsAlumnos = [
+  {
+    label: 'Nombre',
+    name: 'nombre',
+    required: true,
+    minLength: 3,
+    maxLength: 50,
+    gridSize: { xs: 12, sm: 4 },
+  },
+  {
+    label: 'DNI',
+    name: 'dni',
+    type: 'number',
+    required: true,
+    minLength: 7,
+    maxLength: 8,
+    inputProps: {
+      inputMode: 'numeric',
+      pattern: '[0-9]*',
+    },
+    gridSize: { xs: 12, sm: 4 },
+  },
+  {
+    label: 'Email',
+    name: 'email',
+    type: 'email',
+    maxLength: 60,
+    gridSize: { xs: 12, sm: 4 },
+  },
+  {
+    label: 'Teléfono',
+    name: 'telefono',
+    minLength: 8,
+    maxLength: 20,
+    gridSize: { xs: 12, sm: 4 },
+  },
+  {
+    label: 'Plan',
+    name: 'plan_id',
+    type: 'number',
+    min: 1,
+    gridSize: { xs: 12, sm: 4 },
+  },
+  {
+    label: 'Clases pagadas',
+    name: 'clases_pagadas',
+    type: 'number',
+    min: 0,
+    gridSize: { xs: 12, sm: 4 },
+  },
+  {
+    label: 'Clases realizadas',
+    name: 'clases_realizadas',
+    type: 'number',
+    min: 0,
+    gridSize: { xs: 12, sm: 4 },
+  },
+  {
+    label: 'Fecha de nacimiento',
+    name: 'fecha_nacimiento',
+    type: 'date',
+    required: true,
+    gridSize: { xs: 12, sm: 4 },
+  },
+  {
+    label: 'Fecha de inicio',
+    name: 'fecha_inicio',
+    type: 'date',
+    required: true,
+    gridSize: { xs: 12, sm: 4 },
+  },
+];

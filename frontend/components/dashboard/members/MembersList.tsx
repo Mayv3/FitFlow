@@ -1,15 +1,16 @@
 'use client'
 import { GenericDataGrid } from '@/components/ui/tables/DataGrid';
-import { GridColDef } from '@mui/x-data-grid';
 import { Box, Typography, Paper, CircularProgress, IconButton, TextField } from '@mui/material';
-import EditIcon from '@mui/icons-material/Edit';
-import DeleteIcon from '@mui/icons-material/Delete';
+
 import { useAlumnosByGym } from '@/hooks/useAlumnosByGym';
 import { useUser } from '@/context/UserContext';
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { GenericModal } from '@/components/ui/modals/GenericModal';
 import { FormModal } from '@/components/ui/modals/FormModal';
+import { Member } from '@/models/Member';
+import { inputFieldsAlumnos } from '@/const/inputs/inputsAlumnos';
+import { columnsMember } from '@/const/columns/columnsAlumnos';
 
 export default function MembersList() {
   const router = useRouter();
@@ -17,7 +18,7 @@ export default function MembersList() {
   const [page, setPage] = useState(1);
   const pageSize = 20;
   const [openModal, setOpenModal] = useState(false);
-  const [selectedMember, setSelectedMember] = useState(null);
+  const [selectedMember, setSelectedMember] = useState<number | null>(null);
   const [openEdit, setOpenEdit] = useState(false);
   const [editingMember, setEditingMember] = useState<any>(null);
 
@@ -34,17 +35,17 @@ export default function MembersList() {
   }, [user, userLoading, router]);
 
 
-  const handleEdit = (member: any) => {
+  const handleEdit = (member: Member) => {
     setEditingMember(member);
     setOpenEdit(true);
   };
 
-  const handleSubmitEdit = (values: any) => {
+  const handleSubmitEdit = (values: Record<string, any>) => {
     console.log('Valores editados:', values);
     setOpenEdit(false);
   };
 
-  const handleDelete = (id: string) => {
+  const handleDelete = (id: number) => {
     setSelectedMember(id);
     setOpenModal(true);
   };
@@ -78,71 +79,7 @@ export default function MembersList() {
     );
   }
 
-  const columns: GridColDef[] = [
-    { field: 'id', headerName: 'ID', flex: 0.1 },
-    { field: 'nombre', headerName: 'Nombre', flex: 0.1 },
-    { field: 'dni', headerName: 'DNI', flex: 0.1 },
-    { field: 'email', headerName: 'Email', flex: 0.1 },
-    { field: 'telefono', headerName: 'Teléfono', flex: 0.1 },
-    { field: 'plan', headerName: 'Plan', flex: 0.1 },
-    { field: 'clases_pagadas', headerName: 'Clases pagadas', type: 'number', flex: 0.1 },
-    { field: 'clases_realizadas', headerName: 'Clases realizadas', type: 'number', flex: 0.1 },
-    { field: 'fecha_nacimiento', headerName: 'Fecha de nacimiento', flex: 0.1 },
-    { field: 'fecha_inicio', headerName: 'Fecha de inicio', flex: 0.1 },
-    {
-      field: 'acciones',
-      headerName: 'Acciones',
-      flex: 0.15,
-      renderCell: (params) => (
-        <Box>
-          <IconButton color="primary" onClick={() => handleEdit(params.row)}>
-            <EditIcon />
-          </IconButton>
-          <IconButton color="error" onClick={() => handleDelete(params.row.id)}>
-            <DeleteIcon />
-          </IconButton>
-        </Box>
-      ),
-    },
-  ];
-
-  const inputFields = [
-    {
-      label: 'Nombre',
-      name: 'nombre',
-      required: true,
-      minLength: 3,
-      maxLength: 50,
-      gridSize: { xs: 12, sm: 4 }
-    },
-    {
-      label: 'DNI',
-      name: 'dni',
-      type: 'text',
-      required: true,
-      minLength: 7,
-      maxLength: 8,
-      inputProps: {
-        inputMode: 'numeric',
-        pattern: '[0-9]*'
-      },
-      gridSize: { xs: 12, sm: 4 }
-    },
-    {
-      label: 'Email',
-      type: 'email',
-      name: 'email',
-      maxLength: 60,
-      gridSize: { xs: 12, sm: 4 }
-    },
-    {
-      label: 'Teléfono',
-      name: 'telefono',
-      minLength: 8,
-      maxLength: 20,
-      gridSize: { xs: 12, sm: 4 }
-    }
-  ];
+  const columns = columnsMember(handleEdit, handleDelete);
 
   return (
     <Box>
@@ -173,10 +110,10 @@ export default function MembersList() {
       />
       {editingMember && (
         <FormModal
-          gridColumns={2}
+          gridColumns={3}
           open={openEdit}
           title="Editar miembro"
-          fields={inputFields}
+          fields={inputFieldsAlumnos}
           initialValues={editingMember}
           onClose={() => setOpenEdit(false)}
           onSubmit={handleSubmitEdit}

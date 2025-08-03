@@ -8,7 +8,7 @@ export function useAlumnosByGym(
   limit = 20
 ) {
   return useQuery({
-    queryKey: ['alumnos', gymId, page, limit],
+    queryKey: ['members', gymId, page, limit],
     queryFn: async () => {
 
       const token = Cookies.get('token')

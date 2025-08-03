@@ -2,7 +2,7 @@ import { SideBar } from '@/components/ui/header/SideBar';
 import { adminTabs } from '@/components/ui/header/sideBarTabs';
 import { useAuthRole } from '@/hooks/useAuthRole';
 import { Box } from '@mui/material';
-import { ADMINISTRADOR } from '@/const/roles';
+import { ADMINISTRADOR } from '@/const/roles/roles';
 
 const AdminDashboard = () => {
   useAuthRole(ADMINISTRADOR);

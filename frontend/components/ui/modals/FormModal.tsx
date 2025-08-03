@@ -16,33 +16,32 @@ type Field = {
     inputProps?: any;
 };
 
-type FormModalProps = {
+type FormModalProps<T = Record<string, any>> = {
     open: boolean;
     title: string;
     fields: Field[];
-    initialValues?: Record<string, any>;
+    initialValues?: T;
     onClose: () => void;
-    onSubmit: (values: Record<string, any>) => void;
+    onSubmit: (values: T) => void;
     confirmText?: string;
     cancelText?: string;
-    gridColumns: number
+    gridColumns: number;
 };
 
-export const FormModal: React.FC<FormModalProps> = ({
+export const FormModal = <T extends Record<string, any>>({
     open,
     title,
     fields,
-    initialValues = {},
+    initialValues = {} as T,
     onClose,
     onSubmit,
     confirmText = 'Guardar',
     cancelText = 'Cancelar',
     gridColumns = 3
-}) => {
-    const [values, setValues] = useState<Record<string, any>>(initialValues);
+}: FormModalProps<T>) => {
+    const [values, setValues] = useState<T>(initialValues);
 
     useEffect(() => {
-        console.log(initialValues)
         setValues(initialValues);
     }, [initialValues, open]);
 
@@ -50,7 +49,7 @@ export const FormModal: React.FC<FormModalProps> = ({
         const { name, value } = e.target;
         const field = fields.find(f => f.name === name);
 
-        let newValue = value;
+        let newValue: any = value;
 
         if (field?.type === 'number') {
             const numValue = parseFloat(value);
@@ -96,9 +95,7 @@ export const FormModal: React.FC<FormModalProps> = ({
                             };
 
                             return (
-                                <Box
-                                    key={field.name}
-                                >
+                                <Box key={field.name}>
                                     <TextField
                                         fullWidth
                                         label={field.label}
@@ -131,7 +128,6 @@ export const FormModal: React.FC<FormModalProps> = ({
                                 </Box>
                             );
                         })}
-
                     </Box>
                 </DialogContent>
                 <DialogActions>

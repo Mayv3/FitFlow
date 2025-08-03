@@ -3,7 +3,7 @@
 import { SideBar } from "@/components/ui/header/SideBar";
 import { recepcionistTabs } from "@/components/ui/header/sideBarTabs";
 import { useAuthRole } from "@/hooks/useAuthRole";
-import { RECEPCIONISTA } from "@/const/roles";
+import { RECEPCIONISTA } from "@/const/roles/roles";
 
 export default function ReceptionistLayout({
   children,

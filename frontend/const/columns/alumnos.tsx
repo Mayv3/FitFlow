@@ -43,7 +43,7 @@ export const columnsMember = (
           <IconButton color="primary" onClick={() => handleEdit(params.row)}>
             <EditIcon />
           </IconButton>
-          <IconButton color="error" onClick={() => handleDelete(params.row.id)}>
+          <IconButton color="error" onClick={() => handleDelete(params.row.dni)}>
             <DeleteIcon />
           </IconButton>
         </Box>

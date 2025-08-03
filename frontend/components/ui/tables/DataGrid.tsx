@@ -17,7 +17,6 @@ type GenericDataGridProps<T extends { id: string | number }> = {
 };
 
 export function GenericDataGrid<T extends { id: string | number }>({
-  title,
   rows,
   columns,
   paginationMode = 'client',
@@ -28,13 +27,44 @@ export function GenericDataGrid<T extends { id: string | number }>({
   loading = false,
   pageSizeOptions = [5, 10],
   initialPagination = { page: 0, pageSize: 5 },
-  height = 400,
+  height = 600,
 }: GenericDataGridProps<T>) {
   return (
-    <Box sx={{ width: '100%', height }}>
-      {title && <h4>{title}</h4>}
-      <Paper sx={{ width: '100%', height: '100%', overflowX: 'hidden' }}>
+
+    <Box
+      sx={{
+        overflowX: 'auto',
+      }}
+    >
+      <Box
+        sx={{
+          minWidth: 1000,
+        }}
+      >
         <DataGrid
+          sx={{
+            backgroundColor: 'white',
+            maxHeight: { xs: '70vh' },
+            '& .MuiDataGrid-main': {
+              backgroundColor: 'white',
+            },
+            '& .MuiDataGrid-columnHeaders': {
+              backgroundColor: 'white',
+            },
+            '& .MuiDataGrid-columnHeader': {
+              backgroundColor: 'white',
+            },
+            '& .MuiDataGrid-columnHeadersInner': {
+              backgroundColor: 'white',
+            },
+            '& .MuiDataGrid-virtualScroller': {
+              backgroundColor: 'white',
+            },
+            '& .MuiDataGrid-footerContainer': {
+              backgroundColor: 'white',
+            },
+          }}
+
           rows={rows}
           columns={columns}
           disableColumnResize
@@ -53,14 +83,8 @@ export function GenericDataGrid<T extends { id: string | number }>({
             },
           })}
           pageSizeOptions={pageSizeOptions}
-          sx={{
-            border: 0,
-            '& .MuiDataGrid-columnHeaders': {
-              minWidth: '100%',
-            },
-          }}
         />
-      </Paper>
+      </Box>
     </Box>
   );
 }

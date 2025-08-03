@@ -30,6 +30,7 @@ export default function RootLayout({
         <link rel="icon" href="/Gymspace-logo-png.png" type="image/png" />
       </head>
       <body className="font-quicksand">
+        
         <ReactQueryProvider>
             <ThemeProvider>
               <UserProvider>

@@ -9,7 +9,5 @@ export const formatearFecha = (valor: string | Date | null | undefined): string 
   if (!fecha.isValid()) return '—';
 
   const formateada = fecha.format('DD/MM/YYYY');
-  console.log('Fecha formateada:', formateada);
-
   return formateada;
 };

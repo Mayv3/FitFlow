@@ -14,12 +14,13 @@ export async function getAlumnoByDNI(dni) {
     .from('alumnos')
     .select('*')
     .eq('dni', dni)
-    .single()
+    .single();
   if (error) throw error
   return data
 }
 
 export async function createAlumno(alumno) {
+  console.log(alumno)
   const { data, error } = await supabase
     .from('alumnos')
     .insert(alumno)

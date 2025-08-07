@@ -8,16 +8,16 @@ import {
 
 export async function handleListAlumnosByGym(req, res) {
   const gymId = req.user.user_metadata.gym_id;
-  const page  = Number(req.query.page)  || 1;
+  const page = Number(req.query.page) || 1;
   const limit = Number(req.query.limit) || 50;
-  const from  = (page - 1) * limit;
-  const to    = from + limit - 1;
+  const from = (page - 1) * limit;
+  const to = from + limit - 1;
 
   const { data, error, count } = await supabaseAdmin
     .from('alumnos')
     .select('*', { count: 'exact' })
     .eq('gym_id', gymId)
-    .order('nombre', { ascending: true })
+    .order('id', { ascending: false })
     .range(from, to);
 
   if (error) {
@@ -32,7 +32,6 @@ export async function handleListAlumnosByGym(req, res) {
   });
 }
 
-
 export const getAlumno = async (req, res) => {
   try {
     const alumno = await getAlumnoByDNI(req.params.dni)
@@ -45,6 +44,7 @@ export const getAlumno = async (req, res) => {
 export const addAlumno = async (req, res) => {
   try {
     const nuevo = await createAlumno(req.body)
+    console.log(req.body)
     res.status(201).json(nuevo)
   } catch (error) {
     res.status(400).json({ error: error.message })

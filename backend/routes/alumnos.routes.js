@@ -4,7 +4,7 @@ import {
   addAlumno,
   editAlumno,
   removeAlumno,
-  handleListAlumnosByGym
+  handleListAlumnosByGym,
 } from '../controllers/alumnos.controller.js'
 import { verifyToken } from '../middleware/auth.js'
 

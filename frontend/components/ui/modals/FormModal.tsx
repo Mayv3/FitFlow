@@ -1,32 +1,31 @@
 import React, { useState, useEffect } from 'react';
 import {
-    Dialog, DialogTitle, DialogContent, DialogActions,
-    Button, Box, Grid, TextField, Typography
+    Dialog,
+    DialogTitle,
+    DialogContent,
+    DialogActions,
+    Button,
+    Box,
+    TextField,
+    Typography,
+    MenuItem
 } from '@mui/material';
+import { Field } from '@/models/Field';
+import { FieldLayout } from '@/models/FieldLayout';
 
-type Field = {
-    label: string;
-    name: string;
-    type?: string;
-    required?: boolean;
-    min?: number;
-    max?: number;
-    minLength?: number;
-    maxLength?: number;
-    inputProps?: any;
-};
-
-type FormModalProps<T = Record<string, any>> = {
+export interface FormModalProps<T> {
     open: boolean;
     title: string;
     fields: Field[];
-    initialValues?: T;
+    initialValues?: T | null;
     onClose: () => void;
     onSubmit: (values: T) => void;
     confirmText?: string;
     cancelText?: string;
-    gridColumns: number;
-};
+    gridColumns?: number;
+    gridGap?: number;
+    layout?: Record<string, FieldLayout>;
+}
 
 export const FormModal = <T extends Record<string, any>>({
     open,
@@ -37,37 +36,90 @@ export const FormModal = <T extends Record<string, any>>({
     onSubmit,
     confirmText = 'Guardar',
     cancelText = 'Cancelar',
-    gridColumns = 3
+    gridColumns = 12,
+    gridGap = 16,
+    layout = {},
 }: FormModalProps<T>) => {
-    const [values, setValues] = useState<T>(initialValues);
+    const [values, setValues] = useState<T>({} as T);
 
     useEffect(() => {
-        setValues(initialValues);
-    }, [initialValues, open]);
+        if (open) {
+            const combined = fields.reduce((acc, f) => {
+                let initial: any;
+                if (f.type === 'select' && Array.isArray(f.defaultValue) && f.defaultValue.length > 0) {
+                    initial = f.defaultValue[0];
+                } else {
+                    initial = initialValues?.[f.name] ?? f.defaultValue ?? '';
+                }
+                if (typeof initial === 'string' && f.maxLength != null) {
+                    initial = initial.slice(0, f.maxLength);
+                }
+                acc[f.name] = initial;
+                return acc;
+            }, {} as Record<string, any>);
+            setValues(combined as T);
+        }
+    }, [open, initialValues, fields]);
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const { name, value } = e.target;
-        const field = fields.find(f => f.name === name);
+        const f = fields.find(x => x.name === name);
+        if (!f) return;
 
-        let newValue: any = value;
+        let newVal: any = value;
 
-        if (field?.type === 'number') {
-            const numValue = parseFloat(value);
-            if (!isNaN(numValue)) {
-                if (field.max !== undefined) {
-                    newValue = Math.min(numValue, field.max).toString();
-                }
-                if (field.min !== undefined) {
-                    newValue = Math.max(parseFloat(newValue), field.min).toString();
-                }
-            }
+        if (f.regex && !f.regex.test(newVal)) return;
+
+        if (f.type === 'string' && f.maxLength != null) {
+            newVal = newVal.slice(0, f.maxLength);
         }
 
-        setValues({ ...values, [name]: newValue });
+        if (
+            f.type === 'select' &&
+            Array.isArray(f.defaultValue) &&
+            typeof f.defaultValue[0] === 'number'
+        ) {
+            newVal = Number(newVal);
+        }
+
+        setValues(prev => ({ ...prev, [name]: newVal }));
     };
 
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
+
+        for (const field of fields) {
+            const val = values[field.name];
+
+            if (field.required && (val === undefined || val === null || val === '')) {
+                alert(`El campo "${field.label}" es obligatorio.`);
+                return;
+            }
+
+            if (
+                field.type === 'string' &&
+                field.minLength != null &&
+                typeof val === 'string' &&
+                val.length < field.minLength
+            ) {
+                alert(`El campo "${field.label}" debe tener al menos ${field.minLength} caracteres.`);
+                return;
+            }
+
+            if (field.regex && typeof val === 'string' && !field.regex.test(val)) {
+                alert(`El campo "${field.label}" tiene un formato inválido.`);
+                return;
+            }
+
+            if (field.validate) {
+                const msg = field.validate(val);
+                if (msg) {
+                    alert(msg);
+                    return;
+                }
+            }
+        }
+
         onSubmit(values);
     };
 
@@ -75,55 +127,92 @@ export const FormModal = <T extends Record<string, any>>({
         <Dialog open={open} onClose={onClose} maxWidth="sm" fullWidth>
             <form onSubmit={handleSubmit}>
                 <DialogTitle>{title}</DialogTitle>
-                <DialogContent>
-                    <Box sx={{
-                        pt: 2,
-                        display: 'grid',
-                        gridTemplateColumns: `repeat(${gridColumns}, 1fr)`,
-                        gap: 2
-                    }}>
-                        {fields.map((field) => {
-                            const value = values[field.name] ?? '';
-                            const isNumber = field.type === 'number';
-                            const showCharCount = field.maxLength && !isNumber;
-
-                            const inputProps = {
-                                min: field.min,
-                                max: field.max,
-                                ...(showCharCount ? { maxLength: field.maxLength } : {}),
-                                ...field.inputProps
+                <DialogContent dividers>
+                    <Box
+                        display="grid"
+                        gridTemplateColumns={`repeat(${gridColumns}, 1fr)`}
+                        gap={`${gridGap}px`}
+                    >
+                        {fields.map(field => {
+                            const val = values[field.name] ?? '';
+                            const lay = layout[field.name] ?? {};
+                            const style: React.CSSProperties = {
+                                gridColumn: lay.colStart != null ? `${lay.colStart} / span ${lay.colSpan ?? 1}` : `auto / span ${lay.colSpan ?? 1}`,
+                                gridRow: lay.rowStart != null ? `${lay.rowStart} / span ${lay.rowSpan ?? 1}` : undefined,
+                                minWidth: 0,
                             };
 
+                            const length = String(val).length;
+                            const minLen = field.minLength ?? 0;
+                            const maxLen = field.maxLength ?? Infinity;
+                            const reachedMax = field.maxLength != null && length >= field.maxLength;
+
+                            const isTooShort = field.type === 'string' && length < minLen;
+                            const isTooLong = field.type === 'string' && length > maxLen;
+
+                            const isNumber = field.type === 'number' && !isNaN(Number(val));
+                            const isBelowMin = field.type === 'number' && field.min != null && Number(val) < field.min;
+                            const isAboveMax = field.type === 'number' && field.max != null && Number(val) > field.max;
+
+                            const validationMessage = field.validate?.(val);
+                            const isExternalError = !!validationMessage;
+
+                            const isError = isTooShort || isTooLong || isBelowMin || isAboveMax || isExternalError;
+
+                            const helperText =
+                                isExternalError ? validationMessage :
+                                    isTooShort ? `Mínimo ${minLen} caracteres` :
+                                        isTooLong ? `Máximo ${maxLen} caracteres` :
+                                            isBelowMin ? `Debe ser al menos ${field.min}` :
+                                                isAboveMax ? `No debe superar ${field.max}` :
+                                                    '';
+
+                            const inputProps: React.InputHTMLAttributes<HTMLInputElement> = {
+                                maxLength: field.maxLength ?? undefined,
+                                ...field.inputProps,
+                            };
+
+                            if (field.type === 'number') {
+                                inputProps.min = field.min;
+                                inputProps.max = field.max;
+                            }
+
+                            const options: string[] =
+                                field.type === 'select' && Array.isArray(field.defaultValue)
+                                    ? (field.defaultValue as string[])
+                                    : [];
+
                             return (
-                                <Box key={field.name}>
+                                <Box key={field.name} style={style}>
                                     <TextField
+                                        onBlur={e => field.onBlur?.(String(e.target.value))}
+                                        select={field.type === 'select'}
                                         fullWidth
                                         label={field.label}
                                         name={field.name}
-                                        type={field.type || 'text'}
-                                        value={value}
+                                        type={field.type !== 'select' ? (field.type as any) : undefined}
+                                        value={val}
                                         required={field.required}
                                         onChange={handleChange}
-                                        inputProps={inputProps}
-                                    />
-                                    {isNumber && (field.min !== undefined || field.max !== undefined) && (
-                                        <Box sx={{ display: 'flex', justifyContent: 'flex-end', mt: 0.5 }}>
-                                            <Typography variant="caption" color="text.secondary">
-                                                {field.min !== undefined ? `Mín: ${field.min}` : ''}
-                                                {field.min !== undefined && field.max !== undefined ? ' - ' : ''}
-                                                {field.max !== undefined ? `Máx: ${field.max}` : ''}
-                                            </Typography>
-                                        </Box>
-                                    )}
-                                    {showCharCount && (
-                                        <Box sx={{ display: 'flex', justifyContent: 'flex-end', mt: 0.5 }}>
-                                            <Typography
-                                                variant="caption"
-                                                color={value.length === field.maxLength ? 'error' : 'text.secondary'}
-                                            >
-                                                {value.length} / {field.maxLength}
-                                            </Typography>
-                                        </Box>
+                                        placeholder={field.placeholder}
+                                        slotProps={{ htmlInput: inputProps, inputLabel: { shrink: true } }}
+                                        error={isError}
+                                        helperText={helperText}
+                                    >
+                                        {field.type === 'select' && options.map(opt => (
+                                            <MenuItem key={opt} value={opt}>
+                                                {opt}
+                                            </MenuItem>
+                                        ))}
+                                    </TextField>
+
+                                    {field.maxLength != null && !isError && field.type === 'string' && (
+                                        <Typography
+                                            variant="caption"
+                                            color={reachedMax ? 'error' : 'text.secondary'}
+                                        >
+                                            {length} / {maxLen}
+                                        </Typography>
                                     )}
                                 </Box>
                             );

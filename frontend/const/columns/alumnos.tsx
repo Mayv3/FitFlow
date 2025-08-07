@@ -20,11 +20,6 @@ export const columnsMember = (
     { field: 'clases_pagadas', headerName: 'Clases pagadas', type: 'number', flex: 0.1 },
     { field: 'clases_realizadas', headerName: 'Clases realizadas', type: 'number', flex: 0.1 },
     {
-      field: 'fecha_vencimiento', headerName: 'Fecha de vencimiento', type: 'number', flex: 0.1, renderCell: (params) => {
-        return formatearFecha(params.row.fecha_vencimiento);
-      }
-    },
-    {
       field: 'fecha_nacimiento', headerName: 'Fecha de nacimiento', flex: 0.1, renderCell: (params) => {
         return formatearFecha(params.row.fecha_nacimiento);
       }
@@ -32,6 +27,11 @@ export const columnsMember = (
     {
       field: 'fecha_inicio', headerName: 'Fecha de inicio', flex: 0.1, renderCell: (params) => {
         return formatearFecha(params.row.fecha_inicio)
+      }
+    },
+    {
+      field: 'fecha_de_vencimiento', headerName: 'Fecha de vencimiento', type: 'number', flex: 0.1, renderCell: (params) => {
+        return formatearFecha(params.row.fecha_de_vencimiento);
       }
     },
     {

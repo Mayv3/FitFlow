@@ -13,6 +13,7 @@ import cajaRoutes from './routes/caja.routes.js';
 import authRoutes from './routes/auth.routes.js'
 import gymsRoutes from './routes/gyms.routes.js'
 import testRoutes from './routes/test.routes.js'
+import statsRoutes from './routes/stats.routes.js'
 
 import { verifyToken } from '../backend/middleware/auth.js'
 
@@ -40,6 +41,7 @@ app.use('/api/caja', cajaRoutes);
 app.use('/api/auth', authRoutes);
 app.use('/api/gyms', gymsRoutes)
 app.use('/api/test', testRoutes);
+app.use('/api/stats', statsRoutes);
 
 app.get('/ping', (req, res) => res.sendStatus(200));
 

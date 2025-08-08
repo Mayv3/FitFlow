@@ -1,4 +1,3 @@
-// components/ToastProvider.tsx
 'use client'
 import { ToastContainer } from 'react-toastify'
 import 'react-toastify/dist/ReactToastify.css'
@@ -15,6 +14,7 @@ export function ToastProvider() {
       pauseOnFocusLoss
       draggable
       pauseOnHover
+      limit={3}
       style={{ zIndex: 9999 }}
     />
   )

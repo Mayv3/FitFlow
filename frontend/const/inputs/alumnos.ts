@@ -1,6 +1,6 @@
+import { notify } from "@/lib/toast";
 import { Field } from "@/models/Field";
 import { fechaHoyArgentinaISO, fechaHoyMasUnMesISO } from "@/utils/dateUtils";
-
 
 export const getInputFieldsAlumnos = (validateDniAsync: (dni: string) => Promise<string | null>): Field[] => [
   {
@@ -22,11 +22,11 @@ export const getInputFieldsAlumnos = (validateDniAsync: (dni: string) => Promise
     maxLength: 8,
     placeholder: 'Ingresa el DNI',
     regex: /^\d*$/,
-    onBlur: async (value) => {
-      const error = await validateDniAsync(value);
-      if (error) {
-        console.log(error); // Aca va a ir el toast
-      }
+    onBlur: async (value: string) => {
+      const dni = value.trim();
+      if (!dni) return;
+      const error = await validateDniAsync(dni);
+      if (error) notify.error(error);
     },
   },
   {

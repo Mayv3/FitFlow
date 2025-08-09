@@ -5,7 +5,7 @@ import axios from "axios";
 import Cookies from "js-cookie";
 import { useRouter } from "next/navigation";
 import { useUser } from "@/context/UserContext";
-import { FormEnterToTab } from "@/components/ui/FormEnterToTab";
+import { FormEnterToTab } from "@/components/ui/tables/FormEnterToTab";
 import { ADMINISTRADOR, RECEPCIONISTA, OWNER, SOCIO } from "@/const/roles/roles";
 
 import { TextField, Button, Typography, Paper, Box, CircularProgress } from "@mui/material";

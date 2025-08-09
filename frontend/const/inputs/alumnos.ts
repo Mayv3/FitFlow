@@ -1,8 +1,7 @@
-import { notify } from "@/lib/toast";
-import { Field } from "@/models/Field";
-import { fechaHoyArgentinaISO, fechaHoyMasUnMesISO } from "@/utils/dateUtils";
+import { Field } from "@/models/Fields/Field";
+import { fechaHoyArgentinaISO, fechaHoyMasUnMesISO } from "@/utils/date/dateUtils";
 
-export const getInputFieldsAlumnos = (validateDniAsync: (dni: string) => Promise<string | null>): Field[] => [
+export const getInputFieldsAlumnos:Field[] = [
   {
     label: 'Nombre (obligatorio)',
     name: 'nombre',
@@ -22,12 +21,6 @@ export const getInputFieldsAlumnos = (validateDniAsync: (dni: string) => Promise
     maxLength: 8,
     placeholder: 'Ingresa el DNI',
     regex: /^\d*$/,
-    onBlur: async (value: string) => {
-      const dni = value.trim();
-      if (!dni) return;
-      const error = await validateDniAsync(dni);
-      if (error) notify.error(error);
-    },
   },
   {
     label: 'Email (opcional)',
@@ -99,7 +92,6 @@ export const getInputFieldsAlumnos = (validateDniAsync: (dni: string) => Promise
     required: true,
   },
 ];
-
 
 export const layoutAlumnos = {
   nombre: { rowStart: 1, colStart: 1, colSpan: 6 },

@@ -2,7 +2,7 @@
 
 import { SideBar } from "@/components/ui/header/SideBar";
 import { memberTabs } from "@/components/ui/header/sideBarTabs";
-import { useAuthRole } from "@/hooks/useAuthRole";
+import { useAuthRole } from "@/hooks/auth/useAuthRole";
 import { SOCIO } from "@/const/roles/roles";
 export const MemberLayout = ({ children }: { children: React.ReactNode }) => {
   useAuthRole(SOCIO);

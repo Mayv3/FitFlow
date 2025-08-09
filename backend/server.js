@@ -14,6 +14,7 @@ import authRoutes from './routes/auth.routes.js'
 import gymsRoutes from './routes/gyms.routes.js'
 import testRoutes from './routes/test.routes.js'
 import statsRoutes from './routes/stats.routes.js'
+import planesRoutes from './routes/planes.routes.js';
 
 import { verifyToken } from '../backend/middleware/auth.js'
 
@@ -42,6 +43,7 @@ app.use('/api/auth', authRoutes);
 app.use('/api/gyms', gymsRoutes)
 app.use('/api/test', testRoutes);
 app.use('/api/stats', statsRoutes);
+app.use('/api/planes', planesRoutes);
 
 app.get('/ping', (req, res) => res.sendStatus(200));
 

@@ -1,6 +1,6 @@
 import { SideBar } from '@/components/ui/header/SideBar';
 import { adminTabs } from '@/components/ui/header/sideBarTabs';
-import { useAuthRole } from '@/hooks/useAuthRole';
+import { useAuthRole } from '@/hooks/auth/useAuthRole';
 import { Box } from '@mui/material';
 import { ADMINISTRADOR } from '@/const/roles/roles';
 

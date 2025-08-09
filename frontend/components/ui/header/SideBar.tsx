@@ -16,7 +16,7 @@ import { useTheme } from '@mui/material/styles';
 import AccountCircleIcon from '@mui/icons-material/AccountCircle';
 import { useRouter, usePathname } from 'next/navigation';
 import { useEffect, useState, useRef } from 'react';
-import { useLogout } from '@/hooks/useLogout';
+import { useLogout } from '@/hooks/logout/useLogout';
 import LogoutIcon from '@mui/icons-material/Logout';
 
 type TabItem = {

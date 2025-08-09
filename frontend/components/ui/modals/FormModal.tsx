@@ -1,231 +1,248 @@
 import React, { useState, useEffect } from 'react';
 import {
-    Dialog,
-    DialogTitle,
-    DialogContent,
-    DialogActions,
-    Button,
-    Box,
-    TextField,
-    Typography,
-    MenuItem
+  Dialog, DialogTitle, DialogContent, DialogActions,
+  Button, Box, TextField, Typography, MenuItem,
 } from '@mui/material';
-import { Field } from '@/models/Field';
-import { FieldLayout } from '@/models/FieldLayout';
-
-export interface FormModalProps<T> {
-    open: boolean;
-    title: string;
-    fields: Field[];
-    initialValues?: T | null;
-    onClose: () => void;
-    onSubmit: (values: T) => void;
-    confirmText?: string;
-    cancelText?: string;
-    gridColumns?: number;
-    gridGap?: number;
-    layout?: Record<string, FieldLayout>;
-}
+import { Field, FormModalProps } from '@/models/Fields/Field';
+import { debounce } from '@/utils/debounce/debounce';
 
 export const FormModal = <T extends Record<string, any>>({
-    open,
-    title,
-    fields,
-    initialValues = {} as T,
-    onClose,
-    onSubmit,
-    confirmText = 'Guardar',
-    cancelText = 'Cancelar',
-    gridColumns = 12,
-    gridGap = 16,
-    layout = {},
+  open,
+  title,
+  fields,
+  initialValues = {} as T,
+  onClose,
+  onSubmit,
+  confirmText = 'Guardar',
+  cancelText = 'Cancelar',
+  gridColumns = 12,
+  gridGap = 16,
+  layout = {},
+  mode = 'create',
+  lockedFields = [],
+  asyncValidators,
+  asyncTrigger = 'blur',
+  asyncDebounceMs = 400,
 }: FormModalProps<T>) => {
-    const [values, setValues] = useState<T>({} as T);
+  const [values, setValues] = useState<T>({} as T);
+  const [externalErrors, setExternalErrors] = useState<Record<string, string | undefined>>({});
 
-    useEffect(() => {
-        if (open) {
-            const combined = fields.reduce((acc, f) => {
-                let initial: any;
-                if (f.type === 'select' && Array.isArray(f.defaultValue) && f.defaultValue.length > 0) {
-                    initial = f.defaultValue[0];
-                } else {
-                    initial = initialValues?.[f.name] ?? f.defaultValue ?? '';
-                }
-                if (typeof initial === 'string' && f.maxLength != null) {
-                    initial = initial.slice(0, f.maxLength);
-                }
-                acc[f.name] = initial;
-                return acc;
-            }, {} as Record<string, any>);
-            setValues(combined as T);
-        }
-    }, [open, initialValues, fields]);
+  const setFieldError = (name: string, msg?: string) => setExternalErrors(prev => ({ ...prev, [name]: msg }));
 
-    const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        const { name, value } = e.target;
-        const f = fields.find(x => x.name === name);
-        if (!f) return;
+  const isLockedField = (fieldName: string) => mode === 'edit' && lockedFields.includes(fieldName);
 
-        let newVal: any = value;
+  useEffect(() => {
+    if (!open) return;
+    const combined = fields.reduce((acc, f) => {
+      let initial: any;
+      if (f.type === 'select' && Array.isArray(f.options) && f.options.length > 0) {
+        initial = initialValues?.[f.name] ?? f.options[0].value;
+      } else {
+        initial = initialValues?.[f.name] ?? f.defaultValue ?? '';
+      }
+      if (typeof initial === 'string' && f.maxLength != null) {
+        initial = initial.slice(0, f.maxLength);
+      }
+      acc[f.name] = initial;
+      return acc;
+    }, {} as Record<string, any>);
+    setValues(combined as T);
+    setExternalErrors({});
+  }, [open, initialValues, fields]);
 
-        if (f.regex && !f.regex.test(newVal)) return;
+  const runAsyncValidation = React.useMemo(
+    () => debounce(async (name: string, value: any, allValues: T) => {
+      const fn = asyncValidators?.[name];
+      if (!fn) return;
+      const current = String(value);
+      const msg = await fn(value, allValues);
+      if (String((values as any)[name]) === current) {
+        setFieldError(name, msg ?? undefined);
+      }
+    }, asyncDebounceMs),
+    [asyncValidators, asyncDebounceMs]
+  );
 
-        if (f.type === 'string' && f.maxLength != null) {
-            newVal = newVal.slice(0, f.maxLength);
-        }
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { name, value } = e.target;
+    const f = fields.find(x => x.name === name);
+    if (!f) return;
+    if (isLockedField(name)) return;
 
-        if (
-            f.type === 'select' &&
-            Array.isArray(f.defaultValue) &&
-            typeof f.defaultValue[0] === 'number'
-        ) {
-            newVal = Number(newVal);
-        }
+    let newVal: any = value;
 
-        setValues(prev => ({ ...prev, [name]: newVal }));
-    };
+    if (f.regex && !f.regex.test(newVal)) return;
+    if (f.type === 'string' && f.maxLength != null) newVal = newVal.slice(0, f.maxLength);
+    if (f.type === 'select' && Array.isArray(f.options) && typeof f.options[0]?.value === 'number') {
+      newVal = Number(newVal);
+    }
 
-    const handleSubmit = (e: React.FormEvent) => {
-        e.preventDefault();
+    setValues(prev => {
+      const next = { ...prev, [name]: newVal };
+      if (asyncTrigger === 'change') runAsyncValidation(name, newVal, next);
+      return next;
+    });
+  };
 
-        for (const field of fields) {
-            const val = values[field.name];
+  const handleBlur = (name: string, raw: any) => {
+    if (isLockedField(name)) return;
+    const f = fields.find(x => x.name === name);
+    f?.onBlur?.(String(raw));
+    if (asyncTrigger === 'blur') runAsyncValidation(name, raw, values);
+  };
 
-            if (field.required && (val === undefined || val === null || val === '')) {
-                alert(`El campo "${field.label}" es obligatorio.`);
-                return;
-            }
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
 
-            if (
-                field.type === 'string' &&
-                field.minLength != null &&
-                typeof val === 'string' &&
-                val.length < field.minLength
-            ) {
-                alert(`El campo "${field.label}" debe tener al menos ${field.minLength} caracteres.`);
-                return;
-            }
+    const trimmedValues = Object.entries(values).reduce((acc, [key, val]) => {
+      acc[key as keyof T] = typeof val === 'string' ? val.trim() : val;
+      return acc;
+    }, {} as T);
 
-            if (field.regex && typeof val === 'string' && !field.regex.test(val)) {
-                alert(`El campo "${field.label}" tiene un formato inválido.`);
-                return;
-            }
+    for (const field of fields) {
+      const val = trimmedValues[field.name];
 
-            if (field.validate) {
-                const msg = field.validate(val);
-                if (msg) {
-                    alert(msg);
-                    return;
-                }
-            }
-        }
+      if (field.required && (val === undefined || val === null || val === '')) {
+        alert(`El campo "${field.label}" es obligatorio.`);
+        return;
+      }
+      if (field.type === 'string' && field.minLength != null && typeof val === 'string' && val.length < field.minLength) {
+        alert(`El campo "${field.label}" debe tener al menos ${field.minLength} caracteres.`);
+        return;
+      }
+      if (field.regex && typeof val === 'string' && !field.regex.test(val)) {
+        alert(`El campo "${field.label}" tiene un formato inválido.`);
+        return;
+      }
+      if (field.type === 'number') {
+        const n = Number(val);
+        if (Number.isNaN(n)) { alert(`El campo "${field.label}" debe ser numérico.`); return; }
+        if (field.min != null && n < field.min) { alert(`El campo "${field.label}" debe ser al menos ${field.min}.`); return; }
+        if (field.max != null && n > field.max) { alert(`El campo "${field.label}" no debe superar ${field.max}.`); return; }
+      }
+      if (field.validate) {
+        const msg = field.validate(val);
+        if (msg) { alert(msg); return; }
+      }
+    }
 
-        onSubmit(values);
-    };
+    const pendingExternalError = Object.values(externalErrors).find(Boolean);
+    if (pendingExternalError) {
+      alert(pendingExternalError);
+      return;
+    }
 
-    return (
-        <Dialog open={open} onClose={onClose} maxWidth="sm" fullWidth>
-            <form onSubmit={handleSubmit}>
-                <DialogTitle>{title}</DialogTitle>
-                <DialogContent dividers>
-                    <Box
-                        display="grid"
-                        gridTemplateColumns={`repeat(${gridColumns}, 1fr)`}
-                        gap={`${gridGap}px`}
-                    >
-                        {fields.map(field => {
-                            const val = values[field.name] ?? '';
-                            const lay = layout[field.name] ?? {};
-                            const style: React.CSSProperties = {
-                                gridColumn: lay.colStart != null ? `${lay.colStart} / span ${lay.colSpan ?? 1}` : `auto / span ${lay.colSpan ?? 1}`,
-                                gridRow: lay.rowStart != null ? `${lay.rowStart} / span ${lay.rowSpan ?? 1}` : undefined,
-                                minWidth: 0,
-                            };
+    onSubmit(trimmedValues);
+  };
 
-                            const length = String(val).length;
-                            const minLen = field.minLength ?? 0;
-                            const maxLen = field.maxLength ?? Infinity;
-                            const reachedMax = field.maxLength != null && length >= field.maxLength;
+  const hasErrors = Object.values(externalErrors).some(Boolean);
+  const isEmpty = (f: Field, v: any) =>
+    v === undefined || v === null || (typeof v === 'string' ? v.trim() === '' : v === '');
 
-                            const isTooShort = field.type === 'string' && length < minLen;
-                            const isTooLong = field.type === 'string' && length > maxLen;
+  const hasEmptyRequired = fields.some(f => f.required && isEmpty(f, values[f.name]));
 
-                            const isNumber = field.type === 'number' && !isNaN(Number(val));
-                            const isBelowMin = field.type === 'number' && field.min != null && Number(val) < field.min;
-                            const isAboveMax = field.type === 'number' && field.max != null && Number(val) > field.max;
 
-                            const validationMessage = field.validate?.(val);
-                            const isExternalError = !!validationMessage;
 
-                            const isError = isTooShort || isTooLong || isBelowMin || isAboveMax || isExternalError;
+  return (
+    <Dialog open={open} onClose={onClose} maxWidth="sm" fullWidth>
+      <form onSubmit={handleSubmit}>
+        <DialogTitle>{title}</DialogTitle>
+        <DialogContent dividers>
+          <Box display="grid" gridTemplateColumns={`repeat(${gridColumns}, 1fr)`} gap={`${gridGap}px`}>
+            {fields.map(field => {
+              const val = values[field.name] ?? '';
+              const lay = layout[field.name] ?? {};
 
-                            const helperText =
-                                isExternalError ? validationMessage :
-                                    isTooShort ? `Mínimo ${minLen} caracteres` :
-                                        isTooLong ? `Máximo ${maxLen} caracteres` :
-                                            isBelowMin ? `Debe ser al menos ${field.min}` :
-                                                isAboveMax ? `No debe superar ${field.max}` :
-                                                    '';
 
-                            const inputProps: React.InputHTMLAttributes<HTMLInputElement> = {
-                                maxLength: field.maxLength ?? undefined,
-                                ...field.inputProps,
-                            };
+              const style: React.CSSProperties = {
+                gridColumn: lay.colStart != null ? `${lay.colStart} / span ${lay.colSpan ?? 1}` : `auto / span ${lay.colSpan ?? 1}`,
+                gridRow: lay.rowStart != null ? `${lay.rowStart} / span ${lay.rowSpan ?? 1}` : undefined,
+                minWidth: 0,
+              };
 
-                            if (field.type === 'number') {
-                                inputProps.min = field.min;
-                                inputProps.max = field.max;
-                            }
+              const trimmedVal = typeof val === 'string' ? val.trim() : val;
+              const length = String(trimmedVal).length;
+              const minLen = field.minLength ?? 0;
+              const maxLen = field.maxLength ?? Infinity;
+              const reachedMax = field.maxLength != null && length >= field.maxLength;
 
-                            const options: string[] =
-                                field.type === 'select' && Array.isArray(field.defaultValue)
-                                    ? (field.defaultValue as string[])
-                                    : [];
+              const isTooShort = field.type === 'string' && length < minLen;
+              const isTooLong = field.type === 'string' && length > maxLen;
 
-                            return (
-                                <Box key={field.name} style={style}>
-                                    <TextField
-                                        onBlur={e => field.onBlur?.(String(e.target.value))}
-                                        select={field.type === 'select'}
-                                        fullWidth
-                                        label={field.label}
-                                        name={field.name}
-                                        type={field.type !== 'select' ? (field.type as any) : undefined}
-                                        value={val}
-                                        required={field.required}
-                                        onChange={handleChange}
-                                        placeholder={field.placeholder}
-                                        slotProps={{ htmlInput: inputProps, inputLabel: { shrink: true } }}
-                                        error={isError}
-                                        helperText={helperText}
-                                    >
-                                        {field.type === 'select' && options.map(opt => (
-                                            <MenuItem key={opt} value={opt}>
-                                                {opt}
-                                            </MenuItem>
-                                        ))}
-                                    </TextField>
+              const isBelowMin = field.type === 'number' && field.min != null && Number(val) < field.min;
+              const isAboveMax = field.type === 'number' && field.max != null && Number(val) > field.max;
 
-                                    {field.maxLength != null && !isError && field.type === 'string' && (
-                                        <Typography
-                                            variant="caption"
-                                            color={reachedMax ? 'error' : 'text.secondary'}
-                                        >
-                                            {length} / {maxLen}
-                                        </Typography>
-                                    )}
-                                </Box>
-                            );
-                        })}
-                    </Box>
-                </DialogContent>
-                <DialogActions>
-                    <Button onClick={onClose}>{cancelText}</Button>
-                    <Button type="submit" variant="contained">
-                        {confirmText}
-                    </Button>
-                </DialogActions>
-            </form>
-        </Dialog>
-    );
+              const syncMsg = field.validate?.(val);
+              const asyncMsg = externalErrors[field.name];
+              const validationMessage = asyncMsg || syncMsg;
+
+              const isError = !!validationMessage || isTooShort || isTooLong || isBelowMin || isAboveMax;
+
+              const helperText =
+                validationMessage
+                  ? validationMessage
+                  : isTooShort ? `Mínimo ${minLen} caracteres`
+                    : isTooLong ? `Máximo ${maxLen} caracteres`
+                      : isBelowMin ? `Debe ser al menos ${field.min}`
+                        : isAboveMax ? `No debe superar ${field.max}`
+                          : '';
+
+              const inputProps: React.InputHTMLAttributes<HTMLInputElement> = {
+                maxLength: field.maxLength ?? undefined,
+                ...field.inputProps,
+              };
+
+              if (field.type === 'number') {
+                inputProps.min = field.min;
+                inputProps.max = field.max;
+              }
+
+              const options = Array.isArray(field.options) ? field.options : [];
+              const locked = isLockedField(field.name);
+
+              return (
+                <Box key={field.name} style={style}>
+                  <TextField
+                    onBlur={e => !locked && handleBlur(field.name, String(e.target.value))}
+                    select={field.type === 'select'}
+                    fullWidth
+                    label={field.label}
+                    name={field.name}
+                    type={field.type !== 'select' ? (field.type as any) : undefined}
+                    value={val}
+                    required={field.required}
+                    onChange={handleChange}
+                    placeholder={field.placeholder}
+                    slotProps={{ htmlInput: inputProps, inputLabel: { shrink: true } }}
+                    error={isError}
+                    helperText={helperText}
+                    disabled={locked || field.disabled}
+                    InputProps={{ readOnly: locked }}
+                  >
+                    {field.type === 'select' && options.map(opt => (
+                      <MenuItem key={String(opt.value)} value={opt.value}>
+                        {opt.label}
+                      </MenuItem>
+                    ))}
+                  </TextField>
+
+                  {field.maxLength != null && !isError && field.type === 'string' && (
+                    <Typography variant="caption" color={reachedMax ? 'error' : 'text.secondary'}>
+                      {length} / {maxLen}
+                    </Typography>
+                  )}
+                </Box>
+              );
+            })}
+          </Box>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={onClose}>{cancelText}</Button>
+          <Button type="submit" variant="contained" disabled={hasErrors || hasEmptyRequired}>
+            {confirmText}
+          </Button>
+        </DialogActions>
+      </form>
+    </Dialog>
+  );
 };

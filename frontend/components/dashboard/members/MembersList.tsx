@@ -6,21 +6,22 @@ import { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { GenericModal } from '@/components/ui/modals/GenericModal';
 import { FormModal } from '@/components/ui/modals/FormModal';
-import { Member } from '@/models/Member';
+import { Member } from '@/models/Member/Member';
 import { getInputFieldsAlumnos, layoutAlumnos } from '@/const/inputs/alumnos';
 import { columnsMember } from '@/const/columns/alumnos';
 import { ReactQueryDevtools } from '@tanstack/react-query-devtools';
-import { useChangeItem } from '@/hooks/useChangeItem';
+import { useChangeItem } from '@/hooks/changeItemCache/useChangeItem';
 import { MemberStats } from './stats/MemberStats';
 import {
   useAlumnosByGym,
   useDeleteAlumnoByDNI,
   useEditAlumnoByDNI,
   useAddAlumno
-} from '@/hooks/useAlumnosApi';
+} from '@/hooks/alumnos/useAlumnosApi';
 
 import AddIcon from '@mui/icons-material/Add';
-import { useValidateDniFromApi } from '@/hooks/useValidateDni';
+import { useMemberAsyncValidators } from '@/hooks/validatorsInput/UseAsyncValidators';
+import { usePlanesPrecios } from '@/hooks/plans/usePlanesPrecios';
 
 export default function MembersList() {
   const router = useRouter();
@@ -32,6 +33,7 @@ export default function MembersList() {
   const [openAdd, setOpenAdd] = useState(false);
   const [openEdit, setOpenEdit] = useState(false);
   const [editingMember, setEditingMember] = useState<Member | null>(null);
+  const asyncValidators = useMemberAsyncValidators();
 
   const addmember = useAddAlumno();
   const deleteAlumno = useDeleteAlumnoByDNI();
@@ -44,8 +46,29 @@ export default function MembersList() {
   const alumnos = data?.items ?? [];
   const total = data?.total ?? 0;
 
-  const validateDni = useValidateDniFromApi();
-  const fields = getInputFieldsAlumnos(validateDni);
+  const { options: planOptions, byId, isLoading: plansLoading } = usePlanesPrecios(gymId);
+  console.log(`Este es el gymId: ${gymId}`)
+
+  const fields = useMemo(() => {
+    const base = getInputFieldsAlumnos.map(f => ({ ...f }));
+    const planField = base.find(f => f.name === 'plan_id');
+    if (planField) {
+      planField.type = 'select';
+      planField.options = planOptions;
+      if (plansLoading) {
+        planField.disabled = true;
+        planField.placeholder = 'Cargando planes...';
+      }
+      const clasesField = base.find(f => f.name === 'clases_pagadas');
+      if (clasesField) {
+        planField.onChange = (newPlanId: string | number, next) => {
+          const opt = byId[String(newPlanId)];
+          return opt ? { ...next, clases_pagadas: String(opt.numero_clases ?? '') } : next;
+        };
+      }
+    }
+    return base;
+  }, [planOptions, byId, plansLoading]);
 
   useEffect(() => {
     if (!user && !userLoading) {
@@ -210,21 +233,27 @@ export default function MembersList() {
           cancelText="Cancelar"
           gridColumns={12}
           gridGap={16}
+          mode="create"
+          asyncValidators={asyncValidators}
           layout={layoutAlumnos}
         />
       )}
 
       {editingMember && (
         <FormModal
-          gridColumns={3}
           open={openEdit}
           title="Editar miembro"
           fields={fields}
+          gridColumns={12}
+          gridGap={16}
           initialValues={editingMember}
           onClose={() => setOpenEdit(false)}
           onSubmit={handleEdit}
           confirmText="Guardar"
           cancelText="Cancelar"
+          layout={layoutAlumnos}
+          mode="edit"
+          lockedFields={['dni']}
         />
       )}
 

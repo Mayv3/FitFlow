@@ -9,7 +9,7 @@ import PeopleIcon from '@mui/icons-material/People'
 import AccessTimeIcon from '@mui/icons-material/AccessTime'
 import { useTheme } from '@mui/material/styles'
 import { MiniSingleBarChart } from '@/components/ui/charts/MinisingleBarChart'
-import { useGymStats } from '@/hooks/useGymStats'
+import { useGymStats } from '@/hooks/stats/useGymStats'
 
 export const MemberStats = ({ gymId }: { gymId?: string }) => {
   const theme = useTheme()

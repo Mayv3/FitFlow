@@ -1,7 +1,7 @@
 'use client'
 import { createContext, useContext, useEffect, useState, ReactNode } from "react";
 import Cookies from "js-cookie";
-import UserData from "@/models/User";
+import UserData from "@/models/User/User";
 
 type UserContextType = {
   user: UserData | null;

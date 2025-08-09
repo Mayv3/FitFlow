@@ -4,8 +4,8 @@ import { GridColDef } from '@mui/x-data-grid';
 import React from 'react';
 import EditIcon from '@mui/icons-material/Edit';
 import DeleteIcon from '@mui/icons-material/Delete';
-import { Member } from '@/models/Member';
-import { formatearFecha } from '@/utils/dateUtils';
+import { Member } from '@/models/Member/Member';
+import { formatearFecha } from '@/utils/date/dateUtils';
 
 export const columnsMember = (
   handleEdit: (member: Member) => void,

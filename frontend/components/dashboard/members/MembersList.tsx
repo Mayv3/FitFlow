@@ -1,6 +1,6 @@
-'use client'
+'use client';
 import { GenericDataGrid } from '@/components/ui/tables/DataGrid';
-import { Box, Typography, Paper, CircularProgress, Button } from '@mui/material';
+import { Box, Typography, CircularProgress, Button, Stack, Breadcrumbs } from '@mui/material';
 import { useUser } from '@/context/UserContext';
 import { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
@@ -12,22 +12,38 @@ import { columnsMember } from '@/const/columns/alumnos';
 import { ReactQueryDevtools } from '@tanstack/react-query-devtools';
 import { useChangeItem } from '@/hooks/changeItemCache/useChangeItem';
 import { MemberStats } from './stats/MemberStats';
+import NavigateNextIcon from '@mui/icons-material/NavigateNext';
 import {
   useAlumnosByGym,
   useDeleteAlumnoByDNI,
   useEditAlumnoByDNI,
   useAddAlumno
 } from '@/hooks/alumnos/useAlumnosApi';
-
 import AddIcon from '@mui/icons-material/Add';
 import { useMemberAsyncValidators } from '@/hooks/validatorsInput/UseAsyncValidators';
 import { usePlanesPrecios } from '@/hooks/plans/usePlanesPrecios';
+import { SearchBar } from '@/components/ui/search/SearchBar';
+import { debounce } from '@/utils/debounce/debounce';
+import { CustomBreadcrumbs } from '@/components/ui/breadcrums/CustomBreadcrumbs';
 
 export default function MembersList() {
   const router = useRouter();
   const { user, loading: userLoading } = useUser();
+
   const [page, setPage] = useState(1);
   const pageSize = 20;
+
+  const [q, setQ] = useState('');
+
+  const handleSearchChange = useMemo(
+    () =>
+      debounce((value: string) => {
+        setQ(value);
+        setPage(1);
+      }, 450),
+    []
+  );
+
   const [openModal, setOpenModal] = useState(false);
   const [selectedMember, setSelectedMember] = useState<number | null>(null);
   const [openAdd, setOpenAdd] = useState(false);
@@ -36,18 +52,19 @@ export default function MembersList() {
   const asyncValidators = useMemberAsyncValidators();
 
   const addmember = useAddAlumno();
+
   const deleteAlumno = useDeleteAlumnoByDNI();
+
   const editAlumno = useEditAlumnoByDNI();
+
   const { changeItem } = useChangeItem<Member>();
 
   const gymId = user?.gym_id ?? '';
 
-  const { data, isLoading, isError, error, isFetching } = useAlumnosByGym(gymId, page, pageSize);
+  const { data, isLoading, isError, error, isFetching } = useAlumnosByGym(gymId, page, pageSize, q);
   const alumnos = data?.items ?? [];
   const total = data?.total ?? 0;
-
   const { options: planOptions, byId, isLoading: plansLoading } = usePlanesPrecios(gymId);
-  console.log(`Este es el gymId: ${gymId}`)
 
   const fields = useMemo(() => {
     const base = getInputFieldsAlumnos.map(f => ({ ...f }));
@@ -74,7 +91,6 @@ export default function MembersList() {
     if (!user && !userLoading) {
       router.push('/login');
     }
-
   }, [user, userLoading, router]);
 
   if (userLoading || !user) {
@@ -96,7 +112,6 @@ export default function MembersList() {
   const handleAddMember = async (values: Partial<Member>) => {
     try {
       const temporalId = Date.now();
-
       const valuesWithDates = {
         ...values,
         fecha_vencimiento: values.fecha_vencimiento,
@@ -105,40 +120,33 @@ export default function MembersList() {
       };
 
       changeItem({
-        queryKey: ['members', gymId, page, pageSize],
+        queryKey: ['members', gymId, page, pageSize, q],
         identifierKey: 'dni',
         action: 'add',
         item: { ...valuesWithDates, id: temporalId.toString() }
       });
-
-      console.log('Objeto enviado al backend:', values);
 
       setOpenAdd(false);
       addmember.mutate({
         ...valuesWithDates,
         gym_id: user.gym_id,
       });
-
     } catch (err) {
       console.error('Error al añadir miembro:', err);
     }
   };
 
   const handleEdit = async (values: Partial<Member> & { dni: string }) => {
-    const dni = values.dni as string;
-
     try {
       changeItem({
-        queryKey: ['members', gymId, page, pageSize],
+        queryKey: ['members', gymId, page, pageSize, q],
         identifierKey: 'dni',
         action: 'edit',
         item: values,
       });
 
       setOpenEdit(false);
-
       editAlumno.mutate({ dni: values.dni, values });
-
     } catch (err) {
       console.error('Error al editar miembro:', err);
     }
@@ -147,15 +155,13 @@ export default function MembersList() {
   const handleDelete = async (dni: string) => {
     try {
       changeItem({
-        queryKey: ['members', gymId, page, pageSize],
+        queryKey: ['members', gymId, page, pageSize, q],
         identifierKey: 'dni',
         action: 'delete',
         item: { dni },
       });
       setOpenModal(false);
-
       deleteAlumno.mutate(dni);
-
       setSelectedMember(null);
     } catch (err) {
       console.error('Error al eliminar miembro:', err);
@@ -181,22 +187,46 @@ export default function MembersList() {
   const columns = columnsMember(triggerEdit, triggerDelete);
 
   return (
-    <Box sx={{
-      height: "auto", mb:
-        { xs: '60px', md: '0px' },
-      minWidth: {
-        sx: '200px',
-        md: '100%'
-      },
-      maxWidth: '84vw',
-      mx: 'auto'
-    }}>
-      <Box display="flex" justifyContent="space-between" alignItems="center" mb={2}>
-        <Typography variant="h4">Lista de Miembros</Typography>
-        <Button variant="contained" startIcon={<AddIcon />} onClick={() => setOpenAdd(true)}>
-          Añadir miembro
-        </Button>
+    <Box>
+      <CustomBreadcrumbs
+        items={[
+          { label: 'Dashboard', href: '/dashboard/receptionist' },
+          { label: 'Miembros' }
+        ]}
+      />
+
+      <Box mb={2}>
+        <Stack
+          gap={{ xs: 2, md: 0 }}
+          direction="row"
+          alignItems="center"
+          justifyContent="space-between"
+
+        >
+          <Box sx={{ flex: 1, maxWidth: 400 }}>
+            <SearchBar
+              value={q}
+              onChange={(val) => handleSearchChange(val)}
+              onSearch={(text) => {
+                setQ(text);
+                setPage(1);
+              }}
+              isLoading={isFetching}
+              placeholder="Buscar miembros (DNI, nombre, email, teléfono)…"
+            />
+          </Box>
+
+          <Button
+            variant="contained"
+            startIcon={<AddIcon />}
+            onClick={() => setOpenAdd(true)}
+            sx={{ whiteSpace: 'nowrap' }}
+          >
+            Añadir miembro
+          </Button>
+        </Stack>
       </Box>
+
 
       <GenericDataGrid
         rows={alumnos}

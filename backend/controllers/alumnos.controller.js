@@ -3,33 +3,25 @@ import {
   getAlumnoByDNI,
   createAlumno,
   updateAlumno,
-  deleteAlumno
+  deleteAlumno,
+  getAlumnosService
 } from '../services/alumnos.supabase.js'
 
 export async function handleListAlumnosByGym(req, res) {
-  const gymId = req.user.user_metadata.gym_id;
-  const page = Number(req.query.page) || 1;
-  const limit = Number(req.query.limit) || 50;
-  const from = (page - 1) * limit;
-  const to = from + limit - 1;
+  try {
+    const gymId = String(req.query.gym_id ?? '');
+    const page  = Number(req.query.page ?? 1);
+    const limit = Number(req.query.limit ?? 20);
+    const q     = String(req.query.q ?? '');
 
-  const { data, error, count } = await supabaseAdmin
-    .from('alumnos')
-    .select('*', { count: 'exact' })
-    .eq('gym_id', gymId)
-    .order('id', { ascending: false })
-    .range(from, to);
+    if (!gymId) return res.status(400).json({ message: 'gym_id requerido' });
 
-  if (error) {
-    return res.status(500).json({ error: error.message });
+    const result = await getAlumnosService({ gymId, page, limit, q });
+    res.json(result);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: err.message ?? 'Error obteniendo alumnos' });
   }
-
-  return res.status(200).json({
-    items: data,
-    total: count,
-    page,
-    limit,
-  });
 }
 
 export const getAlumno = async (req, res) => {
@@ -66,5 +58,22 @@ export const removeAlumno = async (req, res) => {
     res.sendStatus(204)
   } catch (error) {
     res.status(400).json({ error: error.message })
+  }
+}
+
+export async function getAlumnosByParams(req, res) {
+  try {
+    const gymId = String(req.query.gym_id ?? '');
+    const page = Number(req.query.page ?? 1);
+    const limit = Number(req.query.limit ?? 20);
+    const q = String(req.query.q ?? '');
+
+    if (!gymId) return res.status(400).json({ message: 'gym_id requerido' });
+
+    const result = await getAlumnosService({ gymId, page, limit, q });
+    res.json(result);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: err.message ?? 'Error obteniendo alumnos' });
   }
 }

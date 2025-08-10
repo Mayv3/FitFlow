@@ -16,7 +16,7 @@ export default function ReceptionistLayout({
   return (
     <div style={{ display: 'flex' }}>
       <SideBar tabs={recepcionistTabs} />
-      <main style={{ flexGrow: 1, padding: '2rem' }} className="md:ml-[330px]">
+      <main style={{ flexGrow: 1 }} className="max-w-[80vw] mx-auto mb-20 mt-5 md:max-w-[80%] md:ml-[20%] md:px-5">
         {children}
       </main>
     </div>

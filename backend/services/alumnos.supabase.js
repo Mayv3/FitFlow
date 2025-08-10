@@ -48,3 +48,39 @@ export async function deleteAlumno(dni) {
   if (error) throw error
   return data
 }
+
+export async function getAlumnosService({ gymId, page, limit, q = '' }) {
+  const offset = (page - 1) * limit;
+
+  let query = supabase
+    .from('alumnos')
+    .select('*', { count: 'exact' })
+    .eq('gym_id', gymId);
+
+  if (q.trim()) {
+    const like = `*${q.trim()}*`;
+    query = query.or(
+      [
+        `dni.ilike.${like}`,
+        `nombre.ilike.${like}`,
+        `email.ilike.${like}`,
+        `telefono.ilike.${like}`,
+      ].join(',')
+    );
+  }
+
+  const { data, count, error } = await query
+    .order('id', { ascending: true })
+    .range(offset, offset + limit - 1);
+
+  if (error) throw error;
+
+  return {
+    items: data ?? [],
+    total: count ?? 0,
+    page,
+    limit,
+    q,
+  };
+}
+

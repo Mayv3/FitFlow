@@ -17,20 +17,33 @@ axiosInstance.interceptors.request.use((config) => {
   return config;
 });
 
-export function useAlumnosByGym(gymId: string, page = 1, limit = 20) {
-  return useQuery({
-    queryKey: ['members', gymId, page, limit],
-    queryFn: async () => {
-      const res = await axiosInstance.get('/api/alumnos', {
-        params: { gym_id: gymId, page, limit },
-      });
-      return res.data;
-    },
+type GetAlumnosResponse<T = any> = {
+  items: T[];
+  total: number;
+  page: number;
+  limit: number;
+  q: string;
+};
+
+export function useAlumnosByGym(
+  gymId: string,
+  page = 1,
+  limit = 20,
+  q = ''
+) {
+  return useQuery<GetAlumnosResponse>({
+    queryKey: ['members', gymId, page, limit, q],
     enabled: Boolean(gymId),
     placeholderData: keepPreviousData,
-    staleTime: 60 * 2000,
+    staleTime: 60 * 1000 * 2,
     retry: 1,
     refetchOnWindowFocus: false,
+    queryFn: async () => {
+      const { data } = await axiosInstance.get('/api/alumnos', {
+        params: { gym_id: gymId, page, limit, q },
+      });
+      return data as GetAlumnosResponse;
+    },
   });
 }
 

@@ -1,4 +1,4 @@
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient, keepPreviousData } from '@tanstack/react-query';
 import axios from 'axios';
 import Cookies from 'js-cookie';
 
@@ -27,8 +27,10 @@ export function useAlumnosByGym(gymId: string, page = 1, limit = 20) {
       return res.data;
     },
     enabled: Boolean(gymId),
-    staleTime: 60 * 60_000,
+    placeholderData: keepPreviousData,
+    staleTime: 60 * 2000,
     retry: 1,
+    refetchOnWindowFocus: false,
   });
 }
 

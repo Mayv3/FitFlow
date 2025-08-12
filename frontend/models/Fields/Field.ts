@@ -14,7 +14,7 @@ export type Field = {
   inputProps?: React.InputHTMLAttributes<HTMLInputElement>;
   regex?: RegExp;
   disabled?: boolean;
-  options?: Array<{ label: string; value: string | number }>;
+  options?: Array<{ label: string; value: string | number | null }>;
   onBlur?: (value: string) => void;
   validate?: (value: any) => string | null;
   onChange?:

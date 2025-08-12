@@ -6,7 +6,7 @@ function getTodayArgentina() {
 }
 
 async function countTotalMembers(gymId) {
-  let q = supabaseAdmin.from('alumnos').select('id', { count: 'exact', head: true });
+  let q = supabaseAdmin.from('alumnos').select('id', { count: 'exact', head: true }).is('deleted_at', null);;
   if (gymId) q = q.eq('gym_id', gymId);
   const { count, error } = await q;
   if (error) throw error;
@@ -61,6 +61,7 @@ async function getPlansDistribution(gymId) {
   if (error) throw error;
 
   return (data ?? []).map((row) => ({
+    id: row.id,
     Plan: row.nombre || `Plan ${row.id}`,
     valor: Number(row.alumnos?.[0]?.count ?? 0),
   }));
@@ -93,3 +94,4 @@ export async function getGymStatsService({ gymId } = {}) {
     plansDistribution,
   };
 }
+

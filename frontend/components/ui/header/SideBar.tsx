@@ -62,7 +62,8 @@ export const SideBar = ({ tabs }: HeaderComponentProps) => {
       sx={{
         bgcolor: 'primary.main',
         minHeight: '100vh',
-        width: '20%',
+        minWidth: '20%',
+        maxWidth: '20%',
         display: 'flex',
         flexDirection: 'column',
         justifyContent: 'space-between',

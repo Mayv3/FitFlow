@@ -24,9 +24,17 @@ export const useChangeItem = <T>() => {
       }
 
       if (action === 'edit') {
-        updatedItems = updatedItems.map((i: T) =>
-          i[identifierKey] === idValue ? { ...i, ...item } : i
-        );
+        updatedItems = updatedItems.map((i: T) => {
+          if (i[identifierKey] !== idValue) return i;
+
+          const next = { ...i, ...item } as any;
+
+          if ((item as any)?.plan) {
+            next.plan = { ...(i as any).plan, ...(item as any).plan };
+          }
+
+          return next as T;
+        });
       }
 
       if (action === 'add') {
@@ -42,8 +50,8 @@ export const useChangeItem = <T>() => {
         total: action === 'delete'
           ? oldData.total - 1
           : action === 'add'
-          ? oldData.total + 1
-          : oldData.total,
+            ? oldData.total + 1
+            : oldData.total,
       };
     });
   };

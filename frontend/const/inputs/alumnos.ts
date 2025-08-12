@@ -1,7 +1,7 @@
 import { Field } from "@/models/Fields/Field";
 import { fechaHoyArgentinaISO, fechaHoyMasUnMesISO } from "@/utils/date/dateUtils";
 
-export const getInputFieldsAlumnos:Field[] = [
+export const getInputFieldsAlumnos: Field[] = [
   {
     label: 'Nombre (obligatorio)',
     name: 'nombre',
@@ -32,7 +32,7 @@ export const getInputFieldsAlumnos:Field[] = [
     placeholder: 'Ingresa el Email',
   },
   {
-    label: 'Teléfono (opcional)',
+    label: 'Teléfono (obligatorio)',
     name: 'telefono',
     type: 'string',
     required: false,
@@ -45,9 +45,17 @@ export const getInputFieldsAlumnos:Field[] = [
     label: 'Plan (obligatorio)',
     name: 'plan_id',
     type: 'select',
-    defaultValue: ['1', '2'],
-    required: true,
+    defaultValue: null,
+    required: false,
     placeholder: 'Selecciona el plan',
+  },
+  {
+    label: 'Sexo (obligatorio)',
+    name: 'sexo',
+    type: 'select',
+    options: [{ label: 'Femenino', value: 'F', }, { label: 'Masculino', value: "M" }],
+    required: false,
+    placeholder: 'Selecciona el sexo',
   },
   {
     label: 'Clases pagadas (obligatorio)',
@@ -101,7 +109,8 @@ export const layoutAlumnos = {
   plan_id: { rowStart: 3, colStart: 7, colSpan: 6 },
   clases_pagadas: { rowStart: 4, colStart: 1, colSpan: 4 },
   clases_realizadas: { rowStart: 4, colStart: 5, colSpan: 4 },
-  fecha_de_vencimiento: { rowStart: 4, colStart: 9, colSpan: 4 },
-  fecha_nacimiento: { rowStart: 5, colStart: 1, colSpan: 6 },
-  fecha_inicio: { rowStart: 5, colStart: 7, colSpan: 6 },
+  sexo: { rowStart: 4, colStart: 9, colSpan: 4 },
+  fecha_de_vencimiento: { rowStart: 5, colStart: 1, colSpan: 4 },
+  fecha_nacimiento: { rowStart: 5, colStart: 5, colSpan: 4 },
+  fecha_inicio: { rowStart: 5, colStart: 9, colSpan: 4 },
 }

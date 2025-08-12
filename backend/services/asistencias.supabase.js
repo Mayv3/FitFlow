@@ -12,20 +12,28 @@ export async function getAllAsistencias(gymId) {
 }
 
 export async function createAsistencia(asistencia, gymId) {
+  const dni = String(asistencia.DNI).trim();
+  console.log(asistencia, gymId)
+  const { data: alumno, error: errAlumno } = await supabase
+    .from('alumnos')
+    .select('id')
+    .eq('dni', dni)
+    .eq('gym_id', gymId)
+    .single();
+
+  if (errAlumno || !alumno) throw new Error('No existe un alumno con ese DNI en este gym');
+
   const payload = {
     fecha: asistencia.Fecha,
-    hora:  asistencia.Hora,
-    alumno_dni: asistencia.DNI,
+    hora: asistencia.Hora,
+    alumno_id: alumno.id,
     plan_id: asistencia.Plan,
-    gym_id: gymId
-  }
+    gym_id: gymId,
+  };
 
-  const { data, error } = await supabase
-    .from('asistencias')
-    .insert(payload)
-    .single()
-  if (error) throw error
-  return data
+  const { data, error } = await supabase.from('asistencias').insert(payload).select().single();
+  if (error) throw error;
+  return data;
 }
 
 export async function getAsistenciaById(id, gymId) {

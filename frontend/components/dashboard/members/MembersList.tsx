@@ -12,7 +12,6 @@ import { columnsMember } from '@/const/columns/alumnos';
 import { ReactQueryDevtools } from '@tanstack/react-query-devtools';
 import { useChangeItem } from '@/hooks/changeItemCache/useChangeItem';
 import { MemberStats } from './stats/MemberStats';
-import NavigateNextIcon from '@mui/icons-material/NavigateNext';
 import {
   useAlumnosByGym,
   useDeleteAlumnoByDNI,
@@ -25,6 +24,7 @@ import { usePlanesPrecios } from '@/hooks/plans/usePlanesPrecios';
 import { SearchBar } from '@/components/ui/search/SearchBar';
 import { debounce } from '@/utils/debounce/debounce';
 import { CustomBreadcrumbs } from '@/components/ui/breadcrums/CustomBreadcrumbs';
+import { usePlanNameFromCache } from '@/hooks/plans/usePlanesPrecios';
 
 export default function MembersList() {
   const router = useRouter();
@@ -50,6 +50,7 @@ export default function MembersList() {
   const [openEdit, setOpenEdit] = useState(false);
   const [editingMember, setEditingMember] = useState<Member | null>(null);
   const asyncValidators = useMemberAsyncValidators();
+  const getPlanNameFromCache = usePlanNameFromCache();
 
   const addmember = useAddAlumno();
 
@@ -71,14 +72,18 @@ export default function MembersList() {
     const planField = base.find(f => f.name === 'plan_id');
     if (planField) {
       planField.type = 'select';
-      planField.options = planOptions;
+      planField.options = [
+        { value: null, label: 'No tiene plan' },
+        ...planOptions
+      ];
       if (plansLoading) {
         planField.disabled = true;
         planField.placeholder = 'Cargando planes...';
       }
       const clasesField = base.find(f => f.name === 'clases_pagadas');
       if (clasesField) {
-        planField.onChange = (newPlanId: string | number, next) => {
+        planField.onChange = (newPlanId: string | number | null, next) => {
+          if (!newPlanId) return { ...next, clases_pagadas: '' };
           const opt = byId[String(newPlanId)];
           return opt ? { ...next, clases_pagadas: String(opt.numero_clases ?? '') } : next;
         };
@@ -110,6 +115,8 @@ export default function MembersList() {
   }
 
   const handleAddMember = async (values: Partial<Member>) => {
+    const plan_nombre = getPlanNameFromCache(gymId!, values.plan_id);
+
     try {
       const temporalId = Date.now();
       const valuesWithDates = {
@@ -123,7 +130,7 @@ export default function MembersList() {
         queryKey: ['members', gymId, page, pageSize, q],
         identifierKey: 'dni',
         action: 'add',
-        item: { ...valuesWithDates, id: temporalId.toString() }
+        item: { ...valuesWithDates, plan_nombre, id: temporalId.toString() }
       });
 
       setOpenAdd(false);
@@ -137,19 +144,15 @@ export default function MembersList() {
   };
 
   const handleEdit = async (values: Partial<Member> & { dni: string }) => {
-    try {
-      changeItem({
-        queryKey: ['members', gymId, page, pageSize, q],
-        identifierKey: 'dni',
-        action: 'edit',
-        item: values,
-      });
-
-      setOpenEdit(false);
-      editAlumno.mutate({ dni: values.dni, values });
-    } catch (err) {
-      console.error('Error al editar miembro:', err);
-    }
+    const plan_nombre = getPlanNameFromCache(gymId!, values.plan_id);
+    changeItem({
+      queryKey: ['members', gymId, page, pageSize, q],
+      identifierKey: 'dni',
+      action: 'edit',
+      item: { ...values, plan_nombre },
+    });
+    setOpenEdit(false);
+    editAlumno.mutate({ dni: values.dni, values });
   };
 
   const handleDelete = async (dni: string) => {
@@ -175,6 +178,7 @@ export default function MembersList() {
   };
 
   const triggerEdit = (member: Member) => {
+    console.log(member)
     setEditingMember(member);
     setOpenEdit(true);
   };
@@ -227,7 +231,6 @@ export default function MembersList() {
         </Stack>
       </Box>
 
-
       <GenericDataGrid
         rows={alumnos}
         columns={columns}
@@ -249,7 +252,7 @@ export default function MembersList() {
         cancelText="Cancelar"
       />
 
-      <MemberStats />
+      <MemberStats gymId={gymId} />
 
       {openAdd && (
         <FormModal

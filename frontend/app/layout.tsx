@@ -27,7 +27,7 @@ export default function RootLayout({
   return (
     <html lang="es" className={quicksand.variable}>
       <head>
-        <link rel="icon" href="/Gymspace-logo-png.png" type="image/png" />
+       {/* <link rel="icon" href="" type="image/png" /> */}
       </head>
       <body className="font-quicksand">
         

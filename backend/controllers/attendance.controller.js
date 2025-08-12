@@ -19,15 +19,17 @@ export const listAsistencias = async (req, res) => {
 
 export const addAsistencia = async (req, res) => {
   try {
-    const nueva = await createAsistencia(req.body, req.gymId)
-    res.status(201).json({
-      message: 'Asistencia registrada',
-      asistencia: nueva
-    })
+    const gymId = req.gymId ?? req.query.gym_id ?? req.body.gym_id;
+
+    const nueva = await createAsistencia(req.body, gymId);
+
+    req.app.get('io').to(`gym:${gymId}`).emit('attendance:created', { id: nueva.id });
+
+    return res.status(201).json({ message: 'Asistencia registrada', asistencia: nueva });
   } catch (error) {
-    res.status(400).json({ error: error.message })
+    return res.status(400).json({ error: error.message });
   }
-}
+};
 
 export const getAsistencia = async (req, res) => {
   try {

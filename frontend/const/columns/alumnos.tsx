@@ -16,7 +16,9 @@ export const columnsMember = (
     { field: 'dni', headerName: 'DNI', flex: 0.1 },
     { field: 'email', headerName: 'Email', flex: 0.1 },
     { field: 'telefono', headerName: 'Teléfono', flex: 0.1 },
-    { field: 'plan_id', headerName: 'Plan', flex: 0.1 },
+    { field: 'plan_nombre', headerName: 'Plan', flex: 0.1 , renderCell: (params) => {
+      return params.value ?? '-';
+    }},
     { field: 'clases_pagadas', headerName: 'Clases pagadas', type: 'number', flex: 0.1 },
     { field: 'clases_realizadas', headerName: 'Clases realizadas', type: 'number', flex: 0.1 },
     {

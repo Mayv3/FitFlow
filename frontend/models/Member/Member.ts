@@ -12,4 +12,6 @@ export interface Member {
     fecha_inicio: string;
     fecha_vencimiento: string;
     gym_id: string;
+    plan_id: number;
+    plan_nombre: string | null;
 }

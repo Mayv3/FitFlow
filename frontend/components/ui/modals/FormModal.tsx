@@ -54,9 +54,11 @@ export const FormModal = <T extends Record<string, any>>({
     () => debounce(async (name: string, value: any, allValues: T) => {
       const fn = asyncValidators?.[name];
       if (!fn) return;
+
       const current = String(value);
       const msg = await fn(value, allValues);
-      if (String((values as any)[name]) === current) {
+
+      if (String((allValues as any)[name]) === current) {
         setFieldError(name, msg ?? undefined);
       }
     }, asyncDebounceMs),
@@ -126,6 +128,7 @@ export const FormModal = <T extends Record<string, any>>({
       }
     }
 
+
     const pendingExternalError = Object.values(externalErrors).find(Boolean);
     if (pendingExternalError) {
       alert(pendingExternalError);
@@ -140,8 +143,6 @@ export const FormModal = <T extends Record<string, any>>({
     v === undefined || v === null || (typeof v === 'string' ? v.trim() === '' : v === '');
 
   const hasEmptyRequired = fields.some(f => f.required && isEmpty(f, values[f.name]));
-
-
 
   return (
     <Dialog open={open} onClose={onClose} maxWidth="sm" fullWidth>
@@ -217,7 +218,19 @@ export const FormModal = <T extends Record<string, any>>({
                     error={isError}
                     helperText={helperText}
                     disabled={locked || field.disabled}
+                    
                     InputProps={{ readOnly: locked }}
+                    SelectProps={{
+                      displayEmpty: true,
+                      renderValue: (selected) => {
+                        const match = options.find(o =>
+                          (o.value === selected) ||
+                          (o.value == null && (selected == null || selected === ''))
+                        );
+                        if (match) return match.label;
+                        return field.placeholder ?? '';
+                      },
+                    }}
                   >
                     {field.type === 'select' && options.map(opt => (
                       <MenuItem key={String(opt.value)} value={opt.value}>

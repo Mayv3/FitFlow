@@ -1,6 +1,7 @@
+'use client';
 import { useQuery } from '@tanstack/react-query';
 import axios from 'axios';
-import { gunzip } from 'zlib';
+import { useQueryClient } from '@tanstack/react-query';
 
 type Plan = {
   id: number;
@@ -9,6 +10,7 @@ type Plan = {
   precio: number;
   gym_id: string;
 };
+const planesKey = (gymId: string) => ['planes-precios', gymId] as const;
 
 export const usePlanesPrecios = (gymId?: string) => {
   const query = useQuery({
@@ -25,7 +27,7 @@ export const usePlanesPrecios = (gymId?: string) => {
     select: (rows: Plan[]) => {
       const options = rows.map(p => ({
         label: `${p.nombre} — ${p.numero_clases} clases ($${p.precio})`,
-        value: String(p.id),
+        value: p.id,                 // 👈 número, no String(p.id)
       }));
       const byId = rows.reduce<Record<string, Plan>>((acc, p) => {
         acc[String(p.id)] = p;
@@ -42,5 +44,15 @@ export const usePlanesPrecios = (gymId?: string) => {
     byId: query.data?.byId ?? {},
     rows: query.data?.rows ?? [],
     error: query.error,
+  };
+};
+
+export const usePlanNameFromCache = () => {
+  const qc = useQueryClient();
+  return (gymId: string, planId?: string | number | null) => {
+    if (!gymId || planId == null) return null;
+    const planes = qc.getQueryData<Array<{ id: number; nombre: string }>>(planesKey(gymId)) ?? [];
+    const p = planes.find(x => String(x.id) === String(planId));
+    return p?.nombre ?? null;
   };
 };

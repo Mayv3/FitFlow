@@ -5,7 +5,7 @@ import {
   editAlumno,
   removeAlumno,
   handleListAlumnosByGym,
-} from '../controllers/alumnos.controller.js'
+} from '../controllers/members.controller.js'
 import { verifyToken } from '../middleware/auth.js'
 
 const router = Router()

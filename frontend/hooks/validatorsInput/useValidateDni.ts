@@ -17,7 +17,7 @@ export const useValidateDniFromApi = () => {
           Authorization: `Bearer ${token}`,
         },
       });
-
+      
       return 'Este DNI ya está registrado';
 
     } catch (error: any) {

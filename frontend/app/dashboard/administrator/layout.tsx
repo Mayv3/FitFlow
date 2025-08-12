@@ -1,23 +1,32 @@
-import { SideBar } from '@/components/ui/header/SideBar';
-import { adminTabs } from '@/components/ui/header/sideBarTabs';
-import { useAuthRole } from '@/hooks/auth/useAuthRole';
-import { Box } from '@mui/material';
-import { ADMINISTRADOR } from '@/const/roles/roles';
+'use client';
 
-const AdminDashboard = () => {
+import { SideBar } from "@/components/ui/header/SideBar";
+import { adminTabs } from "@/components/ui/header/sideBarTabs";
+import { useAuthRole } from "@/hooks/auth/useAuthRole";
+import { ADMINISTRADOR } from "@/const/roles/roles";
+import { useMediaQuery, useTheme } from '@mui/material';
+
+export const AdministratorLayout = ({ children }: { children: React.ReactNode }) => {
+  const theme = useTheme();
+  const isDesktop = useMediaQuery(theme.breakpoints.up('md'));
   useAuthRole(ADMINISTRADOR);
+
   return (
-    <Box sx={{ ml: '280px', p: 4 }}>
-      <h1>Bienvenido al panel del administrador</h1>
-    </Box>
+    <div style={{ 
+      display: 'flex',
+      minHeight: '100vh',
+      width: '100%'
+    }}>
+      <SideBar tabs={adminTabs} />
+      <main style={{ 
+        flexGrow: 1, 
+        padding: '2rem',
+        marginBottom: isDesktop ? '0px' : '60px',
+        marginLeft: isDesktop ? '20%' : '0px',
+        width: isDesktop ? 'calc(100% - 20%)' : '100%'
+      }}>
+        {children}
+      </main>
+    </div>
   );
 };
-
-AdminDashboard.getLayout = (page: React.ReactNode) => (
-  <>
-    <SideBar tabs={adminTabs} />
-    {page}
-  </>
-);
-
-export default AdminDashboard;

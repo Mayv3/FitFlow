@@ -11,6 +11,7 @@ const axiosInstance = axios.create({
 
 axiosInstance.interceptors.request.use((config) => {
   const token = Cookies.get('token');
+
   if (token) {
     config.headers.Authorization = `Bearer ${token}`;
   }
@@ -50,9 +51,14 @@ export function useAlumnosByGym(
 export function useDeleteAlumnoByDNI() {
   return useMutation({
     mutationFn: async (dni: string) => {
-      await axiosInstance.delete(`/api/alumnos/${dni}`);
+      const gymId = Cookies.get('gym_id');
+      if (!gymId) throw new Error('No se encontró gym_id en la cookie');
+
+      await axiosInstance.delete(`/api/alumnos/${dni}`, {
+        params: { gym_id: gymId },
+      });
       return dni;
-    }
+    },
   });
 }
 

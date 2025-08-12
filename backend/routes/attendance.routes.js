@@ -4,7 +4,7 @@ import {
   addAsistencia,
   getAsistencia,
   removeAsistencia
-} from '../controllers/asistencias.controller.js'
+} from '../controllers/attendance.controller.js'
 
 const router = Router()
 

@@ -4,19 +4,31 @@ import { SideBar } from "@/components/ui/header/SideBar";
 import { recepcionistTabs } from "@/components/ui/header/sideBarTabs";
 import { useAuthRole } from "@/hooks/auth/useAuthRole";
 import { RECEPCIONISTA } from "@/const/roles/roles";
+import { useMediaQuery, useTheme } from '@mui/material';
 
 export default function ReceptionistLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
-
-  useAuthRole(RECEPCIONISTA)
+  const theme = useTheme();
+  const isDesktop = useMediaQuery(theme.breakpoints.up('md'));
+  useAuthRole(RECEPCIONISTA);
 
   return (
-    <div style={{ display: 'flex' }}>
+    <div style={{ 
+      display: 'flex',
+      minHeight: '100vh',
+      width: '100%'
+    }}>
       <SideBar tabs={recepcionistTabs} />
-      <main style={{ flexGrow: 1 }} className="max-w-[80vw] mx-auto mb-20 mt-5 md:max-w-[80%] md:ml-[20%] md:px-5">
+      <main style={{ 
+        flexGrow: 1, 
+        padding: '2rem',
+        marginBottom: isDesktop ? '0px' : '60px',
+        marginLeft: isDesktop ? '20%' : '0px',
+        width: isDesktop ? 'calc(100% - 20%)' : '100%'
+      }}>
         {children}
       </main>
     </div>

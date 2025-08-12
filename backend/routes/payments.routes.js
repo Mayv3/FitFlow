@@ -5,7 +5,7 @@ import {
   addPago,
   editPago,
   removePago
-} from '../controllers/pagos.controller.js'
+} from '../controllers/payments.controller.js'
 
 const router = Router()
 router.get('/', listPagos)

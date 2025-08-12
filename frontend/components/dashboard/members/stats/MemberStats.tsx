@@ -1,28 +1,45 @@
 'use client'
 
-import { MiniLineChart } from '@/components/ui/charts/MiniLineChart'
 import { StatCard } from '@/components/ui/cards/StatCard'
 import { Box } from '@mui/material'
 import { ProgressChart } from '@/components/ui/charts/MiniProgressChart'
-import BarChartIcon from '@mui/icons-material/BarChart'
 import PeopleIcon from '@mui/icons-material/People'
-import AccessTimeIcon from '@mui/icons-material/AccessTime'
 import { useTheme } from '@mui/material/styles'
-import { MiniSingleBarChart } from '@/components/ui/charts/MinisingleBarChart'
+import CardMembershipIcon from '@mui/icons-material/CardMembership';
 import { useGymStats } from '@/hooks/stats/useGymStats'
+import { useGymStatsLive } from '@/hooks/stats/useGymStatsLive'
+import EventSeatIcon from '@mui/icons-material/EventSeat';
 
 export const MemberStats = ({ gymId }: { gymId?: string }) => {
   const theme = useTheme()
   const iconStyle = { color: theme.palette.primary.main, fontSize: 40 }
   const { data, isLoading } = useGymStats(gymId)
 
-  const total = data?.totalMembers ?? 0
-  const active = data?.activeMembers ?? 0
+  const clamp = (n: number, min = 0, max = 100) => Math.max(min, Math.min(max, n))
+
+  const rawTotal = data?.totalMembers ?? 0
+  const total = Math.max(0, rawTotal)
+
+  const rawActive = data?.activeMembers ?? 0
+  const active = clamp(rawActive, 0, total)
+
+  const withPlanRaw = (data?.plansDistribution ?? []).reduce(
+    (acc: number, it: any) => acc + (it?.valor ?? it?.value ?? it?.count ?? 0),
+    0
+  )
+  const withPlanCount = clamp(withPlanRaw, 0, total)
+
   const percentActive = total ? Math.round((active * 100) / total) : 0
+  const percentWithPlan = total ? Math.round((withPlanCount * 100) / total) : 0
 
-  const asistenciaData = [{ label: 'Hoy', value: data?.todaysAttendance ?? 0 }]
+  const maxCapacity = 30
+  const rawAttendance = data?.todaysAttendance ?? 0
+  const todaysAttendance = clamp(rawAttendance, 0, maxCapacity)
+  const attendancePercent = maxCapacity
+    ? Math.round((todaysAttendance / maxCapacity) * 100)
+    : 0
 
-  const planesData = data?.plansDistribution ?? []
+  useGymStatsLive(gymId)
 
   return (
     <Box
@@ -34,23 +51,27 @@ export const MemberStats = ({ gymId }: { gymId?: string }) => {
     >
       <StatCard
         title="Miembros activos"
-        value={isLoading ? '—' : `${active} / ${total}`}
+        value={isLoading ? '—' : `${active} / ${total} (${percentActive}%)`}
         icon={<PeopleIcon sx={iconStyle} />}
         chart={<ProgressChart percentage={percentActive} />}
       />
 
       <StatCard
         title="Asistencias de hoy"
-        value={isLoading ? '—' : `Total: ${data?.todaysAttendance ?? 0}`}
-        icon={<BarChartIcon sx={iconStyle} />}
-        chart={<MiniLineChart data={asistenciaData} />}
+        value={
+          isLoading ? '—' : `${todaysAttendance} / ${maxCapacity}`
+        }
+        icon={<EventSeatIcon sx={iconStyle} />} // icono más relacionado con "capacidad"
+        chart={<ProgressChart percentage={attendancePercent} />}
       />
 
       <StatCard
         title="Alumnos con plan"
-        value={isLoading ? '—' : `${data?.withPlanPct ?? 0}%`}
-        icon={<AccessTimeIcon sx={iconStyle} />}
-        chart={<MiniSingleBarChart data={planesData} />}
+        value={
+          isLoading ? '—' : `${withPlanCount} / ${total} (${percentWithPlan}%)`
+        }
+        icon={<CardMembershipIcon sx={iconStyle} />}
+        chart={<ProgressChart percentage={percentWithPlan} />}
       />
     </Box>
   )

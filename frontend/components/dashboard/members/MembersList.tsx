@@ -1,6 +1,6 @@
 'use client';
 import { GenericDataGrid } from '@/components/ui/tables/DataGrid';
-import { Box, Typography, CircularProgress, Button, Stack, Breadcrumbs } from '@mui/material';
+import { Box, Typography, CircularProgress, Button, Stack } from '@mui/material';
 import { useUser } from '@/context/UserContext';
 import { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
@@ -8,7 +8,7 @@ import { GenericModal } from '@/components/ui/modals/GenericModal';
 import { FormModal } from '@/components/ui/modals/FormModal';
 import { Member } from '@/models/Member/Member';
 import { getInputFieldsAlumnos, layoutAlumnos } from '@/const/inputs/alumnos';
-import { columnsMember } from '@/const/columns/alumnos';
+import { columnsMember } from '@/const/columns/members';
 import { ReactQueryDevtools } from '@tanstack/react-query-devtools';
 import { useChangeItem } from '@/hooks/changeItemCache/useChangeItem';
 import { MemberStats } from './stats/MemberStats';
@@ -50,12 +50,11 @@ export default function MembersList() {
   const [openEdit, setOpenEdit] = useState(false);
   const [editingMember, setEditingMember] = useState<Member | null>(null);
   const asyncValidators = useMemberAsyncValidators();
+  
   const getPlanNameFromCache = usePlanNameFromCache();
-
+  
   const addmember = useAddAlumno();
-
   const deleteAlumno = useDeleteAlumnoByDNI();
-
   const editAlumno = useEditAlumnoByDNI();
 
   const { changeItem } = useChangeItem<Member>();
@@ -189,7 +188,7 @@ export default function MembersList() {
   };
 
   const columns = columnsMember(triggerEdit, triggerDelete);
-
+  
   return (
     <Box>
       <CustomBreadcrumbs
@@ -290,7 +289,6 @@ export default function MembersList() {
         />
       )}
 
-      <ReactQueryDevtools initialIsOpen={false} />
     </Box>
   );
 }

@@ -1,12 +1,11 @@
-import { supabaseAdmin } from '../db/supabaseClient.js'
 import {
   getAlumnoByDNI,
   createAlumno,
   updateAlumno,
   deleteAlumno,
-  getAlumnosService
+  getAlumnosService,
+  getAlumnosSimpleService,
 } from '../services/alumnos.supabase.js'
-import { fechaArgentina } from '../utilities/moment.js';
 
 function isActiveByDate(dateLike) {
   if (!dateLike) return false;
@@ -146,5 +145,18 @@ export async function getAlumnosByParams(req, res) {
   } catch (err) {
     console.error(err);
     res.status(500).json({ message: err.message ?? 'Error obteniendo alumnos' });
+  }
+}
+
+export async function handleListAlumnosSimple(req, res) {
+  try {
+    const gymId = String(req.query.gym_id ?? '');
+    if (!gymId) return res.status(400).json({ message: 'gym_id requerido' });
+
+    const alumnos = await getAlumnosSimpleService(gymId);
+    res.json(alumnos);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: err.message ?? 'Error obteniendo alumnos simples' });
   }
 }

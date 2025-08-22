@@ -1,9 +1,10 @@
+import { UseQueryResult } from "@tanstack/react-query";
 import { FieldLayout } from "./FieldLayout";
 
 export type Field = {
   label: string;
   name: string;
-  type: 'string' | 'number' | 'email' | 'date' | 'select';
+  type: 'string' | 'number' | 'email' | 'date' | 'search-select' | 'time' | 'select';
   required?: boolean;
   minLength?: number;
   maxLength?: number;
@@ -17,6 +18,7 @@ export type Field = {
   options?: Array<{ label: string; value: string | number | null }>;
   onBlur?: (value: string) => void;
   validate?: (value: any) => string | null;
+  searchFromCache?: (gymId: string, q: string) => { label: string; value: any }[];
   onChange?:
   | ((value: any, values: Record<string, any>) => Record<string, any>)
   | ((value: any, values: Record<string, any>) => void);
@@ -40,4 +42,5 @@ export interface FormModalProps<T> {
   asyncValidators?: Record<string, (value: any, values: T) => Promise<string | null>>;
   asyncTrigger?: 'blur' | 'change';
   asyncDebounceMs?: number;
+  gymId?: string;
 }

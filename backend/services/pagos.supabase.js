@@ -1,51 +1,154 @@
-import { supabase } from '../db/supabaseClient.js'
+import { supabase } from '../db/supabaseClient.js';
 
-export async function getAllPagos() {
-  const { data, error } = await supabase
+const nowISO = () => new Date().toISOString();
+
+export async function getPagosPaged({
+  gymId,
+  page = 1,
+  limit = 20,
+  q = '',
+  includeDeleted = false,
+}) {
+  const from = (page - 1) * limit;
+  const to = from + limit - 1;
+
+  let query = supabase
     .from('pagos')
-    .select('*')
-    .order('fecha_de_pago', { ascending: false })
-  if (error) throw error
-  return data
+    .select(
+      `
+      id,
+      gym_id,
+      alumno_id,
+      monto,
+      metodo_de_pago_id,
+      fecha_de_pago,
+      fecha_de_venc,
+      responsable,
+      hora,
+      tipo,
+      plan_id,
+      deleted_at,
+      metodos_de_pago:metodos_de_pago ( nombre ),
+      alumno:alumnos ( nombre, dni ),
+      planes_precios ( nombre )
+      `,
+      { count: 'exact' }
+    )
+    .order('fecha_de_pago', { ascending: false });
+
+  if (gymId) query = query.eq('gym_id', gymId);
+  if (!includeDeleted) query = query.is('deleted_at', null);
+
+  if (q && q.trim()) {
+    const s = q.trim().replace(/[(),]/g, ' ').replace(/\s+/g, ' ');
+
+    const [{ data: mpRows }, { data: alRows }] = await Promise.all([
+      supabase.from('metodos_de_pago').select('id').ilike('nombre', `%${s}%`),
+      supabase.from('alumnos').select('id').ilike('nombre', `%${s}%`),
+    ]);
+
+    const mpIds = (mpRows ?? []).map(r => r.id);
+    const alumnoIds = (alRows ?? []).map(r => r.id);
+
+    const ors = [`responsable.ilike.%${s}%`];
+    if (mpIds.length) ors.push(`metodo_de_pago_id.in.(${mpIds.join(',')})`);
+    if (alumnoIds.length) ors.push(`alumno_id.in.(${alumnoIds.join(',')})`);
+
+    query = query.or(ors.join(','));
+  }
+
+  query = query.range(from, to);
+
+  const { data, error, count } = await query;
+  if (error) throw error;
+
+  const items = (data ?? []).map((p) => ({
+    ...p,
+    metodo_nombre: p?.metodos_de_pago?.nombre ?? null,
+    alumno_nombre: p?.alumno?.nombre ?? null,
+    plan_nombre: p?.planes_precios?.nombre ?? null,
+  }));
+
+  return {
+    items,
+    total: count ?? 0,
+    page,
+    limit,
+    q,
+  };
 }
 
-export async function getPagoById(id) {
-  const { data, error } = await supabase
-    .from('pagos')
-    .select('*')
-    .eq('id', id)
-    .single()
-  if (error) throw error
-  return data
-}
 
+export async function getPagoById(id, { includeDeleted = false } = {}) {
+  let q = supabase.from('pagos').select('*').eq('id', id);
+  if (!includeDeleted) q = q.is('deleted_at', null);
+  const { data, error } = await q.single();
+  if (error) throw error;
+  return data;
+}
 
 export async function createPago(pago) {
   const { data, error } = await supabase
     .from('pagos')
     .insert(pago)
-    .single()
-  if (error) throw error
-  return data
+    .select(`
+      id,
+      monto,
+      metodo_de_pago_id,
+      alumno_id,
+      plan_id,
+      tipo,
+      hora,
+      fecha_de_pago,
+      fecha_de_venc,
+      responsable,
+      alumnos ( nombre ),
+      plan:planes_precios ( nombre )
+    `)
+    .single();
+
+  if (error) throw error;
+
+  return {
+    ...data,
+    alumno_nombre: data.alumnos?.nombre ?? null,
+    plan_nombre: data.plan?.nombre ?? null,
+  };
 }
 
-
-export async function updatePago(id, nuevosDatos) {
-  const { data, error } = await supabase
-    .from('pagos')
-    .update(nuevosDatos)
-    .eq('id', id)
-    .single()
-  if (error) throw error
-  return data
+export async function updatePago(id, nuevosDatos, { includeDeleted = false } = {}) {
+  let q = supabase.from('pagos').update(nuevosDatos).eq('id', id);
+  if (!includeDeleted) q = q.is('deleted_at', null);
+  const { data, error } = await q.single();
+  if (error) throw error;
+  return data;
 }
 
+/** Soft delete */
 export async function deletePago(id) {
   const { data, error } = await supabase
     .from('pagos')
-    .delete()
+    .update({ deleted_at: nowISO() })
     .eq('id', id)
-    .single()
-  if (error) throw error
-  return data
+    .is('deleted_at', null)
+    .single();
+  if (error) throw error;
+  return data;
+}
+
+export async function restorePago(id) {
+  const { data, error } = await supabase
+    .from('pagos')
+    .update({ deleted_at: null })
+    .eq('id', id)
+    .not('deleted_at', 'is', null)
+    .single();
+  if (error) throw error;
+  return data;
+}
+
+export async function hardDeletePago(id) {
+  const { data, error } = await supabase.from('pagos').delete().eq('id', id).single();
+  if (error) throw error;
+  return data;
 }

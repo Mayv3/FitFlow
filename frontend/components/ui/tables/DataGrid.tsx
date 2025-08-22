@@ -64,7 +64,8 @@ export function GenericDataGrid<T extends { id: string | number }>({
               backgroundColor: 'white',
             },
           }}
-
+          checkboxSelection={false}
+          hideFooterSelectedRowCount
           rows={rows}
           columns={columns}
           disableColumnResize

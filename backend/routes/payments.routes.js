@@ -1,17 +1,22 @@
-import { Router } from 'express'
+import { Router } from 'express';
 import {
   listPagos,
   getPago,
   addPago,
   editPago,
-  removePago
-} from '../controllers/payments.controller.js'
+  removePago,
+  undeletePago,
+  hardRemovePago,
+} from '../controllers/payments.controller.js';
 
-const router = Router()
-router.get('/', listPagos)
-router.get('/:id', getPago)
-router.post('/', addPago)
-router.put('/:id', editPago)
-router.delete('/:id', removePago)
+const routes = Router();
 
-export default router
+routes.get('/', listPagos);
+routes.get('/:id', getPago);
+routes.post('/', addPago);
+routes.put('/:id', editPago);
+routes.delete('/:id', removePago);
+routes.put('/:id/restore', undeletePago);
+routes.delete('/:id/hard', hardRemovePago);
+
+export default routes;

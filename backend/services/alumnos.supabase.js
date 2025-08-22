@@ -62,7 +62,6 @@ export async function createAlumno(alumno) {
   return creado;
 }
 
-
 export async function updateAlumno(dni, nuevosDatos) {
   console.log(nuevosDatos)
   const { data, error } = await supabase
@@ -122,7 +121,7 @@ export async function getAlumnosService({ gymId, page, limit, q = '' }) {
   }
 
   const { data, count, error } = await query
-    .order('id', { ascending: true })
+    .order('id', { ascending: false })
     .range(offset, offset + limit - 1);
 
   if (error) throw error;
@@ -140,4 +139,16 @@ export async function getAlumnosService({ gymId, page, limit, q = '' }) {
     limit,
     q,
   };
+}
+
+export async function getAlumnosSimpleService(gymId) {
+  const { data, error } = await supabase
+    .from('alumnos')
+    .select('id, nombre, dni')
+    .eq('gym_id', gymId)
+    .is('deleted_at', null)
+    .order('nombre', { ascending: true });
+
+  if (error) throw error;
+  return data;
 }

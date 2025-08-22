@@ -5,6 +5,7 @@ import {
 } from '@mui/material';
 import { Field, FormModalProps } from '@/models/Fields/Field';
 import { debounce } from '@/utils/debounce/debounce';
+import { Autocomplete } from '@mui/material';
 
 export const FormModal = <T extends Record<string, any>>({
   open,
@@ -23,9 +24,11 @@ export const FormModal = <T extends Record<string, any>>({
   asyncValidators,
   asyncTrigger = 'blur',
   asyncDebounceMs = 400,
+  gymId,
 }: FormModalProps<T>) => {
   const [values, setValues] = useState<T>({} as T);
   const [externalErrors, setExternalErrors] = useState<Record<string, string | undefined>>({});
+  const [searchTerms, setSearchTerms] = useState<Record<string, string>>({});
 
   const setFieldError = (name: string, msg?: string) => setExternalErrors(prev => ({ ...prev, [name]: msg }));
 
@@ -154,7 +157,6 @@ export const FormModal = <T extends Record<string, any>>({
               const val = values[field.name] ?? '';
               const lay = layout[field.name] ?? {};
 
-
               const style: React.CSSProperties = {
                 gridColumn: lay.colStart != null ? `${lay.colStart} / span ${lay.colSpan ?? 1}` : `auto / span ${lay.colSpan ?? 1}`,
                 gridRow: lay.rowStart != null ? `${lay.rowStart} / span ${lay.rowSpan ?? 1}` : undefined,
@@ -201,6 +203,44 @@ export const FormModal = <T extends Record<string, any>>({
               const options = Array.isArray(field.options) ? field.options : [];
               const locked = isLockedField(field.name);
 
+              if (field.type === 'search-select' && field.searchFromCache) {
+                const term = searchTerms[field.name] ?? '';
+
+      
+                const allOptions = field.searchFromCache(gymId ?? '', '');
+                const results = term ? field.searchFromCache(gymId ?? '', term) : allOptions;
+
+                const selectedOption = allOptions.find(o => o.value === val) || null;
+
+                return (
+                  <Box key={field.name} style={style}>
+                    <Autocomplete
+                      options={results}
+                      isOptionEqualToValue={(o, v) => o.value === v.value}
+                      getOptionLabel={(option) => option.label}
+                      value={selectedOption}
+                      onInputChange={(_, newInputValue) => {
+                        setSearchTerms(prev => ({ ...prev, [field.name]: newInputValue }));
+                      }}
+                      onChange={(_, newValue) => {
+                        setValues(prev => ({ ...prev, [field.name]: newValue?.value ?? '' }));
+                      }}
+                      renderInput={(params) => (
+                        <TextField
+                          {...params}
+                          label={field.label}
+                          placeholder={field.placeholder}
+                          required={field.required}
+                          error={isError}
+                          helperText={helperText}
+                          onBlur={() => !locked && handleBlur(field.name, selectedOption?.value ?? '')}
+                        />
+                      )}
+                    />
+                  </Box>
+                );
+              }
+
               return (
                 <Box key={field.name} style={style}>
                   <TextField
@@ -218,7 +258,6 @@ export const FormModal = <T extends Record<string, any>>({
                     error={isError}
                     helperText={helperText}
                     disabled={locked || field.disabled}
-                    
                     InputProps={{ readOnly: locked }}
                     SelectProps={{
                       displayEmpty: true,

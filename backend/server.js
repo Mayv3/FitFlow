@@ -14,6 +14,8 @@ import gymsRoutes from './routes/gyms.routes.js'
 import testRoutes from './routes/test.routes.js'
 import statsRoutes from './routes/stats.routes.js'
 import planesRoutes from './routes/planes.routes.js';
+import paymentMethodsRoutes from './routes/paymentMethods.routes.js';
+
 import { verifyToken } from '../backend/middleware/auth.js'
 import { createServer } from 'http';
 import { Server } from 'socket.io';
@@ -44,6 +46,7 @@ app.use('/api/gyms', gymsRoutes)
 app.use('/api/test', testRoutes);
 app.use('/api/stats', statsRoutes);
 app.use('/api/planes', planesRoutes);
+app.use('/api/payment-methods', paymentMethodsRoutes);
 
 app.get('/ping', (req, res) => res.sendStatus(200));
 

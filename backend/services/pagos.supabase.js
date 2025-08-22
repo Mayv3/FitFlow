@@ -34,7 +34,8 @@ export async function getPagosPaged({
       `,
       { count: 'exact' }
     )
-    .order('fecha_de_pago', { ascending: false });
+    .order('fecha_de_pago', { ascending: false })
+    .order('hora', { ascending: false })
 
   if (gymId) query = query.eq('gym_id', gymId);
   if (!includeDeleted) query = query.is('deleted_at', null);
@@ -117,14 +118,41 @@ export async function createPago(pago) {
 }
 
 export async function updatePago(id, nuevosDatos, { includeDeleted = false } = {}) {
-  let q = supabase.from('pagos').update(nuevosDatos).eq('id', id);
-  if (!includeDeleted) q = q.is('deleted_at', null);
-  const { data, error } = await q.single();
+  let q = supabase
+    .from('pagos')
+    .update(nuevosDatos)
+    .eq('id', id)
+    .select(`
+      id,
+      gym_id,
+      alumno_id,
+      monto,
+      metodo_de_pago_id,
+      fecha_de_pago,
+      fecha_de_venc,
+      responsable,
+      hora,
+      tipo,
+      plan_id,
+      alumnos ( nombre, dni ),
+      metodos_de_pago ( nombre ),
+      plan:planes_precios ( nombre )
+    `)
+    .single();
+
+  const { data, error } = await q;
   if (error) throw error;
-  return data;
+
+  return {
+    ...data,
+    alumno_nombre: data.alumnos?.nombre ?? null,
+    metodo_nombre: data.metodos_de_pago?.nombre ?? null,
+    plan_nombre: data.plan?.nombre ?? null,
+  };
 }
 
 /** Soft delete */
+
 export async function deletePago(id) {
   const { data, error } = await supabase
     .from('pagos')

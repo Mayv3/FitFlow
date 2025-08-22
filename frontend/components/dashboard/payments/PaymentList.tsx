@@ -1,5 +1,5 @@
 'use client';
-import { Box, Button, Stack, CircularProgress } from '@mui/material';
+import { Box, Button, Stack, CircularProgress, Typography } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { debounce } from '@/utils/debounce/debounce';
@@ -22,6 +22,7 @@ import {
     useEditPago,
     useDeletePago,
 } from '@/hooks/payments/usePaymentsApi';
+import { GenericModal } from '@/components/ui/modals/GenericModal';
 
 
 export default function PaymentList() {
@@ -49,6 +50,9 @@ export default function PaymentList() {
 
     const [openAdd, setOpenAdd] = useState(false);
     const [openEdit, setOpenEdit] = useState(false);
+    const [editingPago, setEditingPago] = useState<any | null>(null);
+    const [openDelete, setOpenDelete] = useState(false);
+    const [deletingId, setDeletingId] = useState<number | null>(null);
 
     const fields = useMemo(() => getInputFieldsPagos({
         planOptions,
@@ -76,12 +80,20 @@ export default function PaymentList() {
         q
     );
 
-    const pagos = data?.items ?? [];
+    const pagos = useMemo(() => {
+        const items = data?.items ?? [];
+        return [...items].sort((a, b) => {
+            const fechaA = new Date(`${a.fecha_de_pago}T${a.hora ?? '00:00:00'}`);
+            const fechaB = new Date(`${b.fecha_de_pago}T${b.hora ?? '00:00:00'}`);
+            return fechaB.getTime() - fechaA.getTime();
+        });
+    }, [data]);
+    
     const total = data?.total ?? 0;
 
     const addPago = useAddPago(gymId);
-    const editPago = useEditPago();
-    const deletePago = useDeletePago();
+    const editPago = useEditPago(gymId);
+    const deletePago = useDeletePago(gymId);
 
     const handleAddPayment = async (values: any) => {
         console.log("📤 Valores mandados al backend:", JSON.stringify(values, null, 2));
@@ -95,11 +107,28 @@ export default function PaymentList() {
     };
 
     const handleEdit = (payment: any) => {
-        console.log('edit payment', payment);
+        const sanitized = {
+            ...payment,
+            hora: payment.hora ? payment.hora.slice(0, 5) : '',
+        };
+        setEditingPago(sanitized);
+        setOpenEdit(true);
     };
 
     const handleDelete = (id: number) => {
-        console.log('delete payment', id);
+        setDeletingId(id);
+        setOpenDelete(true);
+    };
+
+    const confirmDelete = async () => {
+        if (!deletingId) return;
+        try {
+            await deletePago.mutateAsync(deletingId);
+            setOpenDelete(false);
+            setDeletingId(null);
+        } catch (error) {
+            console.error("❌ Error al eliminar pago:", error);
+        }
     };
 
     const columns = useMemo(() => columnsPayments(handleEdit, handleDelete), []);
@@ -185,25 +214,44 @@ export default function PaymentList() {
                 />
             )}
 
-            {/*
-            {editingMember && (
+            {openEdit && editingPago && (
                 <FormModal
                     open={openEdit}
-                    title="Editar miembro"
+                    title="Editar pago"
                     fields={fields}
                     gridColumns={12}
                     gridGap={16}
-                    initialValues={editingMember}
-                    onClose={() => setOpenEdit(false)}
-                    onSubmit={handleEdit}
-                    confirmText="Guardar"
+                    initialValues={editingPago}
+                    onClose={() => {
+                        setOpenEdit(false);
+                        setEditingPago(null);
+                    }}
+                    onSubmit={async (values) => {
+                        try {
+                            await editPago.mutateAsync({ id: editingPago.id, values });
+                            setOpenEdit(false);
+                            setEditingPago(null);
+                        } catch (error) {
+                            console.error("❌ Error al editar pago:", error);
+                        }
+                    }}
+                    confirmText="Guardar cambios"
                     cancelText="Cancelar"
-                    layout={layoutAlumnos}
+                    layout={layoutPayments}
                     mode="edit"
-                    lockedFields={['dni']}
                 />
             )}
-*/}
+
+            <GenericModal
+                open={openDelete}
+                title="Confirmar eliminación"
+                content={<Typography>¿Estás seguro de que deseas eliminar este pago?</Typography>}
+                onClose={() => setOpenDelete(false)}
+                onConfirm={confirmDelete}
+                confirmText="Eliminar"
+                cancelText="Cancelar"
+            />
+
             <ReactQueryDevtools initialIsOpen={false} />
 
         </Box>

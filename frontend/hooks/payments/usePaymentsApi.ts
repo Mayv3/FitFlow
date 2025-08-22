@@ -83,33 +83,46 @@ export function useAddPago(gymId: string) {
   });
 }
 
-export function useEditPago() {
+export function useEditPago(gymId: string) {
   const qc = useQueryClient();
+
   return useMutation({
     mutationFn: async ({ id, values }: { id: number; values: Record<string, any> }) => {
       const { data } = await axiosInstance.put(`/api/pagos/${id}`, values);
       return data as Payment;
     },
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['payments'] });
+    onSuccess: (updatedPago) => {
+      if (!updatedPago?.id) return;
+
+      qc.setQueryData(['payments', gymId, 1, 20, ''], (old: any) => {
+        if (!old) return old;
+        return {
+          ...old,
+          items: old.items.map((p: any) =>
+            p.id === updatedPago.id ? { ...p, ...updatedPago } : p
+          ),
+        };
+      });
     },
   });
 }
 
-export function useDeletePago() {
+export function useDeletePago(gymId: string) {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async (id: number) => {
-      const gymId = Cookies.get('gym_id');
-      if (!gymId) throw new Error('No se encontró gym_id en la cookie');
-
-      await axiosInstance.delete(`/api/pagos/${id}`, {
-        params: { gym_id: gymId },
-      });
+      await axiosInstance.delete(`/api/pagos/${id}`, { params: { gym_id: gymId } });
       return id;
     },
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['payments'] });
+    onSuccess: (deletedId) => {
+      qc.setQueryData(['payments', gymId, 1, 20, ''], (old: any) => {
+        if (!old) return old;
+        return {
+          ...old,
+          items: old.items.filter((p: any) => p.id !== deletedId),
+          total: (old.total ?? old.items.length) - 1,
+        };
+      });
     },
   });
 }

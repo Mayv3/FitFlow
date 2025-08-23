@@ -28,10 +28,9 @@ export async function loginUser({ email, password }) {
   const { session, user } = data
   if (!session || !user) throw new Error('Error en autenticación: sesión o usuario no disponibles')
 
-  // Obtener perfil extendido desde tabla users, apply RLS via supabase anon
   const { data: profile, error: profileError } = await supabase
     .from('users')
-    .select('id, dni, gym_id, role_id, auth_user_id')
+    .select('id, dni, gym_id, role_id, auth_user_id, name')
     .eq('auth_user_id', user.id)
     .single()
   if (profileError) throw profileError

@@ -79,7 +79,6 @@ export async function getPagosPaged({
   };
 }
 
-
 export async function getPagoById(id, { includeDeleted = false } = {}) {
   let q = supabase.from('pagos').select('*').eq('id', id);
   if (!includeDeleted) q = q.is('deleted_at', null);
@@ -104,16 +103,26 @@ export async function createPago(pago) {
       fecha_de_venc,
       responsable,
       alumnos ( nombre ),
-      plan:planes_precios ( nombre )
+      plan:planes_precios ( nombre ),
+      metodo:metodos_de_pago ( nombre )
     `)
     .single();
 
   if (error) throw error;
 
+  const { error: eUpd } = await supabase
+    .from('alumnos')
+    .update({
+      plan_id: pago.plan_id,
+      fecha_de_vencimiento: pago.fecha_de_venc,
+    })
+    .eq('id', pago.alumno_id);
+
   return {
     ...data,
     alumno_nombre: data.alumnos?.nombre ?? null,
     plan_nombre: data.plan?.nombre ?? null,
+    metodo_nombre: data.metodo?.nombre ?? null,
   };
 }
 
@@ -140,8 +149,22 @@ export async function updatePago(id, nuevosDatos, { includeDeleted = false } = {
     `)
     .single();
 
+  if (!includeDeleted) q = q.is('deleted_at', null);
+
   const { data, error } = await q;
   if (error) throw error;
+
+  if (nuevosDatos.plan_id || nuevosDatos.fecha_de_venc) {
+    const { error: eUpd } = await supabase
+      .from('alumnos')
+      .update({
+        ...(nuevosDatos.plan_id && { plan_id: nuevosDatos.plan_id }),
+        ...(nuevosDatos.fecha_de_venc && { fecha_de_vencimiento: nuevosDatos.fecha_de_venc }),
+      })
+      .eq('id', data.alumno_id);
+
+    if (eUpd) throw eUpd;
+  }
 
   return {
     ...data,
@@ -150,6 +173,7 @@ export async function updatePago(id, nuevosDatos, { includeDeleted = false } = {
     plan_nombre: data.plan?.nombre ?? null,
   };
 }
+
 
 /** Soft delete */
 

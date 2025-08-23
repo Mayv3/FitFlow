@@ -56,29 +56,35 @@ export function useAddPago(gymId: string) {
   return useMutation({
     mutationFn: async (values: Record<string, any>) => {
       const { data } = await axiosInstance.post('/api/pagos', values);
-      console.log(`Valores mandados: ${values}`)
       return data as Payment;
     },
     onSuccess: (nuevoPago) => {
-      console.log("✅ Pago creado desde backend:", nuevoPago);
+      qc.setQueryData(['payments', gymId, 1, 20, ''], (old: any) => {
+        if (!old) return { items: [nuevoPago], total: 1 };
+        return {
+          ...old,
+          items: [nuevoPago, ...old.items],
+          total: (old.total ?? old.items.length) + 1,
+        };
+      });
 
-      qc.setQueryData(
-        ['payments', gymId, 1, 20, ''],
-        (old: any) => {
-          if (!old) {
-            return { items: [nuevoPago], total: 1 };
-          }
+      qc.setQueryData(['alumnos', gymId, 1, 20, ''], (old: any) => {
+        if (!old) return old;
+        return {
+          ...old,
+          items: old.items.map((a: any) =>
+            a.id === nuevoPago.alumno_id
+              ? {
+                  ...a,
+                  plan_id: nuevoPago.plan_id,
+                  plan_nombre: nuevoPago.plan_nombre,
+                  fecha_de_vencimiento: nuevoPago.fecha_de_venc,
+                }
+              : a
+          ),
+        };
+      });
 
-          return {
-            ...old,
-            items: [nuevoPago, ...old.items],
-            total: (old.total ?? old.items.length) + 1,
-          };
-        }
-      );
-    },
-    onError: (error: any) => {
-      console.error('Error al crear pago', error);
     },
   });
 }

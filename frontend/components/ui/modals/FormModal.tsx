@@ -6,6 +6,7 @@ import {
 import { Field, FormModalProps } from '@/models/Fields/Field';
 import { debounce } from '@/utils/debounce/debounce';
 import { Autocomplete } from '@mui/material';
+import { notify } from '@/lib/toast';
 
 export const FormModal = <T extends Record<string, any>>({
   open,
@@ -29,10 +30,11 @@ export const FormModal = <T extends Record<string, any>>({
   const [values, setValues] = useState<T>({} as T);
   const [externalErrors, setExternalErrors] = useState<Record<string, string | undefined>>({});
   const [searchTerms, setSearchTerms] = useState<Record<string, string>>({});
+  const showError = (msg: string) => notify.error(msg);
 
   const setFieldError = (name: string, msg?: string) => setExternalErrors(prev => ({ ...prev, [name]: msg }));
 
-  const isLockedField = (fieldName: string) => mode === 'edit' && lockedFields.includes(fieldName);
+  const isLockedField = (fieldName: string) => lockedFields.includes(fieldName);
 
   useEffect(() => {
     if (!open) return;
@@ -108,33 +110,32 @@ export const FormModal = <T extends Record<string, any>>({
       const val = trimmedValues[field.name];
 
       if (field.required && (val === undefined || val === null || val === '')) {
-        alert(`El campo "${field.label}" es obligatorio.`);
+        showError(`El campo "${field.label}" es obligatorio.`);
         return;
       }
       if (field.type === 'string' && field.minLength != null && typeof val === 'string' && val.length < field.minLength) {
-        alert(`El campo "${field.label}" debe tener al menos ${field.minLength} caracteres.`);
+        showError(`El campo "${field.label}" debe tener al menos ${field.minLength} caracteres.`);
         return;
       }
       if (field.regex && typeof val === 'string' && !field.regex.test(val)) {
-        alert(`El campo "${field.label}" tiene un formato inválido.`);
+        showError(`El campo "${field.label}" tiene un formato inválido.`);
         return;
       }
       if (field.type === 'number') {
         const n = Number(val);
-        if (Number.isNaN(n)) { alert(`El campo "${field.label}" debe ser numérico.`); return; }
-        if (field.min != null && n < field.min) { alert(`El campo "${field.label}" debe ser al menos ${field.min}.`); return; }
-        if (field.max != null && n > field.max) { alert(`El campo "${field.label}" no debe superar ${field.max}.`); return; }
+        if (Number.isNaN(n)) { showError(`El campo "${field.label}" debe ser numérico.`); return; }
+        if (field.min != null && n < field.min) { showError(`El campo "${field.label}" debe ser al menos ${field.min}.`); return; }
+        if (field.max != null && n > field.max) { showError(`El campo "${field.label}" no debe superar ${field.max}.`); return; }
       }
       if (field.validate) {
         const msg = field.validate(val);
-        if (msg) { alert(msg); return; }
+        if (msg) { showError(msg); return; }
       }
     }
 
-
     const pendingExternalError = Object.values(externalErrors).find(Boolean);
     if (pendingExternalError) {
-      alert(pendingExternalError);
+      showError(String(pendingExternalError));
       return;
     }
 
@@ -206,7 +207,7 @@ export const FormModal = <T extends Record<string, any>>({
               if (field.type === 'search-select' && field.searchFromCache) {
                 const term = searchTerms[field.name] ?? '';
 
-      
+
                 const allOptions = field.searchFromCache(gymId ?? '', '');
                 const results = term ? field.searchFromCache(gymId ?? '', term) : allOptions;
 
@@ -236,6 +237,7 @@ export const FormModal = <T extends Record<string, any>>({
                           onBlur={() => !locked && handleBlur(field.name, selectedOption?.value ?? '')}
                         />
                       )}
+                      disabled={locked}
                     />
                   </Box>
                 );

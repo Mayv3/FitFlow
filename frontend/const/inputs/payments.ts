@@ -1,6 +1,6 @@
-import { useSearchAlumnosFromCache } from "@/hooks/alumnos/useSearchAlumnosFromCache";
 import { Field } from "@/models/Fields/Field";
-import { fechaHoyArgentinaISO, fechaHoyMasUnMesISO } from "@/utils/date/dateUtils";
+import { fechaHoyArgentinaISO, fechaHoyMasUnMesISO, horaActualArgentina } from "@/utils/date/dateUtils";
+import Cookies from "js-cookie";
 
 export const getInputFieldsPagos = ({
     planOptions,
@@ -45,7 +45,9 @@ export const getInputFieldsPagos = ({
             type: 'string',
             required: true,
             placeholder: 'Ej: 12000',
-            regex: /^\d+([.,]\d{1,2})?$/,
+            minLength: 1,
+            maxLength: 10,
+            regex: /^$|^\d+$/
         },
         {
             label: 'Método de pago (obligatorio)',
@@ -56,10 +58,11 @@ export const getInputFieldsPagos = ({
             placeholder: 'Selecciona el método de pago',
         },
         {
-            label: 'Hora (opcional)',
+            label: 'Hora (obligatorio)',
             name: 'hora',
             type: 'time',
             regex: /^([01]\d|2[0-3]):[0-5]\d$/,
+            defaultValue: horaActualArgentina,
         },
         {
             label: 'Fecha de pago (obligatorio)',
@@ -71,12 +74,6 @@ export const getInputFieldsPagos = ({
                 min: fechaHoyArgentinaISO,
                 max: fechaHoyArgentinaISO,
             },
-            validate: (value: string) => {
-                if (value !== fechaHoyArgentinaISO) {
-                    return 'La fecha de pago debe ser la de hoy';
-                }
-                return null;
-            }
         },
         {
             label: 'Fecha de vencimiento (opcional)',
@@ -89,8 +86,9 @@ export const getInputFieldsPagos = ({
             }
         },
         {
-            label: 'Responsable (opcional)',
+            label: 'Responsable',
             name: 'responsable',
+            defaultValue: Cookies.get("name") ?? '',
             type: 'string',
             minLength: 3,
             maxLength: 40,

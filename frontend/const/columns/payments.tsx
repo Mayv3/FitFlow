@@ -10,7 +10,7 @@ import { Payment } from '@/models/Payment/Payment';
 const ARS = new Intl.NumberFormat('es-AR', {
   style: 'currency',
   currency: 'ARS',
-  maximumFractionDigits: 2
+  maximumFractionDigits: 0
 });
 
 const center = { align: 'center' as const, headerAlign: 'center' as const };
@@ -19,8 +19,7 @@ const getMetodoPago = (row: any) =>
   row?.metodo_nombre
   ?? row?.metodos_de_pago?.nombre
   ?? row?.metodo_de_pago?.nombre
-  ?? row?.metodo_de_pago_id
-  ?? null;
+  ?? String(row?.metodo_de_pago_id ?? '—');
 
 export const columnsPayments = (
   handleEdit: (payment: Payment) => void,

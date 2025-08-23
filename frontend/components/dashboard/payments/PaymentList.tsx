@@ -23,6 +23,8 @@ import {
     useDeletePago,
 } from '@/hooks/payments/usePaymentsApi';
 import { GenericModal } from '@/components/ui/modals/GenericModal';
+import { notify } from '@/lib/toast';
+import { PaymentStats } from './stats/PaymentStats';
 
 
 export default function PaymentList() {
@@ -88,7 +90,7 @@ export default function PaymentList() {
             return fechaB.getTime() - fechaA.getTime();
         });
     }, [data]);
-    
+
     const total = data?.total ?? 0;
 
     const addPago = useAddPago(gymId);
@@ -96,23 +98,42 @@ export default function PaymentList() {
     const deletePago = useDeletePago(gymId);
 
     const handleAddPayment = async (values: any) => {
-        console.log("📤 Valores mandados al backend:", JSON.stringify(values, null, 2));
-
         try {
-            await addPago.mutateAsync({ ...values, gym_id: gymId });
+            const payment = await addPago.mutateAsync({ ...values, gym_id: gymId });
+            console.log(payment)
             setOpenAdd(false);
+            notify.success("Pago añadido correctamente");
         } catch (error) {
             console.error('Error al añadir pago:', error);
+            notify.error("❌ Error al añadir el pago");
         }
     };
 
-    const handleEdit = (payment: any) => {
+    const handleOpenEdit = (payment: any) => {
         const sanitized = {
             ...payment,
             hora: payment.hora ? payment.hora.slice(0, 5) : '',
         };
         setEditingPago(sanitized);
         setOpenEdit(true);
+    };
+
+    const handleCloseEdit = () => {
+        setOpenEdit(false);
+        setEditingPago(null);
+    };
+
+    const handleEditPayment = async (values: any) => {
+        try {
+            const id = editingPago?.id;
+            if (!id) throw new Error("No hay id para editar el pago");
+            handleCloseEdit();
+            await editPago.mutateAsync({ id, values });
+            notify.success("Pago editado correctamente");
+        } catch (error) {
+            console.error("Error al editar pago:", error);
+            notify.error("Error al editar el pago");
+        }
     };
 
     const handleDelete = (id: number) => {
@@ -123,15 +144,18 @@ export default function PaymentList() {
     const confirmDelete = async () => {
         if (!deletingId) return;
         try {
-            await deletePago.mutateAsync(deletingId);
             setOpenDelete(false);
+            await deletePago.mutateAsync(deletingId);
             setDeletingId(null);
+            notify.success("Pago eliminado correctamente");
         } catch (error) {
-            console.error("❌ Error al eliminar pago:", error);
+            console.error("Error al eliminar pago:", error);
+            notify.error("Error al eliminar el pago");
         }
     };
 
-    const columns = useMemo(() => columnsPayments(handleEdit, handleDelete), []);
+    const columns = useMemo(() => columnsPayments(handleOpenEdit, handleDelete), [handleOpenEdit]);
+
 
     if (userLoading || isLoading) {
         return <Box sx={{ textAlign: 'center', mt: 4 }}><CircularProgress /></Box>;
@@ -195,7 +219,8 @@ export default function PaymentList() {
                 onPaginationModelChange={({ page: newPage }) => setPage(newPage + 1)}
                 loading={isFetching}
             />
-
+            <PaymentStats gymId={gymId} />
+                            
             {openAdd && (
                 <FormModal
                     open={openAdd}
@@ -211,6 +236,7 @@ export default function PaymentList() {
                     mode="create"
                     layout={layoutPayments}
                     gymId={gymId}
+                    lockedFields={['responsable']}
                 />
             )}
 
@@ -222,23 +248,13 @@ export default function PaymentList() {
                     gridColumns={12}
                     gridGap={16}
                     initialValues={editingPago}
-                    onClose={() => {
-                        setOpenEdit(false);
-                        setEditingPago(null);
-                    }}
-                    onSubmit={async (values) => {
-                        try {
-                            await editPago.mutateAsync({ id: editingPago.id, values });
-                            setOpenEdit(false);
-                            setEditingPago(null);
-                        } catch (error) {
-                            console.error("❌ Error al editar pago:", error);
-                        }
-                    }}
+                    onClose={handleCloseEdit}
+                    onSubmit={handleEditPayment}
                     confirmText="Guardar cambios"
+                    mode="edit"
+                    lockedFields={['alumno_id', 'fecha_de_pago', 'hora', 'responsable']}
                     cancelText="Cancelar"
                     layout={layoutPayments}
-                    mode="edit"
                 />
             )}
 

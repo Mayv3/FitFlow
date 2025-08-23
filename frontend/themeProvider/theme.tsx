@@ -19,27 +19,27 @@ const theme = createTheme({
   palette: {
     mode: 'light',
     primary: {
-      main: '#00897B',        // verde agua oscuro
+      main: '#ff8000',
       contrastText: '#FFFFFF',
     },
     secondary: {
-      main: '#4DB6AC',        // verde agua claro
+      main: '#4DB6AC',
       contrastText: '#FFFFFF',
     },
     background: {
-      default: '#F1F8F6',     // fondo general (gris verdoso claro)
-      paper: '#FFFFFF',       // tarjetas, formularios
+      default: '#F1F8F6',
+      paper: '#FFFFFF',
     },
     text: {
-      primary: '#1A1A1A',     // casi negro
-      secondary: '#4DB6AC',   // verde agua suave
+      primary: '#1A1A1A',
+      secondary: '#4DB6AC',
     },
   },
   typography: {
-    fontFamily: `'Quicksand', sans-serif`, // o la que estés usando
+    fontFamily: `'Quicksand', sans-serif`,
   },
   shape: {
-    borderRadius: 12, // bordes suaves
+    borderRadius: 12,
   },
 });
 

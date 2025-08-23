@@ -44,7 +44,7 @@ const LoginPage = () => {
       Cookies.set("dni", String(profile.dni))
       Cookies.set("rol", String(profile.role_id))
       Cookies.set("gym_id", profile.gym_id)
-      Cookies.set("name", String(profile.email))
+      Cookies.set("name", String(profile.name))
       
       setUser({
         id: profile.auth_user_id,

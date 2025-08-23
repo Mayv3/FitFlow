@@ -25,6 +25,7 @@ import { SearchBar } from '@/components/ui/search/SearchBar';
 import { debounce } from '@/utils/debounce/debounce';
 import { CustomBreadcrumbs } from '@/components/ui/breadcrums/CustomBreadcrumbs';
 import { usePlanNameFromCache } from '@/hooks/plans/usePlanesPrecios';
+import { notify } from '@/lib/toast';
 
 export default function MembersList() {
   const router = useRouter();
@@ -50,9 +51,9 @@ export default function MembersList() {
   const [openEdit, setOpenEdit] = useState(false);
   const [editingMember, setEditingMember] = useState<Member | null>(null);
   const asyncValidators = useMemberAsyncValidators();
-  
+
   const getPlanNameFromCache = usePlanNameFromCache();
-  
+
   const addmember = useAddAlumno();
   const deleteAlumno = useDeleteAlumnoByDNI();
   const editAlumno = useEditAlumnoByDNI();
@@ -133,10 +134,11 @@ export default function MembersList() {
       });
 
       setOpenAdd(false);
-      addmember.mutate({
-        ...valuesWithDates,
-        gym_id: user.gym_id,
-      });
+      addmember.mutate({ ...valuesWithDates, gym_id: user.gym_id, },
+        {
+          onSuccess: () => notify.success('Miembro añadido correctamente'),
+          onError: () => notify.error('Error al añadir el miembro'),
+        });
     } catch (err) {
       console.error('Error al añadir miembro:', err);
     }
@@ -151,7 +153,11 @@ export default function MembersList() {
       item: { ...values, plan_nombre },
     });
     setOpenEdit(false);
-    editAlumno.mutate({ dni: values.dni, values });
+    editAlumno.mutate({ dni: values.dni, values },
+      {
+        onSuccess: () => notify.success('Miembro editado correctamente'),
+        onError: () => notify.error('Error al editar el miembro'),
+      });
   };
 
   const handleDelete = async (dni: string) => {
@@ -163,7 +169,10 @@ export default function MembersList() {
         item: { dni },
       });
       setOpenModal(false);
-      deleteAlumno.mutate(dni);
+      deleteAlumno.mutate(dni, {
+        onSuccess: () => notify.success('Miembro eliminado correctamente'),
+        onError: () => notify.error('Error al eliminar el miembro'),
+      });
       setSelectedMember(null);
     } catch (err) {
       console.error('Error al eliminar miembro:', err);
@@ -177,7 +186,6 @@ export default function MembersList() {
   };
 
   const triggerEdit = (member: Member) => {
-    console.log(member)
     setEditingMember(member);
     setOpenEdit(true);
   };
@@ -188,7 +196,7 @@ export default function MembersList() {
   };
 
   const columns = columnsMember(triggerEdit, triggerDelete);
-  
+
   return (
     <Box>
       <CustomBreadcrumbs
@@ -288,6 +296,8 @@ export default function MembersList() {
           lockedFields={['dni']}
         />
       )}
+
+      <ReactQueryDevtools initialIsOpen={false} />
 
     </Box>
   );

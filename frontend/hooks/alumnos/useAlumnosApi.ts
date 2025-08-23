@@ -36,7 +36,8 @@ export function useAlumnosByGym(
     queryKey: ['members', gymId, page, limit, q],
     enabled: Boolean(gymId),
     placeholderData: keepPreviousData,
-    staleTime: 60 * 1000 * 2,
+    staleTime: 1000 * 60 * 10,
+    gcTime: 1000 * 60 * 30,
     retry: 1,
     refetchOnWindowFocus: false,
     queryFn: async () => {

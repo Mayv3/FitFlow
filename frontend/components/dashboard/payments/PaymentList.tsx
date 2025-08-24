@@ -8,6 +8,7 @@ import { SearchBar } from '@/components/ui/search/SearchBar';
 import { GenericDataGrid } from '@/components/ui/tables/DataGrid';
 import { columnsPayments } from '@/const/columns/payments';
 import { useUser } from '@/context/UserContext';
+import { DatePicker } from '@mui/x-date-pickers-pro';
 
 import { ReactQueryDevtools } from '@tanstack/react-query-devtools';
 import { FormModal } from '@/components/ui/modals/FormModal';
@@ -25,18 +26,46 @@ import {
 import { GenericModal } from '@/components/ui/modals/GenericModal';
 import { notify } from '@/lib/toast';
 import { PaymentStats } from './stats/PaymentStats';
+import { fechaHoyArgentinaSinFormato, finDeMes, inicioDelMes } from '@/utils/date/dateUtils';
+import moment from 'moment';
+import { usePaymentsStats } from '@/hooks/stats/usePaymentsStats';
 
 
 export default function PaymentList() {
     const { user, loading: userLoading } = useUser();
     const gymId = user?.gym_id ?? '';
-
-    const { data: alumnosRes, isLoading: alumnosLoading } = useAlumnosSimpleByGym(gymId);
+    const { data: alumnosRes } = useAlumnosSimpleByGym(gymId);
 
     const alumnos = useMemo(
         () => (alumnosRes?.items ?? alumnosRes ?? []) as Array<{ id: number; nombre: string; dni?: string }>,
         [alumnosRes]
     );
+
+    const { options: planOptions, byId: plansById } = usePlanesPrecios(gymId);
+    const { data: paymentMethods = [] } = useMethodsPaymentsByGym(gymId);
+
+    const [openAdd, setOpenAdd] = useState(false);
+    const [openEdit, setOpenEdit] = useState(false);
+    const [editingPago, setEditingPago] = useState<any | null>(null);
+    const [openDelete, setOpenDelete] = useState(false);
+    const [deletingId, setDeletingId] = useState<number | null>(null);
+
+    const [fromDate, setFromDate] = useState<moment.Moment | null>(fechaHoyArgentinaSinFormato);
+    const [toDate, setToDate] = useState<moment.Moment | null>(fechaHoyArgentinaSinFormato);
+
+    const [page, setPage] = useState(1);
+    const pageSize = 20;
+    const [q, setQ] = useState('');
+
+    const fromDateISO = fromDate?.format('YYYY-MM-DD') ?? null;
+    const toDateISO = toDate?.format('YYYY-MM-DD') ?? null;
+
+    const { data, isLoading, isError, error, isFetching } = usePagosByGym(gymId, page, pageSize, q, { fromDate: fromDateISO, toDate: toDateISO });
+    const { data: stats, isLoading: statsLoading } = usePaymentsStats(gymId, { fromDate: fromDateISO, toDate: toDateISO, })
+
+    const addPago = useAddPago(gymId);
+    const editPago = useEditPago(gymId);
+    const deletePago = useDeletePago(gymId);
 
     const searchFromCache = useCallback((_: string, q: string) => {
         const list = alumnos;
@@ -47,24 +76,11 @@ export default function PaymentList() {
             .map(a => ({ label: `${a.nombre} (${a.dni ?? ''})`, value: a.id }));
     }, [alumnos]);
 
-    const { options: planOptions, byId: plansById } = usePlanesPrecios(gymId);
-    const { data: paymentMethods = [], isLoading: methodsLoading } = useMethodsPaymentsByGym(gymId);
-
-    const [openAdd, setOpenAdd] = useState(false);
-    const [openEdit, setOpenEdit] = useState(false);
-    const [editingPago, setEditingPago] = useState<any | null>(null);
-    const [openDelete, setOpenDelete] = useState(false);
-    const [deletingId, setDeletingId] = useState<number | null>(null);
-
     const fields = useMemo(() => getInputFieldsPagos({
         planOptions,
         paymentMethodOptions: paymentMethods.map((pm: any) => ({ label: pm.nombre, value: pm.id })),
         searchFromCache,
     }), [planOptions, paymentMethods, searchFromCache]);
-
-    const [page, setPage] = useState(1);
-    const pageSize = 20;
-    const [q, setQ] = useState('');
 
     const handleSearchChange = useMemo(
         () =>
@@ -73,13 +89,6 @@ export default function PaymentList() {
                 setPage(1);
             }, 450),
         []
-    );
-
-    const { data, isLoading, isError, error, isFetching } = usePagosByGym(
-        gymId,
-        page,
-        pageSize,
-        q
     );
 
     const pagos = useMemo(() => {
@@ -92,10 +101,6 @@ export default function PaymentList() {
     }, [data]);
 
     const total = data?.total ?? 0;
-
-    const addPago = useAddPago(gymId);
-    const editPago = useEditPago(gymId);
-    const deletePago = useDeletePago(gymId);
 
     const handleAddPayment = async (values: any) => {
         try {
@@ -179,34 +184,72 @@ export default function PaymentList() {
             />
 
             <Box mb={2}>
-                <Stack
-                    gap={{ xs: 2, md: 0 }}
-                    direction="row"
-                    alignItems="center"
-                    justifyContent="space-between"
-                >
-                    <Box sx={{ flex: 1, maxWidth: 400 }}>
-                        <SearchBar
-                            value={q}
-                            onChange={(val) => handleSearchChange(val)}
-                            onSearch={(text) => {
-                                setQ(text);
-                                setPage(1);
-                            }}
-                            isLoading={isFetching}
-                            placeholder="Buscar pagos (responsable)…"
-                        />
-                    </Box>
-
-                    <Button
-                        variant="contained"
-                        startIcon={<AddIcon />}
-                        sx={{ whiteSpace: 'nowrap' }}
-                        onClick={() => setOpenAdd(true)}
+                <Box mb={2}>
+                    <Stack
+                        gap={2}
+                        direction={{ xs: 'column', md: 'row' }}
+                        alignItems={{ xs: 'stretch', md: 'center' }}
+                        justifyContent="space-between"
                     >
-                        Añadir pago
-                    </Button>
-                </Stack>
+                        <Box
+                            sx={{
+                                display: 'flex',
+                                flexDirection: { xs: 'column', sm: 'row' },
+                                gap: 2,
+                                width: '100%',
+                            }}
+                        >
+                            <SearchBar
+                                value={q}
+                                onChange={(val) => handleSearchChange(val)}
+                                onSearch={(text) => {
+                                    setQ(text);
+                                    setPage(1);
+                                }}
+                                isLoading={isFetching}
+                                placeholder="Buscar pagos (Alumno/Responsable/Método de pago"
+                            />
+                            <Box
+                                sx={{
+                                    display: 'flex',
+                                    flexDirection: { xs: 'column', sm: 'row' },
+                                    gap: 2,
+                                    flex: 1,
+                                }}
+                            >
+                                <DatePicker
+                                    label="Desde"
+                                    value={fromDate}
+                                    onChange={(newValue) => setFromDate(newValue)}
+                                    minDate={moment().startOf('year')}
+                                    maxDate={moment()}
+                                    slotProps={{ textField: { fullWidth: true } }}
+                                />
+                                <DatePicker
+                                    label="Hasta"
+                                    value={toDate}
+                                    onChange={(newValue) => setToDate(newValue)}
+                                    minDate={moment().startOf('year')}
+                                    maxDate={moment()}
+                                    slotProps={{ textField: { fullWidth: true } }}
+                                />
+                            </Box>
+                        </Box>
+
+                        <Button
+                            variant="contained"
+                            startIcon={<AddIcon />}
+                            sx={{
+                                whiteSpace: 'nowrap',
+                                width: { xs: '100%', md: 'auto' }
+                            }}
+                            onClick={() => setOpenAdd(true)}
+                        >
+                            Añadir pago
+                        </Button>
+                    </Stack>
+                </Box>
+
             </Box>
 
             <GenericDataGrid
@@ -219,8 +262,10 @@ export default function PaymentList() {
                 onPaginationModelChange={({ page: newPage }) => setPage(newPage + 1)}
                 loading={isFetching}
             />
-            <PaymentStats gymId={gymId} />
-                            
+
+            <PaymentStats data={stats} isLoading={statsLoading} />
+
+
             {openAdd && (
                 <FormModal
                     open={openAdd}

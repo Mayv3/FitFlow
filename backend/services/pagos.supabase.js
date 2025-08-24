@@ -8,6 +8,7 @@ export async function getPagosPaged({
   limit = 20,
   q = '',
   includeDeleted = false,
+  filters = {}
 }) {
   const from = (page - 1) * limit;
   const to = from + limit - 1;
@@ -39,6 +40,9 @@ export async function getPagosPaged({
 
   if (gymId) query = query.eq('gym_id', gymId);
   if (!includeDeleted) query = query.is('deleted_at', null);
+
+  if (filters.fromDate) query = query.gte('fecha_de_pago', filters.fromDate);
+  if (filters.toDate) query = query.lte('fecha_de_pago', filters.toDate);
 
   if (q && q.trim()) {
     const s = q.trim().replace(/[(),]/g, ' ').replace(/\s+/g, ' ');
@@ -103,18 +107,23 @@ export async function createPago(pago) {
       fecha_de_venc,
       responsable,
       alumnos ( nombre ),
-      plan:planes_precios ( nombre ),
+      plan:planes_precios ( nombre, numero_clases ),
       metodo:metodos_de_pago ( nombre )
     `)
     .single();
 
   if (error) throw error;
 
+  const clasesPagadas = data.plan?.numero_clases ?? 0;
+
+
   const { error: eUpd } = await supabase
     .from('alumnos')
     .update({
       plan_id: pago.plan_id,
       fecha_de_vencimiento: pago.fecha_de_venc,
+      clases_realizadas: 0,
+      clases_pagadas: clasesPagadas
     })
     .eq('id', pago.alumno_id);
 
@@ -123,6 +132,7 @@ export async function createPago(pago) {
     alumno_nombre: data.alumnos?.nombre ?? null,
     plan_nombre: data.plan?.nombre ?? null,
     metodo_nombre: data.metodo?.nombre ?? null,
+    clases_pagadas: clasesPagadas
   };
 }
 

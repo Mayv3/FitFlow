@@ -6,6 +6,7 @@ import { ToastProvider } from '@/components/ui/toast/ToastProvider'
 import { Quicksand } from 'next/font/google'
 import { ThemeProvider } from '../themeProvider/ThemeProvider'
 import { ReactQueryProvider } from '@/providers/ReactQueryProvider';
+import { LocalizationProviderClient } from '@/providers/LocalizationProviderClient';
 
 const quicksand = Quicksand({
   subsets: ['latin'],
@@ -27,18 +28,19 @@ export default function RootLayout({
   return (
     <html lang="es" className={quicksand.variable}>
       <head>
-       {/* <link rel="icon" href="" type="image/png" /> */}
+        {/* <link rel="icon" href="" type="image/png" /> */}
       </head>
       <body className="font-quicksand">
-        
-        <ReactQueryProvider>
+        <LocalizationProviderClient>
+          <ReactQueryProvider>
             <ThemeProvider>
               <UserProvider>
                 {children}
                 <ToastProvider />
               </UserProvider>
             </ThemeProvider>
-        </ReactQueryProvider>
+          </ReactQueryProvider>
+        </LocalizationProviderClient>
       </body>
     </html>
   )

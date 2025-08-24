@@ -1,7 +1,8 @@
-import moment from 'moment-timezone';
+import moment from 'moment-timezone'
 
-export const fechaArgentina = moment().tz('America/Argentina/Buenos_Aires').format('DD/MM/YYYY');
-export const horaArgentina = moment().tz('America/Argentina/Buenos_Aires').format('HH:mm:ss');
+const TZ = 'America/Argentina/Buenos_Aires'
 
-export const getFechaHoraArgentinaISO = () =>
-    moment().tz(TZ).format();
+export const fechaArgentina = () =>
+    moment().tz(TZ).format('YYYY-MM-DD')
+  export const horaArgentina = () =>
+    moment().tz(TZ).format('HH:mm:ss')

@@ -13,19 +13,30 @@ async function getAllPayments(gymId) {
     return data ?? [];
 }
 
-async function getTodaysPayments(gymId, today) {
-    let q = supabaseAdmin.from('pagos').select('monto').eq('fecha_de_pago', today);
+async function getPaymentsInRange(gymId, fromDate, toDate) {
+    let q = supabaseAdmin
+        .from('pagos')
+        .select('monto')
+        .is('deleted_at', null);
+
     if (gymId) q = q.eq('gym_id', gymId);
+    if (fromDate) q = q.gte('fecha_de_pago', fromDate);
+    if (toDate) q = q.lte('fecha_de_pago', toDate);
+
     const { data, error } = await q;
     if (error) throw error;
     return data ?? [];
 }
 
-async function getPaymentsByMethod(gymId) {
+async function getPaymentsByMethod(gymId, fromDate, toDate) {
     let q = supabaseAdmin
         .from('pagos')
-        .select('metodo_de_pago_id, monto, metodos_de_pago(nombre)');
+        .select('metodo_de_pago_id, monto, metodos_de_pago(nombre)')
+        .is('deleted_at', null);
+
     if (gymId) q = q.eq('gym_id', gymId);
+    if (fromDate) q = q.gte('fecha_de_pago', fromDate);
+    if (toDate) q = q.lte('fecha_de_pago', toDate);
 
     const { data, error } = await q;
     if (error) throw error;
@@ -41,51 +52,57 @@ async function getPaymentsByMethod(gymId) {
     return Object.values(grouped);
 }
 
-async function getPaymentsByTipo(gymId, today) {
+async function getPaymentsByTipo(gymId, fromDate, toDate) {
     let q = supabaseAdmin
         .from('pagos')
-        .select('tipo, monto', { head: false });
+        .select('tipo, monto')
+        .is('deleted_at', null);
 
     if (gymId) q = q.eq('gym_id', gymId);
-    q = q.eq('fecha_de_pago', today);
+    if (fromDate) q = q.gte('fecha_de_pago', fromDate);
+    if (toDate) q = q.lte('fecha_de_pago', toDate);
 
     const { data, error } = await q;
     if (error) throw error;
 
     const grouped = {};
-    for (const row of data ?? []) {
+    (data ?? []).forEach((row) => {
         const key = row.tipo || 'Otro';
-        grouped[key] = grouped[key] || { tipo: key, count: 0, monto: 0 };
+        if (!grouped[key]) grouped[key] = { tipo: key, count: 0, monto: 0 };
         grouped[key].count += 1;
         grouped[key].monto += Number(row.monto || 0);
-    }
+    });
 
     return Object.values(grouped);
 }
 
-export async function getPaymentsStatsService({ gymId } = {}) {
-    const today = getTodayArgentina();
+export async function getPaymentsStatsService({ gymId, fromDate, toDate } = {}) {
+    const today = moment().tz('America/Argentina/Buenos_Aires').format('YYYY-MM-DD')
   
-    const [allPayments, todaysPayments, byMethod, byTipo] = await Promise.all([
+    const appliedFrom = fromDate || today
+    const appliedTo = toDate || today
+  
+    const [allPayments, paymentsInRange, byMethod, byTipo] = await Promise.all([
       getAllPayments(gymId),
-      getTodaysPayments(gymId, today),
-      getPaymentsByMethod(gymId),
-      getPaymentsByTipo(gymId, today),
-    ]);
+      getPaymentsInRange(gymId, appliedFrom, appliedTo),
+      getPaymentsByMethod(gymId, appliedFrom, appliedTo),
+      getPaymentsByTipo(gymId, appliedFrom, appliedTo),
+    ])
   
-    const totalPagos = allPayments.length;
-    const totalMonto = allPayments.reduce((acc, p) => acc + (p.monto ?? 0), 0);
+    const totalPagos = allPayments.length
+    const totalMonto = allPayments.reduce((acc, p) => acc + (p.monto ?? 0), 0)
   
-    const pagosHoy = todaysPayments.length;
-    const montoHoy = todaysPayments.reduce((acc, p) => acc + (p.monto ?? 0), 0);
+    const pagosFiltrados = paymentsInRange.length
+    const montoFiltrado = paymentsInRange.reduce((acc, p) => acc + (p.monto ?? 0), 0)
   
     return {
       totalPagos,
       totalMonto,
-      pagosHoy,
-      montoHoy,
+      pagosFiltrados,
+      montoFiltrado,
       byMethod,
       byTipo,
-    };
+      range: { fromDate: appliedFrom, toDate: appliedTo }
+    }
   }
-  
+

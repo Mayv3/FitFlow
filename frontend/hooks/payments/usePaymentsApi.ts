@@ -25,17 +25,24 @@ type GetPaymentsResponse<T = Payment> = {
   q: string;
 };
 
-const key = (gymId: string, page: number, limit: number, q: string) =>
-  ['payments', gymId, page, limit, q] as const;
+const key = (
+  gymId: string,
+  page: number,
+  limit: number,
+  q: string,
+  fromDate?: string | null,
+  toDate?: string | null
+) => ['payments', gymId, page, limit, q, fromDate, toDate] as const;
 
 export function usePagosByGym(
   gymId: string,
   page = 1,
   limit = 20,
-  q = ''
+  q = '',
+  filters?: { fromDate?: string | null; toDate?: string | null }
 ) {
   return useQuery<GetPaymentsResponse>({
-    queryKey: key(gymId, page, limit, q),
+    queryKey: key(gymId, page, limit, q, filters?.fromDate, filters?.toDate),
     enabled: Boolean(gymId),
     placeholderData: keepPreviousData,
     staleTime: 2 * 60 * 1000,
@@ -43,14 +50,21 @@ export function usePagosByGym(
     refetchOnWindowFocus: false,
     queryFn: async () => {
       const { data } = await axiosInstance.get('/api/pagos', {
-        params: { gym_id: gymId, page, limit, q },
+        params: {
+          gym_id: gymId,
+          page,
+          limit,
+          q,
+          fromDate: filters?.fromDate,
+          toDate: filters?.toDate,
+        },
       });
       return data as GetPaymentsResponse;
     },
   });
 }
 
-export function useAddPago(gymId: string) {
+export function useAddPago(gymId: string, filters?: { fromDate?: string | null; toDate?: string | null }) {
   const qc = useQueryClient();
 
   return useMutation({
@@ -59,8 +73,8 @@ export function useAddPago(gymId: string) {
       return data as Payment;
     },
     onSuccess: (nuevoPago) => {
-      qc.setQueryData(['payments', gymId, 1, 20, ''], (old: any) => {
-        if (!old) return { items: [nuevoPago], total: 1 };
+      qc.setQueriesData({ queryKey: ['payments', gymId] }, (old: any) => {
+        if (!old) return old;
         return {
           ...old,
           items: [nuevoPago, ...old.items],
@@ -75,21 +89,26 @@ export function useAddPago(gymId: string) {
           items: old.items.map((a: any) =>
             a.id === nuevoPago.alumno_id
               ? {
-                  ...a,
-                  plan_id: nuevoPago.plan_id,
-                  plan_nombre: nuevoPago.plan_nombre,
-                  fecha_de_vencimiento: nuevoPago.fecha_de_venc,
-                }
+                ...a,
+                plan_id: nuevoPago.plan_id,
+                plan_nombre: nuevoPago.plan_nombre,
+                fecha_de_vencimiento: nuevoPago.fecha_de_venc,
+              }
               : a
           ),
         };
       });
 
+      qc.invalidateQueries({ queryKey: ['paymentsStats', gymId] });
+
     },
   });
 }
 
-export function useEditPago(gymId: string) {
+export function useEditPago(
+  gymId: string,
+  filters?: { fromDate?: string | null; toDate?: string | null }
+) {
   const qc = useQueryClient();
 
   return useMutation({
@@ -98,9 +117,7 @@ export function useEditPago(gymId: string) {
       return data as Payment;
     },
     onSuccess: (updatedPago) => {
-      if (!updatedPago?.id) return;
-
-      qc.setQueryData(['payments', gymId, 1, 20, ''], (old: any) => {
+      qc.setQueriesData({ queryKey: ['payments', gymId] }, (old: any) => {
         if (!old) return old;
         return {
           ...old,
@@ -109,26 +126,35 @@ export function useEditPago(gymId: string) {
           ),
         };
       });
+
+      qc.invalidateQueries({ queryKey: ['paymentsStats', gymId] });
+
     },
   });
 }
 
-export function useDeletePago(gymId: string) {
+export function useDeletePago(
+  gymId: string,
+  filters?: { fromDate?: string | null; toDate?: string | null }) {
   const qc = useQueryClient();
+
   return useMutation({
     mutationFn: async (id: number) => {
       await axiosInstance.delete(`/api/pagos/${id}`, { params: { gym_id: gymId } });
       return id;
     },
     onSuccess: (deletedId) => {
-      qc.setQueryData(['payments', gymId, 1, 20, ''], (old: any) => {
-        if (!old) return old;
+      qc.setQueriesData({ queryKey: ['payments', gymId] }, (old: any) => {
+        if (!old) return old
         return {
           ...old,
           items: old.items.filter((p: any) => p.id !== deletedId),
           total: (old.total ?? old.items.length) - 1,
-        };
-      });
+        }
+      })
+
+      qc.invalidateQueries({ queryKey: ['paymentsStats', gymId] });
+
     },
   });
 }

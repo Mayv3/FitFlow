@@ -1,12 +1,20 @@
 import { useQuery } from '@tanstack/react-query';
 
-export function usePaymentsStats(gymId?: string) {
+export function usePaymentsStats(
+  gymId?: string,
+  filters?: { fromDate?: string | null; toDate?: string | null }
+) {
   return useQuery({
-    queryKey: ['paymentsStats', gymId],
+    queryKey: ['paymentsStats', gymId, filters?.fromDate ?? null, filters?.toDate ?? null],
     queryFn: async () => {
       if (!gymId) return null;
 
-      const res = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/api/stats/payments?gymId=${gymId}`);
+      const url = new URL(`${process.env.NEXT_PUBLIC_BACKEND_URL}/api/stats/payments`);
+      url.searchParams.append('gymId', gymId);
+      if (filters?.fromDate) url.searchParams.append('fromDate', filters.fromDate);
+      if (filters?.toDate) url.searchParams.append('toDate', filters.toDate);
+
+      const res = await fetch(url.toString());
       if (!res.ok) {
         throw new Error('Error al obtener estadísticas de pagos');
       }

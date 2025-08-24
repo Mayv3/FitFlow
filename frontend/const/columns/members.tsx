@@ -35,10 +35,28 @@ export const columnsMember = (
     {
       field: 'clases_realizadas',
       headerName: 'Clases realizadas',
-      type: 'number', flex: 0.12,
+      type: 'number',
+      flex: 0.12,
       align: 'center',
       headerAlign: 'center',
+      renderCell: (params) => {
+        const realizadas = params.row.clases_realizadas ?? 0;
+        const pagadas = params.row.clases_pagadas ?? 0;
+
+        if (realizadas >= pagadas && pagadas > 0) {
+          return (
+            <StateCheap
+              code='limit'
+              label="Límite"
+              daysDiff={null}
+            />
+          );
+        }
+
+        return realizadas;
+      },
     },
+
     {
       field: 'fecha_nacimiento',
       headerName: 'Fecha de nacimiento',

@@ -10,8 +10,8 @@ import {
 
 const parseBool = (v) => v === 'true' || v === '1' || v === true;
 
-
 export const listPagos = async (req, res) => {
+
   try {
     const gymId = req.query.gym_id || null;
     const page = Number(req.query.page ?? 1);
@@ -19,7 +19,15 @@ export const listPagos = async (req, res) => {
     const q = String(req.query.q ?? '');
     const includeDeleted = parseBool(req.query.includeDeleted);
 
-    const result = await getPagosPaged({ gymId, page, limit, q, includeDeleted });
+    console.log('fromDate:', req.query.fromDate);
+    console.log('toDate:', req.query.toDate);
+
+    const result = await getPagosPaged({
+      gymId, page, limit, q, includeDeleted, filters: {
+        fromDate: req.query.fromDate,
+        toDate: req.query.toDate,
+      },
+    });
     res.json(result);
   } catch (error) {
     res.status(500).json({ error: error.message });

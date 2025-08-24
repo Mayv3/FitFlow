@@ -27,7 +27,7 @@ export function SearchBar({
     return (
         <TextField
             fullWidth
-            size="small"
+            sx={{ flex: 1 }}
             value={local}
             onChange={(e) => {
                 const next = e.target.value;

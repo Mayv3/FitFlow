@@ -10,6 +10,10 @@ export const fechaHoyArgentinaISO = moment().format('YYYY-MM-DD');
 export const fechaHoyMasUnMesISO = moment().add(1, 'month').format('YYYY-MM-DD');
 export const horaActualArgentina = moment.tz('America/Argentina/Buenos_Aires').format('HH:mm');
 
+export const inicioDelMes = moment().startOf('month');
+export const finDeMes = moment().endOf('month');
+export const fechaHoyArgentinaSinFormato = moment().tz('America/Argentina/Buenos_Aires').startOf('day');
+
 export const formatearFecha = (valor: string | Date | null | undefined): string => {
   if (!valor) return '—';
 
@@ -19,7 +23,6 @@ export const formatearFecha = (valor: string | Date | null | undefined): string 
   const formateada = fecha.format('DD/MM/YYYY');
   return formateada;
 };
-
 export const estadoVencimiento = (
   fecha: string | Date | null | undefined,
   diasAviso = 3

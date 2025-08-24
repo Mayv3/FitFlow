@@ -3,8 +3,7 @@ import { GridColDef } from '@mui/x-data-grid';
 import React from 'react';
 import EditIcon from '@mui/icons-material/Edit';
 import DeleteIcon from '@mui/icons-material/Delete';
-import { formatearFecha, estadoVencimiento } from '@/utils/date/dateUtils';
-import { StateCheap } from '@/components/ui/cheap/StateCheap';
+import { formatearFecha,  } from '@/utils/date/dateUtils';
 import { Payment } from '@/models/Payment/Payment';
 
 const ARS = new Intl.NumberFormat('es-AR', {

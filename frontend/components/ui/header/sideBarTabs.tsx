@@ -11,8 +11,8 @@ export const adminTabs = [
   { label: 'Inicio', icon: <HomeIcon />, route: '/dashboard/administrator' },
   { label: 'Miembros', icon: <GroupIcon />, route: '/dashboard/administrator/members' },
   { label: 'Pagos', icon: <PaidIcon />, route: '/dashboard/administrator/payments' },
-  { label: 'Turnos', icon: <TodayIcon />, route: '/dashboard/administrator/turnos' },
   { label: 'Planes', icon: <AssignmentIcon />, route: '/dashboard/administrator/plans' },
+  { label: 'Turnos', icon: <TodayIcon />, route: '/dashboard/administrator/turnos' },
   { label: 'Estadísticas', icon: <BarChartIcon />, route: '/dashboard/administrator/stats' },
   { label: 'Configuración', icon: <SettingsIcon />, route: '/dashboard/administrator/settings' },
   { label: 'Soporte', icon: <HelpIcon />, route: '/dashboard/administrator/support' },
@@ -22,10 +22,10 @@ export const recepcionistTabs = [
   { label: 'Inicio', icon: <HomeIcon />, route: '/dashboard/receptionist' },
   { label: 'Miembros', icon: <GroupIcon />, route: '/dashboard/receptionist/members' },
   { label: 'Pagos', icon: <PaidIcon />, route: '/dashboard/receptionist/payments' },
+  { label: 'Planes', icon: <AssignmentIcon />, route: '/dashboard/receptionist/plans' },
   { label: 'Turnos', icon: <TodayIcon />, route: '/dashboard/receptionist/turnos' },
-  { label: 'Planes', icon: <AssignmentIcon />, route: '/dashboard/administrator/plans' },
   { label: 'Soporte', icon: <HelpIcon />, route: '/dashboard/receptionist/support' },
-  { label: 'Configuración', icon: <SettingsIcon />, route: '/dashboard/administrator/settings' },
+  { label: 'Configuración', icon: <SettingsIcon />, route: '/dashboard/receptionist/settings' },
 ];
 
 export const memberTabs = [

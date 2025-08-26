@@ -1,32 +1,39 @@
 'use client'
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { useQuery, useMutation, useQueryClient, keepPreviousData } from '@tanstack/react-query'
 import axios from 'axios'
 import { Plan } from '@/models/Plan/Plan'
 
 const planesKey = (gymId: string) => ['planes-precios', gymId] as const
 
-export const usePlanesPrecios = (gymId?: string) => {
+export const usePlanesPrecios = (
+  gymId?: string,
+  page = 1,
+  pageSize = 20,
+  q = ''
+) => {
   const query = useQuery({
-    queryKey: planesKey(gymId!),
+    queryKey: ['planes-precios', gymId, page, pageSize, q],
     enabled: !!gymId,
     staleTime: 1000 * 60 * 5,
-    queryFn: async (): Promise<Plan[]> => {
+    placeholderData: keepPreviousData,
+    queryFn: async (): Promise<{ items: Plan[]; total: number }> => {
       const { data } = await axios.get(
         `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/planes`,
-        { params: { gymId } }
+        { params: { gymId, page, pageSize, q } }
       )
       return data
     },
-    select: (rows: Plan[]) => {
+    select: (res) => {
+      const rows = res.items ?? res
       const options = rows.map(p => ({
         label: `${p.nombre} — ${p.numero_clases} clases ($${p.precio})`,
-        value: p.id, // número
+        value: p.id,
       }))
       const byId = rows.reduce<Record<string, Plan>>((acc, p) => {
         acc[String(p.id)] = p
         return acc
       }, {})
-      return { rows, options, byId }
+      return { rows, options, byId, total: res.total ?? rows.length }
     },
   })
 
@@ -36,9 +43,11 @@ export const usePlanesPrecios = (gymId?: string) => {
     options: query.data?.options ?? [],
     byId: query.data?.byId ?? {},
     rows: query.data?.rows ?? [],
+    total: query.data?.total ?? 0,
     error: query.error,
   }
 }
+
 
 export const useAddPlan = (gymId: string) => {
   const qc = useQueryClient()

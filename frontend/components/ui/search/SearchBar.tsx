@@ -4,6 +4,7 @@ import { TextField, InputAdornment, IconButton, CircularProgress } from '@mui/ma
 import SearchIcon from '@mui/icons-material/Search';
 import CloseIcon from '@mui/icons-material/Close';
 import { SearchBarProps } from '@/models/Search/Search';
+import { searchValidator } from '@/utils/validators/searchValidator';
 
 export function SearchBar({
     value,
@@ -24,21 +25,33 @@ export function SearchBar({
         onSearch?.(local.trim());
     };
 
+    const handleChange = (next: string) => {
+        const { valido } = searchValidator(next);
+
+        if (next === '') {
+            setLocal(next);
+            onChange(next);
+            return;
+        }
+
+        if (!valido) return;
+
+        setLocal(next);
+        onChange(next);
+    };
     return (
         <TextField
             fullWidth
             sx={{ flex: 1 }}
             value={local}
-            onChange={(e) => {
-                const next = e.target.value;
-                setLocal(next);
-                onChange(next);
-            }}
+            onChange={(e) => handleChange(e.target.value)}
             onKeyDown={(e) => {
                 if (e.key === 'Enter') handleCommit();
             }}
             placeholder={placeholder}
             inputRef={inputRef}
+            error={!searchValidator(local).valido && local !== ''}
+            helperText={!searchValidator(local).valido && local !== '' ? 'Entrada inválida' : ' '}
             slotProps={{
                 input: {
                     startAdornment: (

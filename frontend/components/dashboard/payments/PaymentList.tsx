@@ -78,7 +78,6 @@ export default function PaymentList() {
 
     const fields = useMemo(() => getInputFieldsPagos({
         planOptions,
-        paymentMethodOptions: paymentMethods.map((pm: any) => ({ label: pm.nombre, value: pm.id })),
         searchFromCache,
     }), [planOptions, paymentMethods, searchFromCache]);
 
@@ -104,8 +103,31 @@ export default function PaymentList() {
 
     const handleAddPayment = async (values: any) => {
         try {
-            const payment = await addPago.mutateAsync({ ...values, gym_id: gymId });
-            console.log(payment)
+            const items = [];
+            if (values.monto_efectivo) {
+                items.push({ metodo_de_pago_id: 1, monto: Number(values.monto_efectivo) });
+            }
+            if (values.monto_mp) {
+                items.push({ metodo_de_pago_id: 2, monto: Number(values.monto_mp) });
+            }
+            if (values.monto_tarjeta) {
+                items.push({ metodo_de_pago_id: 3, monto: Number(values.monto_tarjeta) });
+            }
+
+            const monto_total = items.reduce((acc, i) => acc + i.monto, 0);
+
+            const payload = {
+                ...values,
+                gym_id: gymId,
+                items,
+                monto_total,
+            };
+
+            delete payload.monto_efectivo;
+            delete payload.monto_mp;
+            delete payload.monto_tarjeta;
+
+            await addPago.mutateAsync(payload);
             setOpenAdd(false);
             notify.success("Pago añadido correctamente");
         } catch (error) {
@@ -115,10 +137,18 @@ export default function PaymentList() {
     };
 
     const handleOpenEdit = (payment: any) => {
+        const efectivo = payment.items?.find((i: any) => i.metodo_de_pago_id === 1)?.monto ?? '';
+        const mp = payment.items?.find((i: any) => i.metodo_de_pago_id === 2)?.monto ?? '';
+        const tarjeta = payment.items?.find((i: any) => i.metodo_de_pago_id === 3)?.monto ?? '';
+
         const sanitized = {
             ...payment,
+            monto_efectivo: efectivo,
+            monto_mp: mp,
+            monto_tarjeta: tarjeta,
             hora: payment.hora ? payment.hora.slice(0, 5) : '',
         };
+
         setEditingPago(sanitized);
         setOpenEdit(true);
     };
@@ -132,8 +162,29 @@ export default function PaymentList() {
         try {
             const id = editingPago?.id;
             if (!id) throw new Error("No hay id para editar el pago");
+
+            const items = [];
+            if (values.monto_efectivo) {
+                items.push({ metodo_de_pago_id: 1, monto: Number(values.monto_efectivo) });
+            }
+            if (values.monto_mp) {
+                items.push({ metodo_de_pago_id: 2, monto: Number(values.monto_mp) });
+            }
+            if (values.monto_tarjeta) {
+                items.push({ metodo_de_pago_id: 3, monto: Number(values.monto_tarjeta) });
+            }
+
+            const payload = {
+                ...values,
+                items,
+            };
+
+            delete payload.monto_efectivo;
+            delete payload.monto_mp;
+            delete payload.monto_tarjeta;
+
             handleCloseEdit();
-            await editPago.mutateAsync({ id, values });
+            await editPago.mutateAsync({ id, values: payload });
             notify.success("Pago editado correctamente");
         } catch (error) {
             console.error("Error al editar pago:", error);
@@ -188,7 +239,7 @@ export default function PaymentList() {
                     <Stack
                         gap={2}
                         direction={{ xs: 'column', md: 'row' }}
-                        alignItems={{ xs: 'stretch', md: 'center' }}
+                        alignItems="stretch"
                         justifyContent="space-between"
                     >
                         <Box
@@ -196,7 +247,7 @@ export default function PaymentList() {
                                 display: 'flex',
                                 flexDirection: { xs: 'column', sm: 'row' },
                                 gap: 2,
-                                width: '100%',
+                                flex: 1,
                             }}
                         >
                             <SearchBar
@@ -241,7 +292,8 @@ export default function PaymentList() {
                             startIcon={<AddIcon />}
                             sx={{
                                 whiteSpace: 'nowrap',
-                                width: { xs: '100%', md: 'auto' }
+                                width: { xs: '100%', md: '300px' },
+                                height: '56px',
                             }}
                             onClick={() => setOpenAdd(true)}
                         >
@@ -249,7 +301,6 @@ export default function PaymentList() {
                         </Button>
                     </Stack>
                 </Box>
-
             </Box>
 
             <GenericDataGrid

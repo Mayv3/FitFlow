@@ -43,7 +43,14 @@ export const columnsPlans = (
     sortable: false,
     ...center,
     renderCell: (p) => (
-      <Box sx={{ display: 'flex', justifyContent: 'center', gap: 1 }}>
+      <Box sx={{ 
+        display: 'flex', 
+        justifyContent: 'center', 
+        alignItems: 'center',
+        gap: 1,
+        width: '100%',
+        height: '100%'
+      }}>
         <IconButton
           size="small"
           color="primary"

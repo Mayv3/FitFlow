@@ -18,6 +18,7 @@ import { useRouter, usePathname } from 'next/navigation';
 import { useEffect, useState, useRef } from 'react';
 import { useLogout } from '@/hooks/logout/useLogout';
 import LogoutIcon from '@mui/icons-material/Logout';
+import Cookies from 'js-cookie';
 
 type TabItem = {
   label: string;
@@ -31,7 +32,8 @@ type HeaderComponentProps = {
 
 export const SideBar = ({ tabs }: HeaderComponentProps) => {
   const scrollRef = useRef<HTMLDivElement>(null);
-
+  const userName = Cookies.get('name');
+  const gymName = Cookies.get('gym_name')
   const router = useRouter();
   const pathname = usePathname();
   const theme = useTheme();
@@ -79,7 +81,7 @@ export const SideBar = ({ tabs }: HeaderComponentProps) => {
             component="div"
             sx={{ bgcolor: 'transparent', color: 'white' }}
           >
-            Icon - Nombre del gimnasio
+            Icono - {gymName}
           </ListSubheader>
         }
       >
@@ -140,7 +142,7 @@ export const SideBar = ({ tabs }: HeaderComponentProps) => {
             <AccountCircleIcon fontSize="medium" />
           </ListItemIcon>
           <ListItemText
-            primary="Nombre del usuario"
+            primary={userName}
             primaryTypographyProps={{
               color: selectedIndex === 999 ? 'black' : 'white',
             }}

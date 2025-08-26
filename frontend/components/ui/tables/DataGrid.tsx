@@ -38,7 +38,7 @@ export function GenericDataGrid<T extends { id: string | number }>({
     >
       <Box
         sx={{
-          minWidth: 1000,
+          minWidth: '100%',
         }}
       >
         <DataGrid

@@ -7,6 +7,8 @@ import AttachMoneyIcon from '@mui/icons-material/AttachMoney'
 import PaymentIcon from '@mui/icons-material/Payment'
 import CategoryIcon from '@mui/icons-material/Category'
 
+
+
 export const PaymentStats = ({ data, isLoading }: { data?: any; isLoading: boolean }) => {
   const theme = useTheme()
   const iconStyle = { color: theme.palette.primary.main, fontSize: 40 }
@@ -26,6 +28,13 @@ export const PaymentStats = ({ data, isLoading }: { data?: any; isLoading: boole
       alpha(theme.palette.primary.main, 0.6),
     ]
     return variations[index % variations.length]
+  }
+
+  const methodLabels: Record<string, string> = {
+    'Efectivo': 'Efectivo',
+    'Tarjeta': 'Tarjeta',
+    'Mercado pago': 'MP',
+    'Mixto': 'Mixto'
   }
 
   return (
@@ -96,6 +105,7 @@ export const PaymentStats = ({ data, isLoading }: { data?: any; isLoading: boole
         icon={<PaymentIcon sx={iconStyle} />}
         chart={
           <Box display="flex" flexDirection="column" width="100%" mt={1}>
+            {/* Barra segmentada */}
             <Box display="flex" height={10} borderRadius={5} overflow="hidden">
               {byMethod.map((m: any, index: number) => {
                 const percent = Math.round((m.count * 100) / (totalPagos || 1))
@@ -111,6 +121,7 @@ export const PaymentStats = ({ data, isLoading }: { data?: any; isLoading: boole
               })}
             </Box>
 
+            {/* Leyendas */}
             <Box display="flex" flexWrap="wrap" gap={1} mt={1}>
               {byMethod.map((m: any, index: number) => {
                 const percent = Math.round((m.count * 100) / (totalPagos || 1))
@@ -118,7 +129,7 @@ export const PaymentStats = ({ data, isLoading }: { data?: any; isLoading: boole
                   <Box key={m.metodo} display="flex" alignItems="center" gap={0.5}>
                     <Box sx={{ width: 10, height: 10, borderRadius: '2px', bgcolor: getColor(index) }} />
                     <Typography variant="caption" color="text.secondary">
-                      {m.metodo}: {percent}% ({m.count})
+                      {methodLabels[m.metodo] ?? m.metodo}: {percent}% ({m.count})
                     </Typography>
                   </Box>
                 )

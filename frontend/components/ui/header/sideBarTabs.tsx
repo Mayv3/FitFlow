@@ -12,7 +12,7 @@ export const adminTabs = [
   { label: 'Miembros', icon: <GroupIcon />, route: '/dashboard/administrator/members' },
   { label: 'Pagos', icon: <PaidIcon />, route: '/dashboard/administrator/payments' },
   { label: 'Planes', icon: <AssignmentIcon />, route: '/dashboard/administrator/plans' },
-  { label: 'Turnos', icon: <TodayIcon />, route: '/dashboard/administrator/turnos' },
+  { label: 'Turnos', icon: <TodayIcon />, route: '/dashboard/administrator/appointments' },
   { label: 'Estadísticas', icon: <BarChartIcon />, route: '/dashboard/administrator/stats' },
   { label: 'Configuración', icon: <SettingsIcon />, route: '/dashboard/administrator/settings' },
   { label: 'Soporte', icon: <HelpIcon />, route: '/dashboard/administrator/support' },
@@ -23,7 +23,7 @@ export const recepcionistTabs = [
   { label: 'Miembros', icon: <GroupIcon />, route: '/dashboard/receptionist/members' },
   { label: 'Pagos', icon: <PaidIcon />, route: '/dashboard/receptionist/payments' },
   { label: 'Planes', icon: <AssignmentIcon />, route: '/dashboard/receptionist/plans' },
-  { label: 'Turnos', icon: <TodayIcon />, route: '/dashboard/receptionist/turnos' },
+  { label: 'Turnos', icon: <TodayIcon />, route: '/dashboard/receptionist/appointments' },
   { label: 'Soporte', icon: <HelpIcon />, route: '/dashboard/receptionist/support' },
   { label: 'Configuración', icon: <SettingsIcon />, route: '/dashboard/receptionist/settings' },
 ];
@@ -31,8 +31,8 @@ export const recepcionistTabs = [
 export const memberTabs = [
   { label: 'Mi cuenta', icon: <GroupIcon />, route: '/dashboard/member' },
   { label: 'Pagos', icon: <PaidIcon />, route: '/dashboard/member/payments' },
-  { label: 'Turnos', icon: <TodayIcon />, route: '/dashboard/member/turnos' },
-  { label: 'Configuración', icon: <SettingsIcon />, route: '/dashboard/member/turnos' },
+  { label: 'Turnos', icon: <TodayIcon />, route: '/dashboard/member/appointments' },
+  { label: 'Configuración', icon: <SettingsIcon />, route: '/dashboard/member/settings' },
 ];
 
 export const ownerTabs = [

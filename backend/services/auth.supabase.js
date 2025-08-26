@@ -30,13 +30,22 @@ export async function loginUser({ email, password }) {
 
   const { data: profile, error: profileError } = await supabase
     .from('users')
-    .select('id, dni, gym_id, role_id, auth_user_id, name')
+    .select(`
+      id,
+      dni,
+      gym_id,
+      role_id,
+      auth_user_id,
+      name,
+      gyms ( name )
+    `)
     .eq('auth_user_id', user.id)
     .single()
   if (profileError) throw profileError
 
   return { session, profile }
 }
+
 
 export async function logoutUser() {
   const { error } = await supabase.auth.signOut()

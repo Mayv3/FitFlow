@@ -4,11 +4,9 @@ import Cookies from "js-cookie";
 
 export const getInputFieldsPagos = ({
     planOptions,
-    paymentMethodOptions,
     searchFromCache
 }: {
     planOptions: { label: string; value: number }[];
-    paymentMethodOptions: { label: string; value: number }[];
     searchFromCache: (gymId: string, q: string) => { label: string; value: any }[];
 }): Field[] => [
         {
@@ -17,7 +15,7 @@ export const getInputFieldsPagos = ({
             type: 'search-select',
             required: true,
             placeholder: 'Busca un alumno por nombre o DNI',
-            searchFromCache
+            searchFromCache,
         },
         {
             label: 'Plan',
@@ -28,47 +26,47 @@ export const getInputFieldsPagos = ({
             placeholder: 'Selecciona el plan',
         },
         {
-            label: 'Tipo (opcional)',
+            label: 'Tipo (obligatorio)',
             name: 'tipo',
             type: 'select',
             options: [
-                { label: 'Mensualidad', value: 'mensualidad' },
-                { label: 'Inscripción', value: 'inscripcion' },
-                { label: 'Clase suelta', value: 'clase_suelta' },
+                { label: 'Mensualidad', value: 'Mensualidad' },
+                { label: 'Inscripción', value: 'Inscripcion' },
+                { label: 'Clase suelta', value: 'Clase_suelta' },
                 { label: 'Otro', value: 'otro' },
             ],
-            required: false,
         },
         {
-            label: 'Monto (obligatorio)',
-            name: 'monto',
+            label: 'Monto en efectivo',
+            name: 'monto_efectivo',
             type: 'string',
-            required: true,
-            placeholder: 'Ej: 12000',
-            minLength: 1,
-            maxLength: 10,
-            regex: /^$|^\d+$/
+            placeholder: 'Ej: 1000',
+            regex: /^$|^\d+$/,
         },
         {
-            label: 'Método de pago (obligatorio)',
-            name: 'metodo_de_pago_id',
-            type: 'select',
-            options: paymentMethodOptions,
-            required: true,
-            placeholder: 'Selecciona el método de pago',
+            label: 'Monto en Mercado Pago',
+            name: 'monto_mp',
+            type: 'string',
+            placeholder: 'Ej: 2000',
+            regex: /^$|^\d+$/,
+        },
+        {
+            label: 'Monto en tarjeta',
+            name: 'monto_tarjeta',
+            type: 'string',
+            placeholder: 'Ej: 3000',
+            regex: /^$|^\d+$/,
         },
         {
             label: 'Hora (obligatorio)',
             name: 'hora',
             type: 'time',
-            regex: /^([01]\d|2[0-3]):[0-5]\d$/,
             defaultValue: horaActualArgentina,
         },
         {
             label: 'Fecha de pago (obligatorio)',
             name: 'fecha_de_pago',
             type: 'date',
-            required: true,
             defaultValue: fechaHoyArgentinaISO,
             inputProps: {
                 min: fechaHoyArgentinaISO,
@@ -76,19 +74,16 @@ export const getInputFieldsPagos = ({
             },
         },
         {
-            label: 'Fecha de vencimiento (opcional)',
+            label: 'Fecha de vencimiento (obligatorio)',
             name: 'fecha_de_venc',
             type: 'date',
-            required: false,
             defaultValue: fechaHoyMasUnMesISO,
-            inputProps: {
-                min: fechaHoyArgentinaISO
-            }
+            inputProps: { min: fechaHoyArgentinaISO },
         },
         {
             label: 'Responsable',
             name: 'responsable',
-            defaultValue: Cookies.get("name") ?? '',
+            defaultValue: Cookies.get('name') ?? '',
             type: 'string',
             minLength: 3,
             maxLength: 40,
@@ -99,14 +94,15 @@ export const layoutPayments = {
     alumno_id: { rowStart: 1, colStart: 1, colSpan: 6 },
     plan_id: { rowStart: 1, colStart: 7, colSpan: 6 },
 
-    tipo: { rowStart: 2, colStart: 1, colSpan: 4 },
-    monto: { rowStart: 2, colStart: 5, colSpan: 4 },
-    metodo_de_pago_id: { rowStart: 2, colStart: 9, colSpan: 4 },
+    tipo: { rowStart: 2, colStart: 1, colSpan: 12 },
 
-    hora: { rowStart: 3, colStart: 1, colSpan: 4 },
-    fecha_de_pago: { rowStart: 3, colStart: 5, colSpan: 4 },
-    fecha_de_venc: { rowStart: 3, colStart: 9, colSpan: 4 },
+    monto_efectivo: { rowStart: 3, colStart: 1, colSpan: 4 },
+    monto_mp: { rowStart: 3, colStart: 5, colSpan: 4 },
+    monto_tarjeta: { rowStart: 3, colStart: 9, colSpan: 4 },
 
-    responsable: { rowStart: 4, colStart: 1, colSpan: 12 },
+    fecha_de_pago: { rowStart: 4, colStart: 1, colSpan: 6 },
+    fecha_de_venc: { rowStart: 4, colStart: 7, colSpan: 6 },
 
+    responsable: { rowStart: 5, colStart: 1, colSpan: 8 },
+    hora: { rowStart: 5, colStart: 9, colSpan: 4 },
 };

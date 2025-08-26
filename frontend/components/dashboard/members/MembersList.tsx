@@ -208,13 +208,19 @@ export default function MembersList() {
 
       <Box mb={2}>
         <Stack
-          gap={{ xs: 2, md: 0 }}
-          direction="row"
-          alignItems="center"
+          gap={2}
+          direction={{ xs: 'column', md: 'row' }}
+          alignItems="stretch"
           justifyContent="space-between"
-
         >
-          <Box sx={{ flex: 1, maxWidth: 400 }}>
+          <Box
+            sx={{
+              display: 'flex',
+              flexDirection: { xs: 'column', sm: 'row' },
+              gap: 2,
+              flex: 1,
+            }}
+          >
             <SearchBar
               value={q}
               onChange={(val) => handleSearchChange(val)}
@@ -230,13 +236,18 @@ export default function MembersList() {
           <Button
             variant="contained"
             startIcon={<AddIcon />}
+            sx={{
+              whiteSpace: 'nowrap',
+              width: { xs: '100%', md: '300px' },
+              height: '56px',
+            }}
             onClick={() => setOpenAdd(true)}
-            sx={{ whiteSpace: 'nowrap' }}
           >
             Añadir miembro
           </Button>
         </Stack>
       </Box>
+
 
       <GenericDataGrid
         rows={alumnos}

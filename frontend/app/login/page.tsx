@@ -38,14 +38,14 @@ const LoginPage = () => {
       )
 
       const { session, profile } = res.data
-
       Cookies.set("id", String(profile.id))
       Cookies.set("token", session.access_token)
       Cookies.set("dni", String(profile.dni))
       Cookies.set("rol", String(profile.role_id))
       Cookies.set("gym_id", profile.gym_id)
       Cookies.set("name", String(profile.name))
-      
+      Cookies.set("gym_name", String(profile.gyms.name))
+
       setUser({
         id: profile.auth_user_id,
         dni: profile.dni,

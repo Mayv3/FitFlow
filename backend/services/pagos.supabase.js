@@ -2,6 +2,7 @@ import { supabase } from '../db/supabaseClient.js';
 
 const nowISO = () => new Date().toISOString();
 
+
 export async function getPagosPaged({
   gymId,
   page = 1,
@@ -15,13 +16,10 @@ export async function getPagosPaged({
 
   let query = supabase
     .from('pagos')
-    .select(
-      `
+    .select(`
       id,
       gym_id,
       alumno_id,
-      monto,
-      metodo_de_pago_id,
       fecha_de_pago,
       fecha_de_venc,
       responsable,
@@ -29,18 +27,21 @@ export async function getPagosPaged({
       tipo,
       plan_id,
       deleted_at,
-      metodos_de_pago:metodos_de_pago ( nombre ),
+      monto_total,
       alumno:alumnos ( nombre, dni ),
-      planes_precios ( nombre )
-      `,
-      { count: 'exact' }
-    )
+      plan:planes_precios ( nombre ),
+      items:pago_items (
+        monto,
+        referencia,
+        metodo_de_pago_id,
+        metodo:metodos_de_pago ( nombre )
+      )
+    `, { count: 'exact' })
     .order('fecha_de_pago', { ascending: false })
-    .order('hora', { ascending: false })
+    .order('hora', { ascending: false });
 
   if (gymId) query = query.eq('gym_id', gymId);
   if (!includeDeleted) query = query.is('deleted_at', null);
-
   if (filters.fromDate) query = query.gte('fecha_de_pago', filters.fromDate);
   if (filters.toDate) query = query.lte('fecha_de_pago', filters.toDate);
 
@@ -55,9 +56,18 @@ export async function getPagosPaged({
     const mpIds = (mpRows ?? []).map(r => r.id);
     const alumnoIds = (alRows ?? []).map(r => r.id);
 
+    let pagoIdsByMetodo = [];
+    if (mpIds.length) {
+      const { data: piRows } = await supabase
+        .from('pago_items')
+        .select('pago_id')
+        .in('metodo_de_pago_id', mpIds);
+      pagoIdsByMetodo = Array.from(new Set((piRows ?? []).map(r => r.pago_id)));
+    }
+
     const ors = [`responsable.ilike.%${s}%`];
-    if (mpIds.length) ors.push(`metodo_de_pago_id.in.(${mpIds.join(',')})`);
     if (alumnoIds.length) ors.push(`alumno_id.in.(${alumnoIds.join(',')})`);
+    if (pagoIdsByMetodo.length) ors.push(`id.in.(${pagoIdsByMetodo.join(',')})`);
 
     query = query.or(ors.join(','));
   }
@@ -67,123 +77,178 @@ export async function getPagosPaged({
   const { data, error, count } = await query;
   if (error) throw error;
 
-  const items = (data ?? []).map((p) => ({
-    ...p,
-    metodo_nombre: p?.metodos_de_pago?.nombre ?? null,
-    alumno_nombre: p?.alumno?.nombre ?? null,
-    plan_nombre: p?.planes_precios?.nombre ?? null,
-  }));
+  const items = (data ?? []).map(p => {
+    const metodos = (p?.items ?? []).map(i => i?.metodo?.nombre).filter(Boolean);
 
-  return {
-    items,
-    total: count ?? 0,
-    page,
-    limit,
-    q,
-  };
+    let metodo_legible = '—';
+    if (metodos.length === 1) {
+      metodo_legible = metodos[0];
+    } else if (metodos.length > 1) {
+      metodo_legible = 'Mixto';
+    }
+
+    return {
+      ...p,
+      alumno_nombre: p?.alumno?.nombre ?? null,
+      plan_nombre: p?.plan?.nombre ?? null,
+      metodo_legible,
+      metodos_legibles: (p?.items ?? []).map(
+        i => `${i?.metodo?.nombre ?? '—'} $${i?.monto ?? 0}`
+      )
+    };
+  });
+
+  return { items, total: count ?? 0, page, limit, q };
 }
 
 export async function getPagoById(id, { includeDeleted = false } = {}) {
-  let q = supabase.from('pagos').select('*').eq('id', id);
-  if (!includeDeleted) q = q.is('deleted_at', null);
-  const { data, error } = await q.single();
-  if (error) throw error;
-  return data;
-}
-
-export async function createPago(pago) {
-  const { data, error } = await supabase
-    .from('pagos')
-    .insert(pago)
-    .select(`
-      id,
-      monto,
-      metodo_de_pago_id,
-      alumno_id,
-      plan_id,
-      tipo,
-      hora,
-      fecha_de_pago,
-      fecha_de_venc,
-      responsable,
-      alumnos ( nombre ),
-      plan:planes_precios ( nombre, numero_clases ),
-      metodo:metodos_de_pago ( nombre )
-    `)
-    .single();
-
-  if (error) throw error;
-
-  const clasesPagadas = data.plan?.numero_clases ?? 0;
-
-
-  const { error: eUpd } = await supabase
-    .from('alumnos')
-    .update({
-      plan_id: pago.plan_id,
-      fecha_de_vencimiento: pago.fecha_de_venc,
-      clases_realizadas: 0,
-      clases_pagadas: clasesPagadas
-    })
-    .eq('id', pago.alumno_id);
-
-  return {
-    ...data,
-    alumno_nombre: data.alumnos?.nombre ?? null,
-    plan_nombre: data.plan?.nombre ?? null,
-    metodo_nombre: data.metodo?.nombre ?? null,
-    clases_pagadas: clasesPagadas
-  };
-}
-
-export async function updatePago(id, nuevosDatos, { includeDeleted = false } = {}) {
   let q = supabase
     .from('pagos')
-    .update(nuevosDatos)
-    .eq('id', id)
     .select(`
       id,
       gym_id,
       alumno_id,
-      monto,
-      metodo_de_pago_id,
       fecha_de_pago,
       fecha_de_venc,
       responsable,
       hora,
       tipo,
       plan_id,
-      alumnos ( nombre, dni ),
-      metodos_de_pago ( nombre ),
-      plan:planes_precios ( nombre )
+      deleted_at,
+      monto_total,
+      alumno:alumnos ( nombre, dni ),
+      plan:planes_precios ( nombre ),
+      items:pago_items (
+        monto,
+        referencia,
+        metodo_de_pago_id,
+        metodo:metodos_de_pago ( nombre )
+      )
     `)
-    .single();
+    .eq('id', id)
+    .order('id', { ascending: true, referencedTable: 'pago_items' });
 
   if (!includeDeleted) q = q.is('deleted_at', null);
 
-  const { data, error } = await q;
+  const { data, error } = await q.single();
   if (error) throw error;
 
-  if (nuevosDatos.plan_id || nuevosDatos.fecha_de_venc) {
-    const { error: eUpd } = await supabase
-      .from('alumnos')
-      .update({
-        ...(nuevosDatos.plan_id && { plan_id: nuevosDatos.plan_id }),
-        ...(nuevosDatos.fecha_de_venc && { fecha_de_vencimiento: nuevosDatos.fecha_de_venc }),
-      })
-      .eq('id', data.alumno_id);
+  const metodos = (data?.items ?? []).map(i => i?.metodo?.nombre).filter(Boolean);
 
-    if (eUpd) throw eUpd;
+  let metodo_legible = '—';
+  if (metodos.length === 1) {
+    metodo_legible = metodos[0];
+  } else if (metodos.length > 1) {
+    metodo_legible = 'Mixto';
   }
 
   return {
     ...data,
-    alumno_nombre: data.alumnos?.nombre ?? null,
-    metodo_nombre: data.metodos_de_pago?.nombre ?? null,
-    plan_nombre: data.plan?.nombre ?? null,
+    alumno_nombre: data?.alumno?.nombre ?? null,
+    plan_nombre: data?.plan?.nombre ?? null,
+    metodo_legible,
+    metodos_legibles: (data?.items ?? []).map(
+      i => `${i?.metodo?.nombre ?? '—'} $${i?.monto ?? 0}`
+    ),
   };
 }
 
+export async function createPago(pago) {
+  const suma = (pago.items ?? []).reduce((acc, it) => acc + Number(it.monto || 0), 0);
+  if (Number(pago.monto_total || 0) !== suma) {
+    throw new Error('La suma de los ítems no coincide con monto_total');
+  }
+
+  const { data: cab, error: e1 } = await supabase
+    .from('pagos')
+    .insert({
+      alumno_id: pago.alumno_id,
+      plan_id: pago.plan_id,
+      tipo: pago.tipo,
+      hora: pago.hora,
+      fecha_de_pago: pago.fecha_de_pago,
+      fecha_de_venc: pago.fecha_de_venc,
+      responsable: pago.responsable,
+      gym_id: pago.gym_id,
+      monto_total: pago.monto_total,
+    })
+    .select('id, alumno_id, plan_id, fecha_de_venc')
+    .single();
+
+  if (e1) throw e1;
+
+  if ((pago.items ?? []).length) {
+    const rows = pago.items.map(it => ({
+      pago_id: cab.id,
+      metodo_de_pago_id: it.metodo_de_pago_id,
+      monto: it.monto,
+      referencia: it.referencia ?? null,
+    }));
+
+    const { error: e2 } = await supabase.from('pago_items').insert(rows);
+    if (e2) throw e2;
+  }
+
+  if (pago.plan_id) {
+    const { data: planRow } = await supabase
+      .from('planes_precios')
+      .select('numero_clases, nombre')
+      .eq('id', pago.plan_id)
+      .single();
+
+    const clasesPagadas = planRow?.numero_clases ?? 0;
+
+    const { error: eUpd } = await supabase
+      .from('alumnos')
+      .update({
+        plan_id: pago.plan_id,
+        fecha_de_vencimiento: pago.fecha_de_venc,
+        clases_realizadas: 0,
+        clases_pagadas: clasesPagadas,
+      })
+      .eq('id', pago.alumno_id);
+
+    if (eUpd) throw eUpd;
+  }
+
+  return await getPagoById(cab.id);
+}
+
+export async function updatePago(id, nuevosDatos, { includeDeleted = false } = {}) {
+  const { items, ...cabecera } = nuevosDatos;
+
+  let monto_total = cabecera.monto_total ?? null;
+  if (Array.isArray(items)) {
+    monto_total = items.reduce((acc, it) => acc + Number(it.monto || 0), 0);
+  }
+
+  let q = supabase
+    .from('pagos')
+    .update({ ...cabecera, monto_total })
+    .eq('id', id)
+    .select('id, alumno_id, plan_id, fecha_de_venc')
+    .single();
+  if (!includeDeleted) q = q.is('deleted_at', null);
+
+  const { data: pagoCab, error } = await q;
+  if (error) throw error;
+
+  if (Array.isArray(items)) {
+    await supabase.from('pago_items').delete().eq('pago_id', id);
+    if (items.length) {
+      const rows = items.map(it => ({
+        pago_id: id,
+        metodo_de_pago_id: it.metodo_de_pago_id,
+        monto: it.monto,
+        referencia: it.referencia ?? null,
+      }));
+      const { error: eItems } = await supabase.from('pago_items').insert(rows);
+      if (eItems) throw eItems;
+    }
+  }
+
+  return await getPagoById(id);
+}
 
 /** Soft delete */
 

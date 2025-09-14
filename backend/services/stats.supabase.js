@@ -67,6 +67,49 @@ async function getPlansDistribution(gymId) {
   }));
 }
 
+// DASHBOARD
+
+
+export async function fetchKpis(gymId) {
+  const { data, error } = await supabaseAdmin
+    .from("mv_dashboard_stats")
+    .select("*")
+    .eq("gym_id", gymId)
+    .single();
+
+  if (error) throw error;
+
+  return {
+    range: {
+      from: new Date(new Date().getFullYear(), new Date().getMonth(), 1)
+        .toISOString()
+        .split("T")[0],
+      to: new Date().toISOString().split("T")[0],
+    },
+    gym_id: gymId,
+    currency: "ARS",
+    revenue: {
+      current: data.facturacion_mes_actual,
+      previous: data.facturacion_mes_anterior,
+      deltaPct: ((data.facturacion_mes_actual - data.facturacion_mes_anterior) / data.facturacion_mes_anterior) * 100,
+    },
+    activeMembers: {
+      count: data.alumnos_activos,
+      deltaPct: Number(((data.alumnos_activos / data.alumnos_totales) * 100).toFixed(1)),
+    },
+    avgAttendancePerDay: {
+      value: Number(data.asistencias_promedio?.toFixed(1)),
+      deltaPct: 0,
+    },
+    topPlan: {
+      name: data.plan_mas_vendido,
+      count: data.alumnos_plan_mas_vendido,
+      revenue: null,
+      sharePct: data.porcentaje_plan_mas_vendido,
+    },
+  };
+}
+
 export async function getGymStatsService({ gymId } = {}) {
   const today = getTodayArgentina();
 

@@ -4,9 +4,20 @@ import { Breadcrumbs, Link, Typography } from '@mui/material';
 import NavigateNextIcon from '@mui/icons-material/NavigateNext';
 import { useRouter } from 'next/navigation';
 import { CustomBreadcrumbsProps } from '@/models/Breadcrums/Breadcrums';
+import { ADMINISTRADOR } from '@/const/roles/roles';
+import { useEffect, useState } from 'react';
 
 export function CustomBreadcrumbs({ items }: CustomBreadcrumbsProps) {
   const router = useRouter();
+  const [rol, setRol] = useState<number | null>(null);
+
+  useEffect(() => {
+    const rolCookie = document.cookie
+      .split('; ')
+      .find((row) => row.startsWith('rol='))
+      ?.split('=')[1];
+    setRol(rolCookie ? Number(rolCookie) : null);
+  }, []);
 
   return (
     <Breadcrumbs
@@ -16,32 +27,32 @@ export function CustomBreadcrumbs({ items }: CustomBreadcrumbsProps) {
       {items.map((item, index) => {
         const isLast = index === items.length - 1;
 
-        if (isLast) {
+        let href = item.href;
+        if (item.label === 'Dashboard') {
+          href =
+            rol === ADMINISTRADOR
+              ? '/dashboard/administrator/stats'
+              : '/dashboard/receptionist/members';
+        }
+
+        if (isLast || !href) {
           return (
-            <Typography key={index} color="text.primary">
+            <Typography key={index} color={isLast ? 'text.primary' : 'inherit'}>
               {item.label}
             </Typography>
           );
         }
 
-        if (item.href) {
-          return (
-            <Link
-              key={index}
-              color="inherit"
-              sx={{ cursor: 'pointer' }}
-              onClick={() => router.push(item.href!)}
-              underline="hover"
-            >
-              {item.label}
-            </Link>
-          );
-        }
-
         return (
-          <Typography key={index} color="inherit">
+          <Link
+            key={index}
+            color="inherit"
+            sx={{ cursor: 'pointer' }}
+            onClick={() => router.push(href!)}
+            underline="hover"
+          >
             {item.label}
-          </Typography>
+          </Link>
         );
       })}
     </Breadcrumbs>

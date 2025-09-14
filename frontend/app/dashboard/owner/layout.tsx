@@ -1,7 +1,7 @@
 'use client';
 
 import { SideBar } from "@/components/ui/header/SideBar";
-import { ownerTabs } from "@/components/ui/header/sideBarTabs";
+import { ownerTabs } from "@/const/headerTabs.tsx/sideBarTabs";
 import { useAuthRole } from "@/hooks/auth/useAuthRole";
 import { OWNER } from "@/const/roles/roles";
 import { useMediaQuery, useTheme } from '@mui/material';
@@ -16,18 +16,18 @@ export default function OwnerLayout({
   useAuthRole(OWNER);
 
   return (
-    <div style={{ 
-      display: 'flex',
+    <div style={{
+      display: 'flex',  
       minHeight: '100vh',
       width: '100%'
     }}>
       <SideBar tabs={ownerTabs} />
-      <main style={{ 
-        flexGrow: 1, 
+      <main style={{
+        flexGrow: 1,
         padding: '2rem',
         marginBottom: isDesktop ? '0px' : '60px',
-        marginLeft: isDesktop ? '20%' : '0px',
-        width: isDesktop ? 'calc(100% - 20%)' : '100%'
+        marginLeft: isDesktop ? '80px' : '0px',
+        width: isDesktop ? '20px' : '100%'
       }}>
         {children}
       </main>

@@ -1,4 +1,4 @@
-import { getGymStatsService } from '../services/stats.supabase.js';
+import { fetchKpis, getGymStatsService } from '../services/stats.supabase.js';
 import { getPaymentsStatsService } from '../services/paymentsStats.supabase.js';
 
 export async function getGymStatsController(req, res) {
@@ -28,5 +28,21 @@ export async function getPaymentsStatsController(req, res) {
     res.json(result);
   } catch (error) {
     res.status(500).json({ error: error.message });
+  }
+}
+
+export async function getKpis(req, res) {
+  try {
+    const gymId = req.user?.user_metadata?.gym_id;
+
+    if (!gymId) {
+      return res.status(400).json({ error: "Falta gym_id" });
+    }
+
+    const kpis = await fetchKpis(gymId);
+    return res.json(kpis);
+  } catch (error) {
+    console.error("❌ Error en getKpis:", error);
+    return res.status(500).json({ error: "Error interno del servidor" });
   }
 }

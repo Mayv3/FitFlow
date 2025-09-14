@@ -38,31 +38,24 @@ export function GenericDataGrid<T extends { id: string | number }>({
     >
       <Box
         sx={{
-          minWidth: '100%',
+          minWidth: '1400px',
         }}
       >
         <DataGrid
           sx={{
             backgroundColor: 'white',
             maxHeight: { xs: '70vh' },
-            '& .MuiDataGrid-main': {
-              backgroundColor: 'white',
-            },
-            '& .MuiDataGrid-columnHeaders': {
-              backgroundColor: 'white',
-            },
-            '& .MuiDataGrid-columnHeader': {
-              backgroundColor: 'white',
-            },
-            '& .MuiDataGrid-columnHeadersInner': {
-              backgroundColor: 'white',
-            },
-            '& .MuiDataGrid-virtualScroller': {
-              backgroundColor: 'white',
-            },
-            '& .MuiDataGrid-footerContainer': {
-              backgroundColor: 'white',
-            },
+
+            '& .MuiDataGrid-main': { backgroundColor: 'white' },
+            '& .MuiDataGrid-columnHeaders': { backgroundColor: 'white' },
+            '& .MuiDataGrid-columnHeader': { backgroundColor: 'white' },
+            '& .MuiDataGrid-columnHeadersInner': { backgroundColor: 'white' },
+            '& .MuiDataGrid-virtualScroller': { backgroundColor: 'white' },
+            '& .MuiDataGrid-footerContainer': { backgroundColor: 'white' },
+
+            ...(rows || []).reduce((acc, r) => {
+              return acc
+            }, {} as any),
           }}
           checkboxSelection={false}
           hideFooterSelectedRowCount
@@ -85,6 +78,7 @@ export function GenericDataGrid<T extends { id: string | number }>({
           })}
           pageSizeOptions={pageSizeOptions}
         />
+
       </Box>
     </Box>
   );

@@ -30,7 +30,6 @@ import { fechaHoyArgentinaSinFormato, finDeMes, inicioDelMes } from '@/utils/dat
 import moment from 'moment';
 import { usePaymentsStats } from '@/hooks/stats/usePaymentsStats';
 
-
 export default function PaymentList() {
     const { user, loading: userLoading } = useUser();
     const gymId = user?.gym_id ?? '';
@@ -315,7 +314,6 @@ export default function PaymentList() {
             />
 
             <PaymentStats data={stats} isLoading={statsLoading} />
-
 
             {openAdd && (
                 <FormModal

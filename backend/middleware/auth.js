@@ -18,5 +18,6 @@ export async function verifyToken(req, res, next) {
   }
 
   req.user = user
+  req.gymId = user.user_metadata?.gym_id
   next()
 }

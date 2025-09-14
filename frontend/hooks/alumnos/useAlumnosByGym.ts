@@ -45,6 +45,8 @@ export const useAlumnosSimpleByGym = (gymId?: string) => {
         }
       )
       return data
-    }
+    },
+    placeholderData: (prev) => prev,
+    staleTime: 1000 * 60 * 5,         
   })
 }

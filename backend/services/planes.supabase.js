@@ -34,20 +34,20 @@ export const getPlanes = async ({ gymId, page, pageSize, q }) => {
   return page && pageSize ? { items: data, total: count ?? 0 } : data
 }
 
-export const createPlan = async ({ nombre, numero_clases, precio, gym_id }) => {
+export const createPlan = async ({ nombre, numero_clases, precio, gym_id, color }) => {
   const { data, error } = await supabase
     .from('planes_precios')
-    .insert([{ nombre, numero_clases, precio, gym_id }])
+    .insert([{ nombre, numero_clases, precio, gym_id, color }])
     .select()
     .single()
   if (error) throw error
   return data
 }
 
-export const updatePlan = async (id, { nombre, numero_clases, precio }) => {
+export const updatePlan = async (id, { nombre, numero_clases, precio, color }) => {
   const { data, error } = await supabase
     .from('planes_precios')
-    .update({ nombre, numero_clases, precio })
+    .update({ nombre, numero_clases, precio, color })
     .eq('id', id)
     .is('deleted_at', null)
     .select()

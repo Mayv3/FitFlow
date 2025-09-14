@@ -15,10 +15,14 @@ import testRoutes from './routes/test.routes.js'
 import statsRoutes from './routes/stats.routes.js'
 import planesRoutes from './routes/planes.routes.js';
 import paymentMethodsRoutes from './routes/paymentMethods.routes.js';
+import servicesRoutes from './routes/services.routes.js';
+import appointmentsRoutes from "./routes/appointments.routes.js"
+import usersRoutes from "./routes/users.routes.js"
 
 import { verifyToken } from '../backend/middleware/auth.js'
 import { createServer } from 'http';
 import { Server } from 'socket.io';
+import { supaPerRequest } from './middleware/supaPerRequest.js';
 
 dotenv.config();
 
@@ -37,16 +41,20 @@ app.use((req, res, next) => {
   next()
 })
 
-app.use('/api/alumnos', verifyToken, alumnosRoutes);
-app.use('/api/pagos', pagosRoutes);
+app.use('/api/alumnos', verifyToken, supaPerRequest, alumnosRoutes);
+app.use('/api/pagos', verifyToken, supaPerRequest, pagosRoutes);
 app.use('/api/roles', rolesRoutes);
 app.use('/api/asistencias', asistenciasRoutes);
-app.use('/api/auth', authRoutes);
 app.use('/api/gyms', gymsRoutes)
 app.use('/api/test', testRoutes);
-app.use('/api/stats', statsRoutes);
+app.use('/api/stats',verifyToken, supaPerRequest, statsRoutes);
 app.use('/api/planes', planesRoutes);
+app.use('/api/servicios', servicesRoutes);
+app.use('/api/turnos', appointmentsRoutes);
+app.use("/api/users", usersRoutes)
+
 app.use('/api/payment-methods', paymentMethodsRoutes);
+app.use('/api/auth', authRoutes);
 
 app.get('/ping', (req, res) => res.sendStatus(200));
 

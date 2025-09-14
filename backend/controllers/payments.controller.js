@@ -11,23 +11,24 @@ import {
 const parseBool = (v) => v === 'true' || v === '1' || v === true;
 
 export const listPagos = async (req, res) => {
-
   try {
-    const gymId = req.query.gym_id || null;
     const page = Number(req.query.page ?? 1);
     const limit = Number(req.query.limit ?? 20);
     const q = String(req.query.q ?? '');
     const includeDeleted = parseBool(req.query.includeDeleted);
 
-    console.log('fromDate:', req.query.fromDate);
-    console.log('toDate:', req.query.toDate);
-
     const result = await getPagosPaged({
-      gymId, page, limit, q, includeDeleted, filters: {
+      supaClient: req.supa,
+      page,
+      limit,
+      q,
+      includeDeleted,
+      filters: {
         fromDate: req.query.fromDate,
         toDate: req.query.toDate,
       },
     });
+
     res.json(result);
   } catch (error) {
     res.status(500).json({ error: error.message });
@@ -47,9 +48,10 @@ export const getPago = async (req, res) => {
 
 export const addPago = async (req, res) => {
   try {
-    const nuevoPago = await createPago(req.body);
+    const nuevoPago = await createPago(req.supa, req.body);
     res.status(201).json(nuevoPago);
   } catch (error) {
+    console.error('[addPago] Error:', error);
     res.status(400).json({ error: error.message });
   }
 };
@@ -57,7 +59,7 @@ export const addPago = async (req, res) => {
 export const editPago = async (req, res) => {
   try {
     const includeDeleted = parseBool(req.query.includeDeleted);
-    const actualizado = await updatePago(req.params.id, req.body, { includeDeleted });
+    const actualizado = await updatePago(req.supa, req.params.id, req.body, { includeDeleted });
     res.json(actualizado);
   } catch (error) {
     res.status(400).json({ error: error.message });
@@ -66,9 +68,10 @@ export const editPago = async (req, res) => {
 
 export const removePago = async (req, res) => {
   try {
-    await deletePago(req.params.id); // soft delete
+    await deletePago(req.supa, req.params.id); // soft delete
     res.sendStatus(204);
   } catch (error) {
+    console.error('[removePago] Error:', error);
     res.status(400).json({ error: error.message });
   }
 };

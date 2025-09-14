@@ -1,10 +1,14 @@
-import { AdminLayout } from '@/layouts/AdministratorLayout';
+import { Box } from "@mui/material"
 
-const AdminDashboard = () => {
-  return <div>Panel del administrador</div>;
-};
-
-AdminDashboard.getLayout = (page: React.ReactNode) => (
-  <AdminLayout>{page}</AdminLayout>
-);
-export default AdminDashboard;
+export default function OwnerDashboardPage() {
+  return (
+    <Box
+      sx={{
+        display: "grid",
+        gridTemplateColumns: { xs: "1fr", md: "1fr 1fr" },
+        gap: 2,
+      }}
+    >
+    </Box>
+  )
+}

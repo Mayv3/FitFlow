@@ -1,15 +1,9 @@
 import { supabaseAdmin } from '../db/supabaseClient.js'
 
-/**
- * Crea un nuevo gimnasio en la tabla `gyms`.
- * @param {{ name: string; location?: string }} gym Datos del gimnasio
- * @returns {{ id: string; name: string; location: string | null; settings: object | null }}
- */
-
-export async function createGym({ name }) {
+export async function createGym({ name, settings = {}, logo_url = null }) {
   const { data, error } = await supabaseAdmin
     .from('gyms')
-    .insert({ name, logo_url: null, settings: null })
+    .insert({ name, logo_url, settings })
     .select('id, name, logo_url, settings')
     .single()
 

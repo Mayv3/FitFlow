@@ -51,7 +51,6 @@ export function usePagosByGym(
     queryFn: async () => {
       const { data } = await axiosInstance.get('/api/pagos', {
         params: {
-          gym_id: gymId,
           page,
           limit,
           q,
@@ -72,36 +71,10 @@ export function useAddPago(gymId: string, filters?: { fromDate?: string | null; 
       const { data } = await axiosInstance.post('/api/pagos', values);
       return data as Payment;
     },
-    onSuccess: (nuevoPago) => {
-      qc.setQueriesData({ queryKey: ['payments', gymId] }, (old: any) => {
-        if (!old) return old;
-        return {
-          ...old,
-          items: [nuevoPago, ...old.items],
-          total: (old.total ?? old.items.length) + 1,
-        };
-      });
-
-      qc.setQueryData(['alumnos', gymId, 1, 20, ''], (old: any) => {
-        if (!old) return old;
-        return {
-          ...old,
-          items: old.items.map((a: any) =>
-            a.id === nuevoPago.alumno_id
-              ? {
-                ...a,
-                plan_id: nuevoPago.plan_id,
-                plan_nombre: nuevoPago.plan_nombre,
-                fecha_de_vencimiento: nuevoPago.fecha_de_venc,
-              }
-              : a
-          ),
-        };
-      });
-
-      qc.invalidateQueries({ queryKey: ['paymentsStats', gymId] });
-
-    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['payments'] });
+      qc.invalidateQueries({ queryKey: ['paymentsStats'] });
+    }
   });
 }
 
@@ -116,20 +89,10 @@ export function useEditPago(
       const { data } = await axiosInstance.put(`/api/pagos/${id}`, values);
       return data as Payment;
     },
-    onSuccess: (updatedPago) => {
-      qc.setQueriesData({ queryKey: ['payments', gymId] }, (old: any) => {
-        if (!old) return old;
-        return {
-          ...old,
-          items: old.items.map((p: any) =>
-            p.id === updatedPago.id ? { ...p, ...updatedPago } : p
-          ),
-        };
-      });
-
-      qc.invalidateQueries({ queryKey: ['paymentsStats', gymId] });
-
-    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['payments'] });
+      qc.invalidateQueries({ queryKey: ['paymentsStats'] });
+    }
   });
 }
 
@@ -140,21 +103,12 @@ export function useDeletePago(
 
   return useMutation({
     mutationFn: async (id: number) => {
-      await axiosInstance.delete(`/api/pagos/${id}`, { params: { gym_id: gymId } });
+      await axiosInstance.delete(`/api/pagos/${id}`);;
       return id;
     },
-    onSuccess: (deletedId) => {
-      qc.setQueriesData({ queryKey: ['payments', gymId] }, (old: any) => {
-        if (!old) return old
-        return {
-          ...old,
-          items: old.items.filter((p: any) => p.id !== deletedId),
-          total: (old.total ?? old.items.length) - 1,
-        }
-      })
-
-      qc.invalidateQueries({ queryKey: ['paymentsStats', gymId] });
-
-    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['payments'] });
+      qc.invalidateQueries({ queryKey: ['paymentsStats'] });
+    }
   });
 }

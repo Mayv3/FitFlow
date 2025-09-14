@@ -28,7 +28,7 @@ export default function RootLayout({
   return (
     <html lang="es" className={quicksand.variable}>
       <head>
-        {/* <link rel="icon" href="" type="image/png" /> */}
+        <link rel="icon" href="/favicon.png" type="image/png" />
       </head>
       <body className="font-quicksand">
         <LocalizationProviderClient>

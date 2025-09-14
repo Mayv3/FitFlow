@@ -4,7 +4,7 @@ import { FieldLayout } from "./FieldLayout";
 export type Field = {
   label: string;
   name: string;
-  type: 'string' | 'number' | 'email' | 'date' | 'search-select' | 'time' | 'select';
+  type: 'string' | 'number' | 'email' | 'date' | 'search-select' | 'time' | 'select' | 'color';
   required?: boolean;
   minLength?: number;
   maxLength?: number;
@@ -43,4 +43,5 @@ export interface FormModalProps<T> {
   asyncTrigger?: 'blur' | 'change';
   asyncDebounceMs?: number;
   gymId?: string;
+  extraActions?: React.ReactNode
 }

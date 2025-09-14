@@ -1,3 +1,4 @@
+import { Member } from '@/models/Member/Member';
 import { useQuery, useMutation, useQueryClient, keepPreviousData } from '@tanstack/react-query';
 import axios from 'axios';
 import Cookies from 'js-cookie';
@@ -64,27 +65,29 @@ export function useDeleteAlumnoByDNI() {
 }
 
 export function useEditAlumnoByDNI() {
+  const queryClient = useQueryClient();
 
-  return useMutation({
-    mutationFn: async ({
-      dni,
-      values,
-    }: {
-      dni: string;
-      values: Record<string, any>;
-    }) => {
+  return useMutation<Member, Error, { dni: string; values: Record<string, any> }>({
+    mutationFn: async ({ dni, values }) => {
       const res = await axiosInstance.put(`/api/alumnos/${dni}`, values);
-      return res.data;
+      return res.data as Member;
     },
-
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['members'] });
+    }
   });
 }
 
 export function useAddAlumno() {
+  const queryClient = useQueryClient();
+
   return useMutation({
     mutationFn: async (values: Record<string, any>) => {
       const res = await axiosInstance.post('/api/alumnos', values);
       return res.data;
     },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['members'] });
+    }
   });
 }

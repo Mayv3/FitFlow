@@ -7,7 +7,7 @@ import { Field, FormModalProps } from '@/models/Fields/Field';
 import { debounce } from '@/utils/debounce/debounce';
 import { Autocomplete } from '@mui/material';
 import { notify } from '@/lib/toast';
-
+import { ColorPickerPopover } from '../colorSelector/colorSelector';
 export const FormModal = <T extends Record<string, any>>({
   open,
   title,
@@ -26,6 +26,7 @@ export const FormModal = <T extends Record<string, any>>({
   asyncTrigger = 'blur',
   asyncDebounceMs = 400,
   gymId,
+  extraActions,
 }: FormModalProps<T>) => {
   const [values, setValues] = useState<T>({} as T);
   const [externalErrors, setExternalErrors] = useState<Record<string, string | undefined>>({});
@@ -204,14 +205,32 @@ export const FormModal = <T extends Record<string, any>>({
               const options = Array.isArray(field.options) ? field.options : [];
               const locked = isLockedField(field.name);
 
+              if (field.type === 'color') {
+                return (
+                  <Box key={field.name} style={style}>
+                    <ColorPickerPopover
+                      value={val || ''}
+                      onChange={(c) => setValues((prev) => ({ ...prev, [field.name]: c }))}
+                      label={field.label}
+                    />
+                  </Box>
+                )
+              }
+
               if (field.type === 'search-select' && field.searchFromCache) {
-                const term = searchTerms[field.name] ?? '';
+                const term = searchTerms[field.name] ?? ''
 
+                const allOptions = field.searchFromCache(gymId ?? '', '')
+                let results = term ? field.searchFromCache(gymId ?? '', term) : allOptions
 
-                const allOptions = field.searchFromCache(gymId ?? '', '');
-                const results = term ? field.searchFromCache(gymId ?? '', term) : allOptions;
+                // 👇 Fallback: si no hay resultados, mostrar todos
+                if (!results || results.length === 0) {
+                  results = allOptions
+                }
 
-                const selectedOption = allOptions.find(o => o.value === val) || null;
+                const selectedOption = values[field.name]
+                  ? allOptions.find(o => o.value === values[field.name]) || null
+                  : null
 
                 return (
                   <Box key={field.name} style={style}>
@@ -219,12 +238,12 @@ export const FormModal = <T extends Record<string, any>>({
                       options={results}
                       isOptionEqualToValue={(o, v) => o.value === v.value}
                       getOptionLabel={(option) => option.label}
-                      value={selectedOption}
+                      value={selectedOption}   // en create = null, en edit = alumno correcto
                       onInputChange={(_, newInputValue) => {
-                        setSearchTerms(prev => ({ ...prev, [field.name]: newInputValue }));
+                        setSearchTerms(prev => ({ ...prev, [field.name]: newInputValue }))
                       }}
                       onChange={(_, newValue) => {
-                        setValues(prev => ({ ...prev, [field.name]: newValue?.value ?? '' }));
+                        setValues(prev => ({ ...prev, [field.name]: newValue?.value ?? null }))
                       }}
                       renderInput={(params) => (
                         <TextField
@@ -234,13 +253,13 @@ export const FormModal = <T extends Record<string, any>>({
                           required={field.required}
                           error={isError}
                           helperText={helperText}
-                          onBlur={() => !locked && handleBlur(field.name, selectedOption?.value ?? '')}
                         />
                       )}
                       disabled={locked}
+                      noOptionsText={null}
                     />
                   </Box>
-                );
+                )
               }
 
               return (
@@ -292,6 +311,7 @@ export const FormModal = <T extends Record<string, any>>({
         </DialogContent>
         <DialogActions>
           <Button onClick={onClose}>{cancelText}</Button>
+          {extraActions}
           <Button type="submit" variant="contained" disabled={hasErrors || hasEmptyRequired}>
             {confirmText}
           </Button>

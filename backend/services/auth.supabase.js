@@ -1,6 +1,6 @@
 import { supabase, supabaseAdmin } from '../db/supabaseClient.js'
 
-export async function registerUser({ email, password, dni, gym_id, role_id }) {
+export async function registerUser({ email, password, dni, gym_id, role_id, name }) {
   const { data: authData, error: authError } = await supabaseAdmin.auth.admin.createUser({
     email,
     password,
@@ -13,7 +13,7 @@ export async function registerUser({ email, password, dni, gym_id, role_id }) {
 
   const { data: insertData, error: insertError } = await supabaseAdmin
     .from('users')
-    .insert({ dni, gym_id, role_id, auth_user_id })
+    .insert({ dni, gym_id, role_id, auth_user_id, name })
     .select('*')
   if (insertError) throw insertError
   if (!insertData?.length) throw new Error('No se pudo insertar el usuario en la tabla users')

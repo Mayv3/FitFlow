@@ -45,19 +45,7 @@ export const PaymentStats = ({ data, isLoading }: { data?: any; isLoading: boole
       gridTemplateColumns={{ xs: '1fr', sm: 'repeat(2, 1fr)', md: 'repeat(3, 1fr)' }}
       sx={{ gap: 2 }}
     >
-      <StatCard
-        title="Total recaudado"
-        value={isLoading ? '—' : `$ ${totalMonto.toLocaleString('es-AR')}`}
-        icon={<AttachMoneyIcon sx={iconStyle} />}
-        chart={
-          <Box display="flex" flexDirection="column" width="100%" mt={1}>
-            <Box height={8} bgcolor={theme.palette.primary.main} borderRadius={4} />
-            <Typography variant="caption" color="text.secondary" mt={1} textAlign="left">
-              {totalPagos} pagos
-            </Typography>
-          </Box>
-        }
-      />
+
 
       {/* Pagos por tipo */}
       <StatCard
@@ -98,7 +86,6 @@ export const PaymentStats = ({ data, isLoading }: { data?: any; isLoading: boole
         }
       />
 
-      {/* Pagos por método */}
       <StatCard
         title="Pagos por método"
         value={isLoading ? '—' : `${totalPagos} pagos`}
@@ -112,7 +99,7 @@ export const PaymentStats = ({ data, isLoading }: { data?: any; isLoading: boole
                 return (
                   <Tooltip
                     key={m.metodo}
-                    title={`$ ${m.monto.toLocaleString('es-AR')} (${m.count} pagos)`}
+                    title={`${methodLabels[m.metodo] ?? m.metodo}: $ ${m.monto.toLocaleString('es-AR')} (${m.count} pagos)`}
                     arrow
                   >
                     <Box flex={`${percent} 0 auto`} bgcolor={getColor(index)} sx={{ cursor: 'pointer' }} />
@@ -121,7 +108,6 @@ export const PaymentStats = ({ data, isLoading }: { data?: any; isLoading: boole
               })}
             </Box>
 
-            {/* Leyendas */}
             <Box display="flex" flexWrap="wrap" gap={1} mt={1}>
               {byMethod.map((m: any, index: number) => {
                 const percent = Math.round((m.count * 100) / (totalPagos || 1))
@@ -135,6 +121,19 @@ export const PaymentStats = ({ data, isLoading }: { data?: any; isLoading: boole
                 )
               })}
             </Box>
+          </Box>
+        }
+      />
+      <StatCard
+        title="Total recaudado"
+        value={isLoading ? '—' : `$ ${totalMonto.toLocaleString('es-AR')}`}
+        icon={<AttachMoneyIcon sx={iconStyle} />}
+        chart={
+          <Box display="flex" flexDirection="column" width="100%" mt={1}>
+            <Box height={8} bgcolor={theme.palette.primary.main} borderRadius={4} />
+            <Typography variant="caption" color="text.secondary" mt={1} textAlign="left">
+              {totalPagos} pagos
+            </Typography>
           </Box>
         }
       />

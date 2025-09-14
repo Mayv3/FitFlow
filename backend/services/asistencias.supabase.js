@@ -1,5 +1,5 @@
 import { supabase } from '../db/supabaseClient.js'
-import { fechaArgentina, horaArgentina } from '../utilities/moment.js';
+import { fechaArgentina, horaArgentina } from '../utilities/moment.js'
 
 export async function getAllAsistencias(gymId) {
   const { data, error } = await supabase
@@ -12,38 +12,45 @@ export async function getAllAsistencias(gymId) {
   return data
 }
 
-export async function createAsistencia(asistencia, gymId) {
-  const dni = String(asistencia.DNI).trim();
+export async function createAsistencia(supa, asistencia, gymId) {
+  console.time("createAsistencia-query")
+  const dniRaw = asistencia?.dni ?? asistencia?.DNI
+  if (!dniRaw) throw new Error('Falta DNI')
+  const dni = String(dniRaw).trim()
 
-  const { data: alumno, error: errAlumno } = await supabase
+  const { data: alumno, error: errAlumno } = await supa
     .from('alumnos')
-    .select('id, plan_id, clases_realizadas, clases_pagadas')
+    .select('id, nombre, email, plan_id, clases_realizadas, clases_pagadas, fecha_de_vencimiento, gym_id')
     .eq('dni', dni)
     .eq('gym_id', gymId)
-    .single();
+    .maybeSingle()
 
-  if (errAlumno || !alumno) {
-    throw new Error(`No existe un alumno con ese DNI en este gym ${gymId}`);
+  if (errAlumno) throw errAlumno
+  if (!alumno) throw new Error(`No existe un alumno con ese DNI en este gimnasio`)
+
+  let planNombre = null
+  if (alumno.plan_id) {
+    const { data: plan } = await supa
+      .from('planes_precios')
+      .select('id, nombre, numero_clases')
+      .eq('id', alumno.plan_id)
+      .maybeSingle()
+    planNombre = plan?.nombre ?? null
   }
 
-  const { data: asistenciaHoy, error: errAsistencia } = await supabase
+  const { data: asistenciaHoy } = await supa
     .from('asistencias')
     .select('id')
     .eq('alumno_id', alumno.id)
     .eq('fecha', fechaArgentina())
     .eq('gym_id', gymId)
-    .maybeSingle();
+    .maybeSingle()
+  if (asistenciaHoy) throw new Error('El alumno ya registró asistencia hoy')
 
-  if (errAsistencia) {
-    throw new Error('Error al verificar asistencias previas');
-  }
-
-  if (asistenciaHoy) {
-    throw new Error('El alumno ya registró asistencia hoy');
-  }
-
-  if (alumno.clases_realizadas >= alumno.clases_pagadas) {
-    throw new Error('El alumno ya llegó al límite de clases de su plan');
+  const pag = alumno.clases_pagadas ?? 0
+  const rea = alumno.clases_realizadas ?? 0
+  if (pag > 0 && rea >= pag) {
+    throw new Error('El alumno ya llegó al límite de clases de su plan')
   }
 
   const payload = {
@@ -52,23 +59,43 @@ export async function createAsistencia(asistencia, gymId) {
     alumno_id: alumno.id,
     plan_id: alumno.plan_id,
     gym_id: gymId,
-  };
-
-  const { data: nueva, error } = await supabase
+  }
+  const { data: nueva, error } = await supa
     .from('asistencias')
     .insert(payload)
     .select()
-    .single();
+    .single()
+  if (error) throw error
 
-  if (error) throw error;
+  await supa.from('alumnos')
+    .update({ clases_realizadas: rea + 1 })
+    .eq('id', alumno.id)
 
-  await supabase
-    .from('alumnos')
-    .update({ clases_realizadas: alumno.clases_realizadas + 1 })
-    .eq('id', alumno.id);
+  const realizadas = rea + 1
+  const restantes = Math.max((pag ?? 0) - realizadas, 0)
+  const percent = pag > 0 ? Math.min(Math.round((realizadas * 100) / pag), 100) : 0
 
-  return nueva;
+  const summary = {
+    alumno: {
+      id: alumno.id,
+      nombre: alumno.nombre ?? '—',
+      email: alumno.email ?? '—',
+      dni,
+    },
+    plan: {
+      id: alumno.plan_id ?? null,
+      nombre: planNombre ?? '—',
+      clases_pagadas: pag,
+      clases_realizadas: realizadas,
+      clases_restantes: restantes,
+      progreso_pct: percent,
+    },
+    vencimiento: alumno.fecha_de_vencimiento ?? null,
+    gym_id: gymId,
+  }
+  return { asistencia: nueva, summary }
 }
+
 
 export async function getAsistenciaById(id, gymId) {
   const { data, error } = await supabase

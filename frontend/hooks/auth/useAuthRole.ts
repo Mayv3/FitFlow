@@ -16,7 +16,7 @@ export function useAuthRole(expectedRole: number) {
     const rol = rolCookie !== null ? Number(rolCookie) : null;
 
     if (rol !== expectedRole) {
-      router.push("/login");
+      router.replace("/login")
     }
   }, [expectedRole, router]);
 }

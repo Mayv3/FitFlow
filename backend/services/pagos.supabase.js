@@ -4,7 +4,7 @@ const nowISO = () => new Date().toISOString();
 
 
 export async function getPagosPaged({
-  gymId,
+  supaClient,
   page = 1,
   limit = 20,
   q = '',
@@ -14,7 +14,7 @@ export async function getPagosPaged({
   const from = (page - 1) * limit;
   const to = from + limit - 1;
 
-  let query = supabase
+  let query = supaClient
     .from('pagos')
     .select(`
       id,
@@ -40,7 +40,6 @@ export async function getPagosPaged({
     .order('fecha_de_pago', { ascending: false })
     .order('hora', { ascending: false });
 
-  if (gymId) query = query.eq('gym_id', gymId);
   if (!includeDeleted) query = query.is('deleted_at', null);
   if (filters.fromDate) query = query.gte('fecha_de_pago', filters.fromDate);
   if (filters.toDate) query = query.lte('fecha_de_pago', filters.toDate);
@@ -49,8 +48,8 @@ export async function getPagosPaged({
     const s = q.trim().replace(/[(),]/g, ' ').replace(/\s+/g, ' ');
 
     const [{ data: mpRows }, { data: alRows }] = await Promise.all([
-      supabase.from('metodos_de_pago').select('id').ilike('nombre', `%${s}%`),
-      supabase.from('alumnos').select('id').ilike('nombre', `%${s}%`),
+      supaClient.from('metodos_de_pago').select('id').ilike('nombre', `%${s}%`),
+      supaClient.from('alumnos').select('id').ilike('nombre', `%${s}%`),
     ]);
 
     const mpIds = (mpRows ?? []).map(r => r.id);
@@ -58,7 +57,7 @@ export async function getPagosPaged({
 
     let pagoIdsByMetodo = [];
     if (mpIds.length) {
-      const { data: piRows } = await supabase
+      const { data: piRows } = await supaClient
         .from('pago_items')
         .select('pago_id')
         .in('metodo_de_pago_id', mpIds);
@@ -101,65 +100,47 @@ export async function getPagosPaged({
   return { items, total: count ?? 0, page, limit, q };
 }
 
-export async function getPagoById(id, { includeDeleted = false } = {}) {
-  let q = supabase
+export async function getPagoById(supaClient, id) {
+  const { data, error } = await supaClient
     .from('pagos')
     .select(`
       id,
-      gym_id,
       alumno_id,
       fecha_de_pago,
       fecha_de_venc,
       responsable,
-      hora,
       tipo,
-      plan_id,
-      deleted_at,
       monto_total,
-      alumno:alumnos ( nombre, dni ),
-      plan:planes_precios ( nombre ),
+      plan:planes_precios ( id, nombre ),
+      alumno:alumnos ( id, nombre, dni ),
       items:pago_items (
         monto,
         referencia,
-        metodo_de_pago_id,
-        metodo:metodos_de_pago ( nombre )
+        metodo:metodos_de_pago ( id, nombre )
       )
     `)
     .eq('id', id)
-    .order('id', { ascending: true, referencedTable: 'pago_items' });
+    .single();
 
-  if (!includeDeleted) q = q.is('deleted_at', null);
-
-  const { data, error } = await q.single();
   if (error) throw error;
-
-  const metodos = (data?.items ?? []).map(i => i?.metodo?.nombre).filter(Boolean);
-
-  let metodo_legible = '—';
-  if (metodos.length === 1) {
-    metodo_legible = metodos[0];
-  } else if (metodos.length > 1) {
-    metodo_legible = 'Mixto';
-  }
 
   return {
     ...data,
     alumno_nombre: data?.alumno?.nombre ?? null,
     plan_nombre: data?.plan?.nombre ?? null,
-    metodo_legible,
     metodos_legibles: (data?.items ?? []).map(
       i => `${i?.metodo?.nombre ?? '—'} $${i?.monto ?? 0}`
-    ),
+    )
   };
 }
 
-export async function createPago(pago) {
+export async function createPago(supaClient, pago) {
   const suma = (pago.items ?? []).reduce((acc, it) => acc + Number(it.monto || 0), 0);
   if (Number(pago.monto_total || 0) !== suma) {
     throw new Error('La suma de los ítems no coincide con monto_total');
   }
 
-  const { data: cab, error: e1 } = await supabase
+  const { data: cab, error: e1 } = await supaClient
     .from('pagos')
     .insert({
       alumno_id: pago.alumno_id,
@@ -169,7 +150,6 @@ export async function createPago(pago) {
       fecha_de_pago: pago.fecha_de_pago,
       fecha_de_venc: pago.fecha_de_venc,
       responsable: pago.responsable,
-      gym_id: pago.gym_id,
       monto_total: pago.monto_total,
     })
     .select('id, alumno_id, plan_id, fecha_de_venc')
@@ -185,12 +165,12 @@ export async function createPago(pago) {
       referencia: it.referencia ?? null,
     }));
 
-    const { error: e2 } = await supabase.from('pago_items').insert(rows);
+    const { error: e2 } = await supaClient.from('pago_items').insert(rows);
     if (e2) throw e2;
   }
 
   if (pago.plan_id) {
-    const { data: planRow } = await supabase
+    const { data: planRow } = await supaClient
       .from('planes_precios')
       .select('numero_clases, nombre')
       .eq('id', pago.plan_id)
@@ -198,7 +178,7 @@ export async function createPago(pago) {
 
     const clasesPagadas = planRow?.numero_clases ?? 0;
 
-    const { error: eUpd } = await supabase
+    const { error: eUpd } = await supaClient
       .from('alumnos')
       .update({
         plan_id: pago.plan_id,
@@ -211,30 +191,46 @@ export async function createPago(pago) {
     if (eUpd) throw eUpd;
   }
 
-  return await getPagoById(cab.id);
+  // 4. Devolver pago con joins (igual que en GET)
+  return await getPagoById(supaClient, cab.id);
 }
 
-export async function updatePago(id, nuevosDatos, { includeDeleted = false } = {}) {
+export async function updatePago(supaClient, id, nuevosDatos, { includeDeleted = false } = {}) {
   const { items, ...cabecera } = nuevosDatos;
 
-  let monto_total = cabecera.monto_total ?? null;
+  // 1. Traer el pago actual (para conservar monto_total si no se manda nada)
+  const { data: pagoPrev, error: ePrev } = await supaClient
+    .from('pagos')
+    .select('monto_total')
+    .eq('id', id)
+    .single();
+
+  if (ePrev) throw ePrev;
+
+  let monto_total = cabecera.monto_total ?? pagoPrev.monto_total;
+
+  // 2. Si vienen items recalculamos
   if (Array.isArray(items)) {
     monto_total = items.reduce((acc, it) => acc + Number(it.monto || 0), 0);
   }
 
-  let q = supabase
+  // 3. Update cabecera (con RLS, el usuario solo puede editar pagos de su gym)
+  let q = supaClient
     .from('pagos')
     .update({ ...cabecera, monto_total })
     .eq('id', id)
     .select('id, alumno_id, plan_id, fecha_de_venc')
     .single();
+
   if (!includeDeleted) q = q.is('deleted_at', null);
 
   const { data: pagoCab, error } = await q;
   if (error) throw error;
 
+  // 4. Si mandaron items → reemplazamos
   if (Array.isArray(items)) {
-    await supabase.from('pago_items').delete().eq('pago_id', id);
+    await supaClient.from('pago_items').delete().eq('pago_id', id);
+
     if (items.length) {
       const rows = items.map(it => ({
         pago_id: id,
@@ -242,23 +238,26 @@ export async function updatePago(id, nuevosDatos, { includeDeleted = false } = {
         monto: it.monto,
         referencia: it.referencia ?? null,
       }));
-      const { error: eItems } = await supabase.from('pago_items').insert(rows);
+
+      const { error: eItems } = await supaClient.from('pago_items').insert(rows);
       if (eItems) throw eItems;
     }
   }
 
-  return await getPagoById(id);
+  // 5. Devolver pago completo (con joins)
+  return await getPagoById(supaClient, id);
 }
 
 /** Soft delete */
 
-export async function deletePago(id) {
-  const { data, error } = await supabase
+export async function deletePago(supaClient, id) {
+  const { data, error } = await supaClient
     .from('pagos')
-    .update({ deleted_at: nowISO() })
+    .update({ deleted_at: new Date().toISOString() })
     .eq('id', id)
     .is('deleted_at', null)
     .single();
+
   if (error) throw error;
   return data;
 }

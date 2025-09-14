@@ -26,8 +26,8 @@ export const getPlanes = async (req, res) => {
 
 export const createPlan = async (req, res) => {
   try {
-    const { nombre, numero_clases, precio, gym_id } = req.body
-    const plan = await createPlanSvc({ nombre, numero_clases, precio, gym_id })
+    const { nombre, numero_clases, precio, gym_id, color } = req.body
+    const plan = await createPlanSvc({ nombre, numero_clases, precio, gym_id, color })
     res.status(201).json(plan)
   } catch (err) {
     res.status(500).json({ message: 'Error al crear plan', detail: err.message })
@@ -37,8 +37,8 @@ export const createPlan = async (req, res) => {
 export const updatePlan = async (req, res) => {
   try {
     const { id } = req.params
-    const { nombre, numero_clases, precio } = req.body
-    const plan = await updatePlanSvc(Number(id), { nombre, numero_clases, precio })
+    const { nombre, numero_clases, precio, color } = req.body
+    const plan = await updatePlanSvc(Number(id), { nombre, numero_clases, precio, color })
     res.status(200).json(plan)
   } catch (err) {
     res.status(500).json({ message: 'Error al actualizar plan', detail: err.message })

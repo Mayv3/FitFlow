@@ -17,14 +17,11 @@ function isActiveByDate(dateLike) {
 
 export async function handleListAlumnosByGym(req, res) {
   try {
-    const gymId = String(req.query.gym_id ?? '');
     const page = Number(req.query.page ?? 1);
     const limit = Number(req.query.limit ?? 20);
     const q = String(req.query.q ?? '');
 
-    if (!gymId) return res.status(400).json({ message: 'gym_id requerido' });
-
-    const result = await getAlumnosService({ gymId, page, limit, q });
+    const result = await getAlumnosService({ page, limit, q }, req.supa);
     res.json(result);
   } catch (err) {
     console.error(err);
@@ -33,26 +30,29 @@ export async function handleListAlumnosByGym(req, res) {
 }
 
 export const getAlumno = async (req, res) => {
+  console.log('🔑 JWT metadata:', req.user?.user_metadata);
   try {
-    const alumno = await getAlumnoByDNI(req.params.dni)
+    const alumno = await getAlumnoByDNI(req.params.dni, req.supa)
+    if (!alumno) {
+      return res.status(404).json({ error: 'No existe alumno con ese DNI' })
+    }
     res.json(alumno)
   } catch (error) {
-    res.status(404).json({ error: error.message })
+    res.status(400).json({ error: error.message })
   }
 }
 
 export const addAlumno = async (req, res) => {
   try {
-    const gymId = req.gymId ?? req.query.gym_id ?? req.body.gym_id;
-    if (!gymId) return res.status(400).json({ error: 'gym_id requerido' });
+    const payload = { ...req.body };
 
-    const nuevo = await createAlumno({ ...req.body, gym_id: gymId });
+    const nuevo = await createAlumno(payload, req.supa);
 
     const hoy = new Date().toISOString().slice(0, 10);
     const activo = !!(nuevo?.fecha_de_vencimiento && nuevo.fecha_de_vencimiento >= hoy);
 
     req.app.get('io')
-      .to(`gym:${gymId}`)
+      .to(`gym:${nuevo.gym_id}`)
       .emit('member:created', { id: nuevo.id, activo, planId: nuevo?.plan_id ?? null });
 
     return res.status(201).json(nuevo);
@@ -64,16 +64,14 @@ export const addAlumno = async (req, res) => {
 
 export const editAlumno = async (req, res) => {
   try {
-    const prev = await getAlumnoByDNI(req.params.dni).catch(() => null);
-    const actualizado = await updateAlumno(req.params.dni, req.body);
+    const prev = await getAlumnoByDNI(req.params.dni, req.supa).catch(() => null);
+
+    const actualizado = await updateAlumno(req.params.dni, req.body, req.supa);
+
     res.json(actualizado);
 
     try {
-      const gymId =
-        actualizado?.gym_id ||
-        prev?.gym_id ||
-        req.query.gym_id ||
-        req.body.gym_id;
+      const gymId = actualizado?.gym_id || prev?.gym_id;
 
       if (gymId) {
         const prevPlanId = prev?.plan_id != null ? Number(prev.plan_id) : null;
@@ -96,7 +94,9 @@ export const editAlumno = async (req, res) => {
           ?.to(`gym:${gymId}`)
           .emit('member:updated', {
             dni: req.params.dni,
-            member: { ...prev, ...req.body, gym_id: gymId, plan_id: nextPlanId },
+            // 👉 El emit puede seguir mandando el mix manual,
+            // o directamente "actualizado" que ya tiene plan_nombre
+            member: actualizado,
             prev: { planId: prevPlanId, activo: prevActivo },
             next: { planId: nextPlanId, activo: nextActivo },
           });
@@ -111,25 +111,24 @@ export const editAlumno = async (req, res) => {
 
 export const removeAlumno = async (req, res) => {
   try {
-    const gymId = req.gymId ?? req.query?.gym_id;
-    if (!gymId) {
-      return res.status(400).json({ error: 'gym_id requerido' });
-    }
-
-    const { before } = await deleteAlumno(req.params.dni, gymId);
+    const { before } = await deleteAlumno(req.params.dni, req.supa);
 
     const prevActivo = isActiveByDate(before.fecha_de_vencimiento);
-    req.app.get('io')?.to(`gym:${gymId}`).emit('member:deleted', {
-      dni: before.dni,
-      alumno_id: before.id,
-      prev: { planId: before.plan_id ?? null, activo: prevActivo },
-    });
+
+    req.app.get('io')
+      ?.to(`gym:${before.gym_id}`)
+      .emit('member:deleted', {
+        dni: before.dni,
+        alumno_id: before.id,
+        prev: { planId: before.plan_id ?? null, activo: prevActivo },
+      });
 
     res.sendStatus(204);
   } catch (error) {
     res.status(400).json({ error: error.message });
   }
 };
+
 
 export async function getAlumnosByParams(req, res) {
   try {
@@ -150,10 +149,7 @@ export async function getAlumnosByParams(req, res) {
 
 export async function handleListAlumnosSimple(req, res) {
   try {
-    const gymId = String(req.query.gym_id ?? '');
-    if (!gymId) return res.status(400).json({ message: 'gym_id requerido' });
-
-    const alumnos = await getAlumnosSimpleService(gymId);
+    const alumnos = await getAlumnosSimpleService(req.supa);
     res.json(alumnos);
   } catch (err) {
     console.error(err);

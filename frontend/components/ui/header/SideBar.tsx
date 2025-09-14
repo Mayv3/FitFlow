@@ -1,4 +1,4 @@
-'use client';
+'use client'
 
 import {
   Box,
@@ -6,257 +6,361 @@ import {
   ListItemButton,
   ListItemIcon,
   ListItemText,
-  ListSubheader,
   BottomNavigation,
   BottomNavigationAction,
   Paper,
   useMediaQuery,
-} from '@mui/material';
-import { useTheme } from '@mui/material/styles';
-import AccountCircleIcon from '@mui/icons-material/AccountCircle';
-import { useRouter, usePathname } from 'next/navigation';
-import { useEffect, useState, useRef } from 'react';
-import { useLogout } from '@/hooks/logout/useLogout';
-import LogoutIcon from '@mui/icons-material/Logout';
-import Cookies from 'js-cookie';
+  Tooltip,
+  Typography,
+  Divider,
+} from '@mui/material'
+import { useTheme } from '@mui/material/styles'
+import LogoutIcon from '@mui/icons-material/Logout'
+import AccountCircleIcon from '@mui/icons-material/AccountCircle'
+import { useEffect, useState } from 'react'
+import { useLogout } from '@/hooks/logout/useLogout'
+import Cookies from 'js-cookie'
+import { useRouter, usePathname } from 'next/navigation'
 
-type TabItem = {
-  label: string;
-  icon: React.ReactNode;
-  route: string;
-};
+type TabItem = { label: string; icon: React.ReactNode; route: string }
+type HeaderComponentProps = { tabs: TabItem[] }
 
-type HeaderComponentProps = {
-  tabs: TabItem[];
-};
+function readPrimary(): string {
+  if (typeof window === 'undefined') return '#0dc985'
+  try {
+    const raw = localStorage.getItem('gym_settings')
+    const parsed = raw ? JSON.parse(raw) : null
+    return parsed?.colors?.primary || '#0dc985'
+  } catch {
+    return '#0dc985'
+  }
+}
 
 export const SideBar = ({ tabs }: HeaderComponentProps) => {
-  const scrollRef = useRef<HTMLDivElement>(null);
-  const userName = Cookies.get('name');
-  const gymName = Cookies.get('gym_name')
-  const router = useRouter();
-  const pathname = usePathname();
-  const theme = useTheme();
-  const isMobile = useMediaQuery(theme.breakpoints.down('md'));
-  const logout = useLogout();
+  const [selectedIndex, setSelectedIndex] = useState(0)
+  const theme = useTheme()
+  const isMobile = useMediaQuery(theme.breakpoints.down('md'))
+  const [mounted, setMounted] = useState(false)
 
-  const [selectedIndex, setSelectedIndex] = useState<number | null>(null);
+  const [isHovered, setIsHovered] = useState(false)
+  const [isLocked, setIsLocked] = useState(false)
+  const isExpanded = isHovered || isLocked
+
+  const router = useRouter()
+  const pathname = usePathname()
+
+  const [gym_name, setGymName] = useState<string | null>(null)
+  const [gym_logo_url, setGymLogoUrl] = useState<string | null>(null)
+  const [user_name, setUserName] = useState<string | null>(null)
+
+  const [sidebarBg, setSidebarBg] = useState<string>(() => readPrimary())
+  const defaultLogo = '/images/icon.png'
+  const isDefaultLogo = !gym_logo_url
+
+  const logout = useLogout()
+
+  const handleNav = (route: string, index?: number) => {
+    if (typeof index === 'number') setSelectedIndex(index)
+    router.push(route)
+  }
 
   useEffect(() => {
-    if (scrollRef.current) {
-      scrollRef.current.scrollLeft = 0;
+    setGymName(Cookies.get('gym_name') ?? null)
+    setUserName(Cookies.get('name') ?? null)
+    try {
+      setGymLogoUrl(localStorage.getItem('gym_logo_url') || null)
+    } catch { }
+    setSidebarBg(readPrimary())
+  }, [])
+
+  useEffect(() => {
+    const idx = tabs.findIndex(t => t.route === pathname)
+    if (idx !== -1) setSelectedIndex(idx)
+  }, [pathname, tabs])
+
+  useEffect(() => {
+    const onStorage = (e: StorageEvent) => {
+      if (e.key === 'gym_settings' || e.key === 'gym_logo_url') {
+        setSidebarBg(readPrimary())
+        setGymLogoUrl(localStorage.getItem('gym_logo_url') || null)
+      }
     }
-  }, []);
+    const onCustom = () => {
+      setSidebarBg(readPrimary())
+      setGymLogoUrl(localStorage.getItem('gym_logo_url') || null)
+    }
+    window.addEventListener('storage', onStorage)
+    window.addEventListener('gym-settings-updated', onCustom as EventListener)
+    return () => {
+      window.removeEventListener('storage', onStorage)
+      window.removeEventListener('gym-settings-updated', onCustom as EventListener)
+    }
+  }, [])
 
   useEffect(() => {
-    const index = tabs.findIndex((tab) => tab.route === pathname);
-    if (index !== -1) setSelectedIndex(index);
-    else if (pathname === '/perfil') setSelectedIndex(999);
-  }, [pathname, tabs]);
+    if (!isLocked) return
+    const t = setTimeout(() => setIsLocked(false), 150)
+    return () => clearTimeout(t)
+  }, [pathname, isLocked])
 
-  const handleNavigate = (index: number, route: string) => {
-    setSelectedIndex(index);
-    router.push(route);
-  };
+  useEffect(() => {
+    setMounted(true)
+  }, [])
+
+  if (!mounted) return null
 
   const desktopSidebar = (
     <Box
+      onMouseEnter={() => setIsHovered(true)}
+      onMouseLeave={() => {
+        if (!isLocked) setIsHovered(false)
+      }}
       sx={{
-        bgcolor: 'primary.main',
+        backgroundColor: sidebarBg,
         minHeight: '100vh',
-        minWidth: '20%',
-        maxWidth: '20%',
+        width: isExpanded ? 240 : 80,
+        transition: 'opacity .25s ease, width .25s ease, background-color .0s',
         display: 'flex',
         flexDirection: 'column',
         justifyContent: 'space-between',
         position: 'fixed',
         p: 2,
-        zIndex: '1000'
+        zIndex: 1000,
+        overflowX: 'hidden',
       }}
     >
-      <List
-        sx={{ color: 'white' }}
-        subheader={
-          <ListSubheader
-            component="div"
-            sx={{ bgcolor: 'transparent', color: 'white' }}
-          >
-            Icono - {gymName}
-          </ListSubheader>
-        }
+      <Box
+        onClick={() => handleNav('/')}
+        sx={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: 1.25,
+          height: 56,
+          px: 1,
+          mb: 1,
+          cursor: 'pointer',
+          borderRadius: 2,
+          bgcolor: 'rgba(255,255,255,0.10)',
+        }}
       >
+        <Box
+          component="img"
+          src={isDefaultLogo ? defaultLogo : (gym_logo_url as string)}
+          alt={gym_name || 'Gym'}
+          onError={(e: any) => { e.currentTarget.src = defaultLogo }}
+          sx={{
+            width: isExpanded ? 40 : 32,
+            height: isExpanded ? 40 : 32,
+            borderRadius: '50%',
+            objectFit: isDefaultLogo ? 'contain' : 'cover',
+            bgcolor: isDefaultLogo ? 'white' : 'transparent',
+            p: isDefaultLogo ? 0.5 : 0,
+            boxShadow: isDefaultLogo ? '0 1px 4px rgba(0,0,0,.18)' : 'none',
+            flexShrink: 0,
+          }}
+        />
+
+        <Box
+          sx={{
+            overflow: 'hidden',
+            whiteSpace: 'nowrap',
+            opacity: isExpanded ? 1 : 0,
+            width: isExpanded ? 'auto' : 0,
+            transition: 'opacity .25s ease, width .25s ease',
+          }}
+        >
+          <Typography variant="subtitle1" fontWeight={800} color="white" noWrap>
+            {gym_name || 'Mi Gimnasio'}
+          </Typography>
+        </Box>
+      </Box>
+
+      <Divider sx={{ borderColor: 'rgba(255,255,255,0.18)', mb: 1 }} />
+
+      <List sx={{ color: 'white', py: 0, mt: 0 }}>
         {tabs.map((tab, index) => {
-          const isSelected = selectedIndex === index;
-          return (
+          const selected = selectedIndex === index
+          const item = (
             <ListItemButton
-              key={tab.label}
-              onClick={() => handleNavigate(index, tab.route)}
+              key={tab.route}
+              selected={selected}
+              disableRipple
+              onClick={() => handleNav(tab.route, index)}
               sx={{
                 borderRadius: 2,
                 mb: 1,
-                bgcolor: isSelected ? '#fff' : 'transparent',
-                '&:hover': {
-                  bgcolor: isSelected ? '#fff' : 'rgba(255,255,255,0.1)',
-                },
                 height: 48,
+                px: 1.45,
+                bgcolor: selected ? '#fff' : 'transparent',
+                '&:hover': { bgcolor: selected ? '#fff' : 'rgba(255,255,255,0.10)' },
+                '&.Mui-selected': { bgcolor: '#fff !important' },
               }}
             >
               <ListItemIcon
                 sx={{
-                  color: isSelected ? 'black' : 'white',
-                  minWidth: 36,
+                  color: selected ? 'black' : 'white',
+                  minWidth: 0,
+                  mr: isExpanded ? 1.5 : 0,
                 }}
               >
                 {tab.icon}
               </ListItemIcon>
-              <ListItemText
-                primary={tab.label}
-                primaryTypographyProps={{
-                  color: isSelected ? 'black' : 'white',
+              <Box
+                sx={{
+                  overflow: 'hidden',
+                  whiteSpace: 'nowrap',
+                  opacity: isExpanded ? 1 : 0,
+                  width: isExpanded ? 'auto' : 0,
+                  transition: 'opacity .25s ease, width .25s ease',
                 }}
-              />
+              >
+                <ListItemText
+                  primary={tab.label}
+                  primaryTypographyProps={{ color: selected ? 'black' : 'white' }}
+                />
+              </Box>
             </ListItemButton>
-          );
+          )
+          return isExpanded ? (
+            item
+          ) : (
+            <Tooltip key={tab.route} title={tab.label} placement="right">
+              {item}
+            </Tooltip>
+          )
         })}
       </List>
 
-      <Box sx={{ display: 'flex' }}>
-        <ListItemButton
-          onClick={() => handleNavigate(999, '/perfil')}
+      <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+        <Box
           sx={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: isExpanded ? 'flex-start' : 'center',
+            gap: isExpanded ? 1.25 : 0,
+            height: 48,
+            px: isExpanded ? 1.25 : 0,
             borderRadius: 2,
-            mt: 1,
-            height: '48',
-            bgcolor: selectedIndex === 999 ? '#fff' : 'transparent',
-            '&:hover': {
-              bgcolor: selectedIndex === 999 ? '#fff' : 'rgba(255,255,255,0.1)',
-            },
+            bgcolor: 'rgba(255,255,255,0.10)',
           }}
         >
-          <ListItemIcon
+          <AccountCircleIcon
             sx={{
-              color: selectedIndex === 999 ? 'black' : 'white',
-              minWidth: 36,
+              color: 'white',
+              fontSize: 24,
+              flexShrink: 0,
+            }}
+          />
+          <Box
+            sx={{
+              overflow: 'hidden',
+              whiteSpace: 'nowrap',
+              opacity: isExpanded ? 1 : 0,
+              width: isExpanded ? 'auto' : 0,
+              transition: 'opacity .25s ease, width .25s ease',
             }}
           >
-            <AccountCircleIcon fontSize="medium" />
-          </ListItemIcon>
-          <ListItemText
-            primary={userName}
-            primaryTypographyProps={{
-              color: selectedIndex === 999 ? 'black' : 'white',
+            <Typography variant="body2" color="white" noWrap>
+              {user_name || ''}
+            </Typography>
+          </Box>
+        </Box>
+
+        <Tooltip title={isExpanded ? '' : 'Salir'} placement="right">
+          <ListItemButton
+            onClick={logout}
+            sx={{
+              borderRadius: 2,
+              height: 48,
+              px: 1.25,
+              justifyContent: 'flex-start',
+              '&:hover': { bgcolor: 'rgba(255,255,255,0.10)' },
             }}
-          />
-        </ListItemButton>
-        <ListItemButton
-          onClick={logout}
-          sx={{
-            borderRadius: 2,
-            mt: 1,
-            height: 48,
-            justifyContent: 'center',
-            '&:hover': {
-              bgcolor: selectedIndex === 999 ? '#fff' : 'rgba(255,255,255,0.1)',
-            },
-          }}
-        >
-          <LogoutIcon sx={{ color: 'white' }} fontSize="medium" />
-        </ListItemButton>
+          >
+            <ListItemIcon sx={{ color: 'white', minWidth: 0, mr: isExpanded ? 1.5 : 0 }}>
+              <LogoutIcon fontSize="medium" />
+            </ListItemIcon>
+            <Box
+              sx={{
+                overflow: 'hidden',
+                whiteSpace: 'nowrap',
+                opacity: isExpanded ? 1 : 0,
+                width: isExpanded ? 'auto' : 0,
+                transition: 'opacity .3s ease, width .3s ease',
+              }}
+            >
+              <ListItemText primary="Salir" primaryTypographyProps={{ color: 'white' }} />
+            </Box>
+          </ListItemButton>
+        </Tooltip>
       </Box>
     </Box>
-  );
+  )
 
-  const mobileNav = (
-    <Paper
-      sx={{
-        position: 'fixed',
-        bgcolor: 'primary.main',
-        bottom: 0,
-        left: 0,
-        right: 0,
-        zIndex: 1000,
-        borderTopLeftRadius: 16,
-        borderTopRightRadius: 16,
-      }}
-      elevation={8}
-    >
-      <Box
-        ref={scrollRef}
+  if (isMobile) {
+    return (
+      <Paper
         sx={{
-          overflowX: 'auto',
-          overflowY: 'hidden',
-          whiteSpace: 'nowrap',
-          '&::-webkit-scrollbar': { display: 'none' },
+          position: 'fixed',
+          backgroundColor: sidebarBg,
+          bottom: 0,
+          left: 0,
+          right: 0,
+          zIndex: 1000,
+          borderTopLeftRadius: 16,
+          borderTopRightRadius: 16,
+          borderBottomLeftRadius: 0,
+          borderBottomRightRadius: 0,
         }}
+        elevation={8}
       >
-        <BottomNavigation
-          showLabels={false}
-          value={selectedIndex}
-          onChange={(_, newIndex) => {
-            if (newIndex === 999) {
-              handleNavigate(999, '/perfil');
-            } else if (newIndex === 21) {
-              setSelectedIndex(21);
-              logout();
-            } else {
-              const tab = tabs[newIndex];
-              if (tab) {
-                handleNavigate(newIndex, tab.route);
-              }
-            }
-          }}
+        <Box
           sx={{
-            bgcolor: 'primary.main',
-            borderTopLeftRadius: 16,
-            borderTopRightRadius: 16,
-            display: 'inline-flex',
+            overflowX: 'auto',
+            overflowY: 'hidden',
+            whiteSpace: 'nowrap',
+            '&::-webkit-scrollbar': { display: 'none' },
           }}
         >
-          {tabs.map((tab, index) => (
+          <BottomNavigation
+            showLabels={false}
+            value={selectedIndex}
+            sx={{
+              bgcolor: 'transparent',
+              display: 'inline-flex',
+            }}
+          >
+            {tabs.map((tab, index) => (
+              <BottomNavigationAction
+                key={tab.route}
+                value={index}
+                icon={tab.icon}
+                disableRipple
+                onMouseDown={() => handleNav(tab.route, index)}
+                onClick={() => handleNav(tab.route, index)}
+                sx={{
+                  color: selectedIndex === index ? 'black' : 'white',
+                  '&.Mui-selected': { color: 'black', bgcolor: 'white !important' },
+                }}
+              />
+            ))}
             <BottomNavigationAction
-              key={index}
-              icon={tab.icon}
-              value={index}
+              value={21}
+              icon={<LogoutIcon />}
+              onClick={() => {
+                setSelectedIndex(21)
+                logout()
+              }}
               sx={{
-                color: selectedIndex === index ? 'black' : 'white',
-                '&.Mui-selected': {
-                  color: 'black',
-                  bgcolor: 'white'
-                },
+                color: 'white',
+                '&.Mui-selected': { color: 'black', bgcolor: 'white !important' },
               }}
             />
-          ))}
-          <BottomNavigationAction
-            icon={<AccountCircleIcon />}
-            value={999}
-            sx={{
-              color: 'white',
-              '&.Mui-selected': {
-                color: 'black',
-                bgcolor: 'white'
-              },
-            }}
-          />
-          <BottomNavigationAction
-            onClick={() => {
-              setSelectedIndex(21);
-              logout();
-            }}
-            icon={<LogoutIcon />}
-            value={21}
-            sx={{
-              color: 'white',
-              '&.Mui-selected': {
-                color: 'black',
-                bgcolor: 'white'
-              },
-            }}
-          />
-        </BottomNavigation>
-      </Box>
+          </BottomNavigation>
+        </Box>
+      </Paper>
+    )
+  }
 
-    </Paper>
-  );
-
-  return isMobile ? mobileNav : desktopSidebar;
-};
+  return desktopSidebar
+}

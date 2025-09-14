@@ -2,13 +2,13 @@ import { registerUser, loginUser, logoutUser } from '../services/auth.supabase.j
 
 export async function handleRegisterUser(req, res) {
   try {
-    const { email, password, dni, gym_id, role_id } = req.body
+    const { email, password, dni, gym_id, role_id, name } = req.body
 
-    if (!email || !password || !dni || !gym_id || !role_id) {
+    if (!email || !password || !dni || !gym_id || !role_id || !name) {
       return res.status(400).json({ error: 'Faltan campos requeridos' })
     }
 
-    const user = await registerUser({ email, password, dni, gym_id, role_id })
+    const user = await registerUser({ email, password, dni, gym_id, role_id, name })
 
     res.status(201).json({ message: 'Usuario registrado', user })
   } catch (err) {

@@ -5,8 +5,11 @@ import {
   getAsistencia,
   removeAsistencia
 } from '../controllers/attendance.controller.js'
-
+import { verifyToken } from '../middleware/auth.js'
+import {supaPerRequest} from '../middleware/supaPerRequest.js'
 const router = Router()
+
+router.use(verifyToken, supaPerRequest)
 
 router.get('/', listAsistencias)
 router.post('/', addAsistencia)

@@ -1,6 +1,6 @@
-import { createTheme } from "@mui/material/styles"
+import { createTheme, type Theme } from "@mui/material/styles"
 
-type GymSettings = {
+export type GymSettings = {
   colors: {
     primary: string
     secondary: string
@@ -13,7 +13,7 @@ type GymSettings = {
   shape: { borderRadius: number }
 }
 
-const DEFAULT_SETTINGS: GymSettings = {
+export const DEFAULT_SETTINGS: GymSettings = {
   colors: {
     primary: "#0dc985",
     secondary: "#4DB6AC",
@@ -24,6 +24,33 @@ const DEFAULT_SETTINGS: GymSettings = {
   },
   typography: { fontFamily: "'Quicksand', sans-serif" },
   shape: { borderRadius: 12 },
+}
+
+function buildTheme(s: GymSettings): Theme {
+  return createTheme({
+    components: {
+      MuiTextField: {
+        styleOverrides: {
+          root: {
+            "& input[type=number]::-webkit-inner-spin-button, & input[type=number]::-webkit-outer-spin-button": {
+              WebkitAppearance: "none",
+              margin: 0,
+            },
+            "& input[type=number]": { MozAppearance: "textfield" },
+          },
+        },
+      },
+    },
+    palette: {
+      mode: "light",
+      primary: { main: s.colors.primary, contrastText: "#FFFFFF" },
+      secondary: { main: s.colors.secondary, contrastText: "#FFFFFF" },
+      background: { default: s.colors.background, paper: s.colors.paper },
+      text: { primary: s.colors.textPrimary, secondary: s.colors.textSecondary },
+    },
+    typography: { fontFamily: s.typography.fontFamily },
+    shape: { borderRadius: s.shape.borderRadius },
+  })
 }
 
 function readSettingsFromStorage(): GymSettings {
@@ -57,31 +84,8 @@ function readSettingsFromStorage(): GymSettings {
   }
 }
 
-export function createAppTheme() {
-  const s = readSettingsFromStorage()
+export const DEFAULT_THEME = buildTheme(DEFAULT_SETTINGS)
 
-  return createTheme({
-    components: {
-      MuiTextField: {
-        styleOverrides: {
-          root: {
-            "& input[type=number]::-webkit-inner-spin-button, & input[type=number]::-webkit-outer-spin-button": {
-              WebkitAppearance: "none",
-              margin: 0,
-            },
-            "& input[type=number]": { MozAppearance: "textfield" },
-          },
-        },
-      },
-    },
-    palette: {
-      mode: "light",
-      primary: { main: s.colors.primary, contrastText: "#FFFFFF" },
-      secondary: { main: s.colors.secondary, contrastText: "#FFFFFF" },
-      background: { default: s.colors.background, paper: s.colors.paper },
-      text: { primary: s.colors.textPrimary, secondary: s.colors.textSecondary },
-    },
-    typography: { fontFamily: s.typography.fontFamily },
-    shape: { borderRadius: s.shape.borderRadius },
-  })
+export function createAppTheme(): Theme {
+  return buildTheme(readSettingsFromStorage())
 }

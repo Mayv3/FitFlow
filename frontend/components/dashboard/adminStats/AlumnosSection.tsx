@@ -59,7 +59,6 @@ const vencimientosMock: Vencimiento[] = [
     { id: 'v5', alumno: 'Evelyn A.', plan: 'Mensual Full', vence_iso: '2025-03-02', dias: -1 }, // vencido ayer
 ];
 
-// ---------- Colors ----------
 const ringColors = [
     ['#FFA45B', '#FF6CA3'],
     ['#1DC8FF', '#1674FF'],
@@ -67,7 +66,6 @@ const ringColors = [
     ['#FFDD00', '#FF8800'],
 ];
 
-// ---------- Helpers ----------
 const timeAgo = (iso: string) => {
     const diffMs = Date.now() - new Date(iso).getTime();
     const mins = Math.floor(diffMs / 60000);

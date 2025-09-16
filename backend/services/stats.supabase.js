@@ -80,6 +80,7 @@ export async function fetchKpis(gymId) {
   if (error) throw error;
 
   return {
+    ...data,
     range: {
       from: new Date(new Date().getFullYear(), new Date().getMonth(), 1)
         .toISOString()
@@ -91,11 +92,28 @@ export async function fetchKpis(gymId) {
     revenue: {
       current: data.facturacion_mes_actual,
       previous: data.facturacion_mes_anterior,
-      deltaPct: ((data.facturacion_mes_actual - data.facturacion_mes_anterior) / data.facturacion_mes_anterior) * 100,
+      deltaPct:
+        data.facturacion_mes_anterior > 0
+          ? ((data.facturacion_mes_actual - data.facturacion_mes_anterior) /
+            data.facturacion_mes_anterior) *
+          100
+          : null,
+      timeseries: {
+        byMonth: data.por_mes,
+        byDay: data.por_dia,
+        byWeek: data.por_semana,
+        byHour: data.por_hora,
+      },
     },
-    activeMembers: {
-      count: data.alumnos_activos,
-      deltaPct: Number(((data.alumnos_activos / data.alumnos_totales) * 100).toFixed(1)),
+    members: {
+      total: data.alumnos_totales,
+      active: data.alumnos_activos,
+      inactive: data.inactivos,
+      altasMes: data.altas_mes,
+      bajasMes: data.bajas_mes,
+      activePct: data.alumnos_totales
+        ? Number(((data.alumnos_activos / data.alumnos_totales) * 100).toFixed(1))
+        : null,
     },
     avgAttendancePerDay: {
       value: Number(data.asistencias_promedio?.toFixed(1)),
@@ -109,6 +127,31 @@ export async function fetchKpis(gymId) {
     },
   };
 }
+
+export async function getDashboardData({ gymId }) {
+  const { data: kpis, error: errorKpis } = await supabaseAdmin
+    .from("mv_dashboard_kpis")
+    .select("*")
+    .eq("gym_id", gymId)
+    .single();
+
+  if (errorKpis) throw errorKpis;
+
+  const { data: charts, error: errorCharts } = await supabaseAdmin
+    .from("mv_dashboard_charts")
+    .select("*")
+    .eq("gym_id", gymId)
+    .single();
+
+  if (errorCharts) throw errorCharts;
+
+  return {
+    gym_id: gymId,
+    kpis,
+    charts,
+  };
+}
+
 
 export async function getGymStatsService({ gymId } = {}) {
   const today = getTodayArgentina();

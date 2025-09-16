@@ -7,8 +7,6 @@ import AttachMoneyIcon from '@mui/icons-material/AttachMoney'
 import PaymentIcon from '@mui/icons-material/Payment'
 import CategoryIcon from '@mui/icons-material/Category'
 
-
-
 export const PaymentStats = ({ data, isLoading }: { data?: any; isLoading: boolean }) => {
   const theme = useTheme()
   const iconStyle = { color: theme.palette.primary.main, fontSize: 40 }

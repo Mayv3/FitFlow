@@ -1,4 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
+import Cookies from 'js-cookie';
 
 export function usePaymentsStats(
   gymId?: string,
@@ -14,7 +15,15 @@ export function usePaymentsStats(
       if (filters?.fromDate) url.searchParams.append('fromDate', filters.fromDate);
       if (filters?.toDate) url.searchParams.append('toDate', filters.toDate);
 
-      const res = await fetch(url.toString());
+      const token = Cookies.get('token');
+
+      const res = await fetch(url.toString(), {
+        headers: {
+          Authorization: token ? `Bearer ${token}` : '',
+        },
+        credentials: 'include',
+      });
+
       if (!res.ok) {
         throw new Error('Error al obtener estadísticas de pagos');
       }

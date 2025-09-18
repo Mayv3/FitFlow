@@ -77,7 +77,47 @@ export async function fetchKpis(gymId) {
     .eq("gym_id", gymId)
     .single();
 
-  if (error) throw error;
+  if (error || !data) {
+    return {
+      range: {
+        from: new Date(new Date().getFullYear(), new Date().getMonth(), 1)
+          .toISOString()
+          .split("T")[0],
+        to: new Date().toISOString().split("T")[0],
+      },
+      gym_id: gymId,
+      currency: "ARS",
+      revenue: {
+        current: 0,
+        previous: 0,
+        deltaPct: 0,
+        timeseries: {
+          byMonth: [],
+          byDay: [],
+          byWeek: [],
+          byHour: [],
+        },
+      },
+      members: {
+        total: 0,
+        active: 0,
+        inactive: 0,
+        altasMes: 0,
+        bajasMes: 0,
+        activePct: 0,
+      },
+      avgAttendancePerDay: {
+        value: 0,
+        deltaPct: 0,
+      },
+      topPlan: {
+        name: null,
+        count: 0,
+        revenue: 0,
+        sharePct: 0,
+      },
+    };
+  }
 
   return {
     ...data,
@@ -90,52 +130,52 @@ export async function fetchKpis(gymId) {
     gym_id: gymId,
     currency: "ARS",
     revenue: {
-      current: data.facturacion_mes_actual,
-      previous: data.facturacion_mes_anterior,
+      current: data.facturacion_mes_actual ?? 0,
+      previous: data.facturacion_mes_anterior ?? 0,
       deltaPct:
         data.facturacion_mes_anterior > 0
           ? ((data.facturacion_mes_actual - data.facturacion_mes_anterior) /
             data.facturacion_mes_anterior) *
           100
-          : null,
+          : 0,
       timeseries: {
-        byMonth: data.por_mes,
-        byDay: data.por_dia,
-        byWeek: data.por_semana,
-        byHour: data.por_hora,
+        byMonth: data.por_mes ?? [],
+        byDay: data.por_dia ?? [],
+        byWeek: data.por_semana ?? [],
+        byHour: data.por_hora ?? [],
       },
     },
     members: {
-      total: data.alumnos_totales,
-      active: data.alumnos_activos,
-      inactive: data.inactivos,
-      altasMes: data.altas_mes,
-      bajasMes: data.bajas_mes,
+      total: data.alumnos_totales ?? 0,
+      active: data.alumnos_activos ?? 0,
+      inactive: data.inactivos ?? 0,
+      altasMes: data.altas_mes ?? 0,
+      bajasMes: data.bajas_mes ?? 0,
       activePct: data.alumnos_totales
         ? Number(((data.alumnos_activos / data.alumnos_totales) * 100).toFixed(1))
-        : null,
+        : 0,
     },
     avgAttendancePerDay: {
-      value: Number(data.asistencias_promedio?.toFixed(1)),
+      value: Number(data.asistencias_promedio?.toFixed(1)) || 0,
       deltaPct: 0,
     },
     topPlan: {
-      name: data.plan_mas_vendido,
-      count: data.alumnos_plan_mas_vendido,
-      revenue: null,
-      sharePct: data.porcentaje_plan_mas_vendido,
+      name: data.plan_mas_vendido ?? null,
+      count: data.alumnos_plan_mas_vendido ?? 0,
+      revenue: 0,
+      sharePct: data.porcentaje_plan_mas_vendido ?? 0,
     },
   };
 }
 
+
 export async function getDashboardData({ gymId }) {
+  console.log('Data fetcheada')
   const { data: kpis, error: errorKpis } = await supabaseAdmin
     .from("mv_dashboard_kpis")
     .select("*")
     .eq("gym_id", gymId)
     .single();
-
-  if (errorKpis) throw errorKpis;
 
   const { data: charts, error: errorCharts } = await supabaseAdmin
     .from("mv_dashboard_charts")
@@ -143,7 +183,22 @@ export async function getDashboardData({ gymId }) {
     .eq("gym_id", gymId)
     .single();
 
-  if (errorCharts) throw errorCharts;
+  if (errorKpis || errorCharts || !kpis || !charts) {
+    return {
+      gym_id: gymId,
+      kpis: {
+        facturacion: 0,
+        alumnos: 0,
+        asistencias: 0,
+      },
+      charts: {
+        distribucionEdad: [],
+        distribucionSexo: [],
+        facturacion: [],
+        asistencias: [],
+      },
+    };
+  }
 
   return {
     gym_id: gymId,
@@ -152,6 +207,18 @@ export async function getDashboardData({ gymId }) {
   };
 }
 
+export async function getDemografiaStatsService({ gymId }) {
+  const { data, error } = await supabaseAdmin
+    .from('mv_alumnos_demografia')
+    .select('*')
+    .eq('gym_id', gymId);
+
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  return data;
+}
 
 export async function getGymStatsService({ gymId } = {}) {
   const today = getTodayArgentina();
@@ -181,3 +248,15 @@ export async function getGymStatsService({ gymId } = {}) {
   };
 }
 
+export async function getPlanesStatsService({ gymId }) {
+  const { data, error } = await supabaseAdmin
+    .from("mv_planes_dashboard")
+    .select("*")
+    .eq("gym_id", gymId);
+
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  return data;
+}

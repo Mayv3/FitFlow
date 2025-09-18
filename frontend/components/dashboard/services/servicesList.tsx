@@ -123,7 +123,7 @@ export default function ServicesList() {
   }
 
   return (
-    <Box>
+    <Box sx={{ maxWidth: 'xl', mx: 'auto', py: 2 }}>
       <CustomBreadcrumbs
         items={[
           { label: 'Dashboard', href: '/dashboard/receptionist' },

@@ -1,11 +1,13 @@
 'use client';
 
-import { Box, Container } from '@mui/material';
+import { Container } from '@mui/material';
 import { KpisRow } from './KpiRow';
 import { FacturacionSection } from './FacturacionSection';
-import { AlumnosSection } from './AlumnosSection';
 
 import { CustomBreadcrumbs } from '@/components/ui/breadcrums/CustomBreadcrumbs';
+import { DemografiaSection } from './DemografiaSection';
+import { PlanesSection } from './PlanesSection';
+import { ReactQueryDevtools } from '@tanstack/react-query-devtools';
 
 export default function Overview() {
   return (
@@ -18,8 +20,11 @@ export default function Overview() {
       />
       <KpisRow />
       <FacturacionSection />
-      {/* <AsistenciasSection/> */}
-      {/* <PlanesSection/> */}
+      <DemografiaSection />
+      <PlanesSection/>
+      <ReactQueryDevtools initialIsOpen={false} position="bottom" />
+
     </Container>
+
   );
 }

@@ -198,7 +198,7 @@ export default function MembersList() {
   const columns = columnsMember(triggerEdit, triggerDelete);
 
   return (
-    <Box>
+    <Box sx={{ maxWidth: 'xl', mx: 'auto', py: 2 }}>
       <CustomBreadcrumbs
         items={[
           { label: 'Dashboard', href: '/dashboard/receptionist' },

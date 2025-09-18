@@ -12,6 +12,7 @@ import {
 } from 'recharts';
 import { InfoTooltip } from '@/components/ui/tooltip/InfoTooltip';
 import moment from 'moment';
+import { useKpis } from '@/hooks/dashboard/useKpis';
 
 type Rango = '12m' | '30d' | '7w' | '24h';
 
@@ -49,31 +50,7 @@ export function FacturacionSection() {
   const isMobile = useMediaQuery(t.breakpoints.down('sm'));
 
   const [range, setRange] = useState<Rango>('12m');
-  const [data, setData] = useState<any>(null);
-
-  useEffect(() => {
-    const loadData = async () => {
-      try {
-        const token = document.cookie
-          .split('; ')
-          .find((row) => row.startsWith('token='))
-          ?.split('=')[1];
-        const res = await fetch(
-          `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/stats/dashboard/kpis`,
-          {
-            headers: { Authorization: `Bearer ${token}` },
-            credentials: 'include',
-          }
-        );
-        if (!res.ok) throw new Error('Error en la request');
-        const json = await res.json();
-        setData(json);
-      } catch (err) {
-        console.error('Error al cargar KPIs:', err);
-      }
-    };
-    loadData();
-  }, []);
+  const { data } = useKpis();
 
   if (!data) {
     return (
@@ -113,7 +90,7 @@ export function FacturacionSection() {
     );
   }
 
-  const charts = data.charts; // usar charts crudo
+  const charts = data.charts;
 
   const donutExplanations: Record<string, string> = {
     activos: 'Alumnos con cuota vigente (fecha de vencimiento ≥ hoy).',
@@ -206,7 +183,12 @@ export function FacturacionSection() {
             </ResponsiveContainer>
           </Box>
 
-          <Box display="flex" gap={3} flexWrap="wrap" justifyContent="center">
+          <Box
+            display="flex"
+            gap={2}
+            flexWrap="wrap"
+            justifyContent="center"
+          >
             {donutData.map((d, i) => {
               const grads = [
                 'linear-gradient(135deg, #FFA45B, #FF6CA3)',
@@ -220,12 +202,29 @@ export function FacturacionSection() {
                     component="span"
                     display="inline-flex"
                     alignItems="center"
-                    gap={2}
-                    sx={{ cursor: 'help' }}
+                    justifyContent="center"
+                    gap={1}
+                    sx={{
+                      cursor: 'help',
+                      minWidth: { xs: '45%', sm: 'auto' },
+                      maxWidth: { xs: '45%', sm: 'none' },
+                      flexDirection: { xs: 'column', sm: 'row' },
+                      textAlign: { xs: 'center', sm: 'left' },
+                    }}
                   >
-                    <Box sx={{ width: 20, height: 20, borderRadius: '50%', background: grads[i] }} />
+                    <Box
+                      sx={{
+                        width: 20,
+                        height: 20,
+                        borderRadius: '50%',
+                        background: grads[i],
+                        flexShrink: 0,
+                      }}
+                    />
                     <Box>
-                      <Typography variant="body2" color="text.secondary">{d.label}</Typography>
+                      <Typography variant="body2" color="text.secondary">
+                        {d.label}
+                      </Typography>
                       <Typography variant="body2" fontWeight={700} display="block">
                         {(d.value ?? 0).toLocaleString('es-AR')}
                       </Typography>
@@ -235,6 +234,7 @@ export function FacturacionSection() {
               );
             })}
           </Box>
+
         </CardContent>
       </Card>
 
@@ -302,7 +302,7 @@ export function FacturacionSection() {
                   formatter={(v: any) => [fmtARS(v, data.currency), 'Facturación']}
                 />
 
-                <Bar dataKey="revenue" fill="url(#revenueGrad)" radius={[8, 8, 8, 8]} barSize={barSize} />
+                <Bar dataKey="revenue" fill="url(#revenueGrad)" radius={[8, 8, 0, 0]} barSize={barSize} />
               </BarChart>
             </ResponsiveContainer>
           </Box>

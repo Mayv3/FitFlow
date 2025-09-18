@@ -1,5 +1,5 @@
 import { getPaymentsStatsService } from '../services/paymentsStats.supabase.js';
-import { getDashboardData, getGymStatsService } from '../services/stats.supabase.js';
+import { getDashboardData, getDemografiaStatsService, getGymStatsService, getPlanesStatsService } from '../services/stats.supabase.js';
 
 export async function getGymStatsController(req, res) {
   try {
@@ -33,7 +33,7 @@ export async function getPaymentsStatsController(req, res) {
 
 export async function getKpis(req, res) {
   try {
-  
+
     const gymId = req.user?.user_metadata?.gym_id;
     console.o
     if (!gymId) {
@@ -49,3 +49,69 @@ export async function getKpis(req, res) {
   }
 }
 
+export async function getDemografiaStatsController(req, res) {
+  try {
+    const gymId = req.user?.user_metadata?.gym_id;
+
+    if (!gymId) {
+      return res.status(400).json({ error: "Falta gym_id" });
+    }
+
+    const rawData = await getDemografiaStatsService({ gymId }) || [];
+
+    const porSexo = rawData.reduce((acc, item) => {
+      const existing = acc.find((s) => s.sexo === item.sexo);
+      if (existing) {
+        existing.cantidad += item.cantidad;
+      } else {
+        acc.push({ sexo: item.sexo, cantidad: item.cantidad });
+      }
+      return acc;
+    }, []);
+
+    const porEdad = rawData.map((item) => ({
+      rango_etario: item.rango_etario,
+      sexo: item.sexo,
+      cantidad: item.cantidad,
+    }));
+
+    return res.json({
+      porSexo: porSexo || [],
+      porEdad: porEdad || [],
+    });
+  } catch (error) {
+    console.error("❌ Error en getDemografiaStats:", error);
+    return res.status(500).json({ error: "Error interno del servidor" });
+  }
+}
+
+export async function getPlanesStatsController(req, res) {
+  try {
+    const gymId = req.user?.user_metadata?.gym_id;
+
+    if (!gymId) {
+      return res.status(400).json({ error: "Falta gym_id" });
+    }
+
+    const rawData = await getPlanesStatsService({ gymId });
+
+    const top5 = rawData.filter((p) => p.is_top5 === true);
+    const alumnos = rawData.map((p) => ({
+      plan_id: p.plan_id,
+      plan_nombre: p.plan_nombre,
+      cantidad_alumnos: p.cantidad_alumnos,
+    }));
+    const facturacion = rawData.map((p) => ({
+      plan_id: p.plan_id,
+      plan_nombre: p.plan_nombre,
+      actual: p.facturacion_mes_actual,
+      anterior: p.facturacion_mes_anterior,
+      variacion: p.variacion,
+    }));
+
+    return res.json({ top5, alumnos, facturacion });
+  } catch (error) {
+    console.error("❌ Error en getPlanesStats:", error);
+    return res.status(500).json({ error: "Error interno del servidor" });
+  }
+}

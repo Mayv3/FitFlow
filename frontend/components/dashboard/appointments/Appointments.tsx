@@ -184,7 +184,7 @@ export default function Appointments() {
   }
 
   return (
-    <Box>
+    <Box sx={{ maxWidth: 'xl', mx: 'auto' }}>
       <CustomBreadcrumbs
         items={[
           { label: 'Dashboard', href: '/dashboard/receptionist' },

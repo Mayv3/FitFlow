@@ -9,6 +9,7 @@ import Box from "@mui/material/Box";
 import Typography from "@mui/material/Typography";
 import Button from "@mui/material/Button";
 import { WarningAmber } from "@mui/icons-material"; // <<--- 2. IMPORTAR UN ICONO
+import { CircularProgress } from "@mui/material";
 
 type UserContextType = {
   user: UserData | null;
@@ -45,19 +46,19 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
   }, []);
 
   if (loading) {
-    return (
-      <Box 
-        display="flex" 
-        justifyContent="center" 
-        alignItems="center" 
-        minHeight="100vh"
-      >
-        <Typography>Cargando...</Typography>
-      </Box>
-    );
-  }
+  return (
+    <Box 
+      display="flex" 
+      justifyContent="center" 
+      alignItems="center" 
+      minHeight="100vh" 
+      flexDirection="column"
+    >
+      <CircularProgress color="primary" size={60} thickness={4} />
+    </Box>
+  );
+}
 
-  // <<--- 4. NUEVO BLOQUE DE ERROR MEJORADO VISUALMENTE
   if (!PUBLIC_ROUTES.includes(pathname) && !user?.gym_id) {
     return (
       <Box

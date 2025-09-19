@@ -3,10 +3,14 @@ import './globals.css'
 import { UserProvider } from "@/context/UserContext";
 import 'react-toastify/dist/ReactToastify.css'
 import { ToastProvider } from '@/components/ui/toast/ToastProvider'
-import { Quicksand } from 'next/font/google'
 import { ThemeProvider } from '../themeProvider/ThemeProvider'
 import { ReactQueryProvider } from '@/providers/ReactQueryProvider';
 import { LocalizationProviderClient } from '@/providers/LocalizationProviderClient';
+import { Quicksand, Roboto, Poppins, Montserrat } from "next/font/google"
+
+export const roboto = Roboto({ subsets: ["latin"], weight: ['300', '400', '500'] })
+export const poppins = Poppins({ subsets: ["latin"], weight: ['300', '400', '500'] })
+export const montserrat = Montserrat({ subsets: ["latin"], weight: ['300', '400', '500'] })
 
 const quicksand = Quicksand({
   subsets: ['latin'],
@@ -29,6 +33,15 @@ export default function RootLayout({
     <html lang="es" className={quicksand.variable}>
       <head>
         <link rel="icon" href="/favicon.png" type="image/png" />
+        <link
+          href="https://fonts.googleapis.com/css2?
+      family=Roboto:wght@400;500;700&
+      family=Montserrat:wght@400;500;700&
+      family=Poppins:wght@400;500;700&
+      family=Merriweather:wght@400;500;700&
+      display=swap"
+          rel="stylesheet"
+        />
       </head>
       <body className="font-quicksand">
         <LocalizationProviderClient>

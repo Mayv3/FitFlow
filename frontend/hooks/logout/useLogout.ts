@@ -13,6 +13,7 @@ export const useLogout = () => {
     document.cookie = 'gym_id=; path=/; expires=Thu, 01 Jan 1970 00:00:00 UTC;'
     document.cookie = 'name=; path=/; expires=Thu, 01 Jan 1970 00:00:00 UTC;'
     document.cookie = 'gym_name=; path=/; expires=Thu, 01 Jan 1970 00:00:00 UTC;'
+    document.cookie = 'email=; path=/; expires=Thu, 01 Jan 1970 00:00:00 UTC;'
 
     if (typeof window !== 'undefined') {
       localStorage.removeItem('gym_settings')

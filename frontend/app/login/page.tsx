@@ -36,14 +36,13 @@ const LoginPage = () => {
       )
 
       const { session, profile } = res.data
-
       Cookies.set("id", String(profile.id))
       Cookies.set("token", session.access_token)
       Cookies.set("dni", String(profile.dni))
       Cookies.set("rol", String(profile.role_id))
       Cookies.set("gym_id", profile.gym_id)
       Cookies.set("name", String(profile.name))
-      
+      Cookies.set("email", String(session.user.email))
       if (profile?.gyms?.name) Cookies.set("gym_name", String(profile.gyms.name))
 
       try {
@@ -78,7 +77,6 @@ const LoginPage = () => {
       } else if (profile.role_id === OWNER || profile.role_id === 1) {
         router.push("/dashboard/owner/register")
       } else {
-        // fallback
         router.push("/")
       }
     } catch (err: any) {
@@ -111,7 +109,7 @@ const LoginPage = () => {
           color: (theme) => theme.palette.text.primary,
         }}
       >
-        <Typography variant="h5" fontWeight="bold" gutterBottom>
+        <Typography variant="h5" fontWeight="bold" gutterBottom textAlign='center'>
           Ingresar al sistema
         </Typography>
 

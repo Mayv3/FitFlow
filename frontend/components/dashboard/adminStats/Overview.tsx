@@ -7,7 +7,6 @@ import { FacturacionSection } from './FacturacionSection';
 import { CustomBreadcrumbs } from '@/components/ui/breadcrums/CustomBreadcrumbs';
 import { DemografiaSection } from './DemografiaSection';
 import { PlanesSection } from './PlanesSection';
-import { ReactQueryDevtools } from '@tanstack/react-query-devtools';
 
 export default function Overview() {
   return (
@@ -22,7 +21,6 @@ export default function Overview() {
       <FacturacionSection />
       <DemografiaSection />
       <PlanesSection/>
-      <ReactQueryDevtools initialIsOpen={false} position="bottom" />
 
     </Container>
 

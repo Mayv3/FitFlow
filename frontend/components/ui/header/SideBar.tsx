@@ -21,6 +21,7 @@ import { useEffect, useState } from 'react'
 import { useLogout } from '@/hooks/logout/useLogout'
 import Cookies from 'js-cookie'
 import { useRouter, usePathname } from 'next/navigation'
+import { ADMINISTRADOR, RECEPCIONISTA, ROLE_ROUTES } from '@/const/roles/roles'
 
 type TabItem = { label: string; icon: React.ReactNode; route: string }
 type HeaderComponentProps = { tabs: TabItem[] }
@@ -52,6 +53,7 @@ export const SideBar = ({ tabs }: HeaderComponentProps) => {
   const [gym_name, setGymName] = useState<string | null>(null)
   const [gym_logo_url, setGymLogoUrl] = useState<string | null>(null)
   const [user_name, setUserName] = useState<string | null>(null)
+  const [user_role, setUserRole] = useState<string | null>(null)
 
   const [sidebarBg, setSidebarBg] = useState<string>(() => readPrimary())
   const defaultLogo = '/images/icon.png'
@@ -64,9 +66,14 @@ export const SideBar = ({ tabs }: HeaderComponentProps) => {
     router.push(route)
   }
 
+  const getProfileRoute = () => {
+    return ROLE_ROUTES[user_role ?? ""] || "/dashboard"
+  }
+
   useEffect(() => {
     setGymName(Cookies.get('gym_name') ?? null)
     setUserName(Cookies.get('name') ?? null)
+    setUserRole(Cookies.get('rol') ?? null)
     try {
       setGymLogoUrl(localStorage.getItem('gym_logo_url') || null)
     } catch { }
@@ -233,6 +240,7 @@ export const SideBar = ({ tabs }: HeaderComponentProps) => {
 
       <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
         <Box
+          onClick={() => handleNav(getProfileRoute())}
           sx={{
             display: 'flex',
             alignItems: 'center',
@@ -241,6 +249,7 @@ export const SideBar = ({ tabs }: HeaderComponentProps) => {
             height: 48,
             px: isExpanded ? 1.25 : 0,
             borderRadius: 2,
+            cursor: 'pointer',
             bgcolor: 'rgba(255,255,255,0.10)',
           }}
         >

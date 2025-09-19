@@ -29,7 +29,6 @@ export const recepcionistTabs = [
   { label: 'Turnos', icon: <TodayIcon />, route: '/dashboard/receptionist/appointments' },
   { label: 'Asistencias', icon: <AssignmentTurnedInIcon />, route: '/dashboard/receptionist/assists' },
   { label: 'Soporte', icon: <HelpIcon />, route: '/dashboard/receptionist/support' },
-  { label: 'Configuración', icon: <SettingsIcon />, route: '/dashboard/receptionist/settings' },
 ];
 
 export const memberTabs = [

@@ -103,7 +103,7 @@ export function FacturacionSection() {
     { key: 'activos', label: 'Activos', tooltip: 'Alumnos activos con cuota vigente', value: charts?.activos ?? 0 },
     { key: 'inactivos', label: 'Inactivos', tooltip: 'Alumnos con cuota vencida', value: charts?.inactivos ?? 0 },
     { key: 'altas', label: 'Altas', tooltip: 'Altas de este mes', value: charts?.altas_mes ?? 0 },
-    { key: 'bajas', label: 'Bajas', tooltip: 'Bajas (más de 10 días sin pagar)', value: charts?.bajas ?? 0 }, // 👈 corregido
+    { key: 'bajas', label: 'Bajas', tooltip: 'Bajas (más de 10 días sin pagar)', value: charts?.bajas ?? 0 },
   ];
 
   const barsByRange: Record<Rango, { m: string; revenue: number }[]> = {
@@ -257,8 +257,8 @@ export function FacturacionSection() {
                 onChange={(_, v) => v && setRange(v)}
               >
                 <ToggleButton value="12m"><Chip label="12 meses" size="small" /></ToggleButton>
-                <ToggleButton value="30d">Por día</ToggleButton>
                 <ToggleButton value="7w">Por semana</ToggleButton>
+                <ToggleButton value="30d">Por día</ToggleButton>
                 <ToggleButton value="24h">24 horas</ToggleButton>
               </ToggleButtonGroup>
             </Box>

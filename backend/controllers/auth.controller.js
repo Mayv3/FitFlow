@@ -1,4 +1,4 @@
-import { registerUser, loginUser, logoutUser } from '../services/auth.supabase.js'
+import { registerUser, loginUser, logoutUser, forgotPasswordService, resetPasswordService } from '../services/auth.supabase.js'
 
 export async function handleRegisterUser(req, res) {
   try {
@@ -38,5 +38,47 @@ export async function handleLogoutUser(req, res) {
   } catch (err) {
     console.error('Error en logout:', err)
     res.status(500).json({ error: err.message })
+  }
+}
+
+export async function handleForgotPassword(req, res) {
+  try {
+    const { email } = req.body
+
+    if (!email) {
+      return res.status(400).json({ error: "El email es requerido" })
+    }
+
+    const result = await forgotPasswordService(email)
+
+    if (!result.success) {
+      return res.status(result.status).json({ error: result.error })
+    }
+
+    return res.json({ success: true, message: "Correo de recuperación enviado" })
+  } catch (err) {
+    console.error("Controller error:", err)
+    return res.status(500).json({ error: "Error interno del servidor" })
+  }
+}
+
+export async function handleResetPassword(req, res) {
+  try {
+    const { access_token, newPassword } = req.body
+
+    if (!access_token || !newPassword) {
+      return res.status(400).json({ error: "Faltan datos" })
+    }
+
+    const result = await resetPasswordService(access_token, newPassword)
+
+    if (!result.success) {
+      return res.status(result.status).json({ error: result.error })
+    }
+
+    return res.json({ success: true, message: "Contraseña actualizada correctamente ✅" })
+  } catch (err) {
+    console.error("Controller error:", err)
+    return res.status(500).json({ error: "Error interno del servidor" })
   }
 }

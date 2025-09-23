@@ -51,3 +51,31 @@ export async function handleGetGym(req, res) {
     res.status(500).json({ error: err.message })
   }
 }
+
+export const handleUpdateGymSettings = async (req, res) => {
+  try {
+    const gymId = req.user.user_metadata.gym_id;
+    const settings = req.body
+
+    console.log(settings)
+    console.log(gymId)
+
+    if (!gymId) {
+      return res.status(400).json({ error: "No se encontró gym_id en el token" })
+    }
+
+    const { data, error } = await supabaseAdmin
+      .from("gyms")
+      .update({ settings: settings })
+      .eq("id", gymId)
+      .select()
+      .single()
+
+    if (error) throw error
+
+    res.json(data)
+  } catch (err) {
+    console.error("Error al actualizar settings:", err)
+    res.status(500).json({ error: "No se pudo actualizar el tema del gym" })
+  }
+}

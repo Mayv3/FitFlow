@@ -21,7 +21,7 @@ export const useLogout = () => {
       localStorage.clear()
     }
 
-    router.push('/login')
+    router.replace('/login')
   }
 
   return logout

@@ -8,6 +8,7 @@ import { useUser } from "@/context/UserContext"
 import { FormEnterToTab } from "@/components/ui/tables/FormEnterToTab"
 import { ADMINISTRADOR, RECEPCIONISTA, OWNER, SOCIO } from "@/const/roles/roles"
 import { TextField, Button, Typography, Paper, Box, CircularProgress } from "@mui/material"
+import Link from "next/link"
 
 const LoginPage = () => {
   const [email, setEmail] = useState("")
@@ -145,6 +146,12 @@ const LoginPage = () => {
           >
             {loading ? <CircularProgress size={24} color="inherit" /> : "Ingresar"}
           </Button>
+
+          <Box sx={{ mt: 2, textAlign: "center" }}>
+            <Link href="/forgot-password" style={{ color: "#2196F3", fontWeight: 500 }}>
+              ¿Olvidaste tu contraseña?
+            </Link>
+          </Box>
 
           {errorMessage && (
             <Typography

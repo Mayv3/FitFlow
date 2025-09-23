@@ -8,7 +8,7 @@ import { usePathname, useRouter } from "next/navigation"; // <<--- 1. IMPORTAR u
 import Box from "@mui/material/Box";
 import Typography from "@mui/material/Typography";
 import Button from "@mui/material/Button";
-import { WarningAmber } from "@mui/icons-material"; // <<--- 2. IMPORTAR UN ICONO
+import { WarningAmber } from "@mui/icons-material";
 import { CircularProgress } from "@mui/material";
 
 type UserContextType = {
@@ -19,19 +19,23 @@ type UserContextType = {
 
 const UserContext = createContext<UserContextType | undefined>(undefined);
 
-const PUBLIC_ROUTES = ['/login', '/'];
+const PUBLIC_ROUTES = ['/login', '/', '/forgot-password', 'reset-password'];
+
+function isPublicRoute(path: string) {
+  return PUBLIC_ROUTES.some((r) => path.startsWith(r))
+}
 
 export const UserProvider = ({ children }: { children: ReactNode }) => {
   const [user, setUser] = useState<UserData | null>(null);
   const [loading, setLoading] = useState(true);
   const pathname = usePathname();
-  const router = useRouter(); // <<--- 3. INICIALIZAR EL ROUTER
+  const router = useRouter();
 
   useEffect(() => {
-    const idStr   = Cookies.get("id")     || "";
-    const dni     = Cookies.get("dni")    || "";
-    const role_id = Cookies.get("rol")    || "";
-    const gym_id  = Cookies.get("gym_id") || "";
+    const idStr = Cookies.get("id") || "";
+    const dni = Cookies.get("dni") || "";
+    const role_id = Cookies.get("rol") || "";
+    const gym_id = Cookies.get("gym_id") || "";
 
     if (idStr && dni && role_id && gym_id) {
       setUser({
@@ -46,18 +50,28 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
   }, []);
 
   if (loading) {
-  return (
-    <Box 
-      display="flex" 
-      justifyContent="center" 
-      alignItems="center" 
-      minHeight="100vh" 
-      flexDirection="column"
-    >
-      <CircularProgress color="primary" size={60} thickness={4} />
-    </Box>
-  );
-}
+    return (
+      <Box
+        display="flex"
+        justifyContent="center"
+        alignItems="center"
+        minHeight="100vh"
+        flexDirection="column"
+      >
+        <CircularProgress color="primary" size={60} thickness={4} />
+      </Box>
+    );
+  }
+
+
+  if (isPublicRoute(pathname)) {
+    return (
+      <UserContext.Provider value={{ user, setUser, loading }}>
+        {children}
+      </UserContext.Provider>
+    )
+  }
+
 
   if (!PUBLIC_ROUTES.includes(pathname) && !user?.gym_id) {
     return (

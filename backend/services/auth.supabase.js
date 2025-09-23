@@ -23,13 +23,36 @@ export async function registerUser({ email, password, dni, gym_id, role_id, name
 
 export async function loginUser({ email, password }) {
   const { data, error } = await supabase.auth.signInWithPassword({ email, password })
-  if (error) throw error
+
+  if (error) {
+    let message = "Ocurrió un error inesperado. Intentalo de nuevo."
+
+    if (error.message === "Invalid login credentials") {
+      message = "Correo o contraseña incorrectos"
+    } else if (error.message === "Email not confirmed") {
+      message = "Tu correo aún no fue confirmado. Revisá tu bandeja de entrada."
+    } else if (error.message === "User not found") {
+      message = "El usuario no existe"
+    } else if (error.message === "Invalid token") {
+      message = "El enlace de verificación es inválido o ha expirado"
+    } else if (error.message === "Token has expired or is invalid") {
+      message = "El enlace de verificación ha expirado o no es válido"
+    } else if (error.message === "User already registered") {
+      message = "Este correo ya está registrado"
+    } else if (error.message === "Email rate limit exceeded") {
+      message = "Demasiados intentos. Esperá un momento antes de volver a intentar."
+    } else if (error.message === "Password should be at least 6 characters") {
+      message = "La contraseña debe tener al menos 6 caracteres"
+    }
+
+    throw new Error(message)
+  }
 
   const { session, user } = data
-  if (!session || !user) throw new Error('Error en autenticación: sesión o usuario no disponibles')
+  if (!session || !user) throw new Error("Error en la autenticación: sesión o usuario no disponibles")
 
   const { data: profile, error: profileError } = await supabase
-    .from('users')
+    .from("users")
     .select(`
       id,
       dni,
@@ -39,16 +62,60 @@ export async function loginUser({ email, password }) {
       name,
       gyms ( name )
     `)
-    .eq('auth_user_id', user.id)
+    .eq("auth_user_id", user.id)
     .single()
-  if (profileError) throw profileError
+
+  if (profileError) throw new Error("No se pudo obtener el perfil del usuario")
 
   return { session, profile }
 }
-
 
 export async function logoutUser() {
   const { error } = await supabase.auth.signOut()
   if (error) throw error
   return { message: 'Sesión cerrada' }
+}
+
+export async function forgotPasswordService(email) {
+  try {
+    const { error } = await supabase.auth.resetPasswordForEmail(email, {
+      redirectTo: `${process.env.APP_URL}/reset-password`,
+    })
+
+    if (error) {
+      return { success: false, error: error.message, status: 400 }
+    }
+
+    return { success: true, status: 200 }
+  } catch (err) {
+    console.error("Service error:", err)
+    return { success: false, error: "Error en el servicio", status: 500 }
+  }
+}
+
+export async function resetPasswordService(access_token, newPassword) {
+  try {
+    const { error: sessionError } = await supabase.auth.setSession({
+      access_token,
+      refresh_token: access_token,
+    })
+
+    if (sessionError) {
+      return { success: false, error: "Token de recuperación inválido o vencido", status: 401 }
+    }
+
+    const { error } = await supabase.auth.updateUser({ password: newPassword })
+    if (error) {
+      let msg = error.message
+      if (msg.includes("at least 6 characters")) {
+        msg = "La contraseña debe tener al menos 6 caracteres."
+      }
+      return { success: false, error: msg, status: 400 }
+    }
+
+    return { success: true, status: 200, message: "Contraseña actualizada correctamente ✅" }
+  } catch (err) {
+    console.error("Service error:", err)
+    return { success: false, error: "Error en el servicio", status: 500 }
+  }
 }

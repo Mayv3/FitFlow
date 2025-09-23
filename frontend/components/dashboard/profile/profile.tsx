@@ -40,6 +40,7 @@ export function ProfileSection() {
         "2": "Administrador",
         "3": "Recepcionista",
     }
+
     const handleChangePassword = async () => {
         try {
             setLoadingPass(true)
@@ -49,11 +50,29 @@ export function ProfileSection() {
                 return
             }
 
-            await new Promise((res) => setTimeout(res, 1000))
+            const res = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/api/users/change-password`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    email: user.email,
+                    currentPassword,
+                    newPassword,
+                }),
+            })
 
-            notify.success("Contraseña cambiada correctamente")
-        } catch (error) {
-            notify.error("Error al cambiar la contraseña")
+            const data = await res.json()
+
+            if (!res.ok) {
+                throw new Error(data.error || "Error al cambiar la contraseña")
+            }
+
+            notify.success("Contraseña cambiada correctamente ✅")
+
+            setTimeout(() => {
+                window.location.href = "/login"
+            }, 1500)
+        } catch (error: any) {
+            notify.error(error.message || "Error al cambiar la contraseña")
         } finally {
             setLoadingPass(false)
         }
@@ -118,7 +137,7 @@ export function ProfileSection() {
                 <Divider sx={{ my: 3 }} />
 
                 <Typography variant="h6" gutterBottom>
-                    🔑 Cambiar Contraseña
+                    Cambiar contraseña
                 </Typography>
                 <Stack spacing={2} alignItems="center">
                     <TextField

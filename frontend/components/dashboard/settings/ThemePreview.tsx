@@ -51,7 +51,6 @@ export function ThemePreview({ settings }: Props) {
     : createAppTheme()
 
   return (
-
     <Box
       sx={{
         display: "flex",
@@ -60,37 +59,26 @@ export function ThemePreview({ settings }: Props) {
         borderRadius: 2,
         overflow: "hidden",
         boxShadow: 3,
+        position: 'relative'
       }}
     >
       <ThemeProvider theme={theme}>
         <Box
           sx={{
-            width: 70,
             bgcolor: "primary.main",
             display: "flex",
-            flexDirection: "column",
+            flexDirection: { xs: "row", md: "column" },
             alignItems: "center",
-            py: 2,
-            gap: 2,
+            justifyContent: { xs: "space-around", md: "flex-start" },
+            width: { xs: "100%", md: 70 },
+            height: { xs: 70, md: "auto" },
+            py: { xs: 0, md: 2 },
+            gap: { xs: 0, md: 2 },
+            position: { xs: "absolute", md: "static" },
+            bottom: { xs: 0, md: "auto" },
+            left: { xs: 0, md: "auto" },
           }}
         >
-          <Box
-            sx={{
-              width: 40,
-              height: 40,
-              borderRadius: "50%",
-              bgcolor: "white",
-              color: "primary.main",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              fontWeight: "bold",
-              mb: 2,
-            }}
-          >
-            F
-          </Box>
-
           <IconButton sx={{ color: "white" }}><BarChart /></IconButton>
           <IconButton sx={{ color: "white" }}><People /></IconButton>
           <IconButton sx={{ color: "white" }}><AttachMoney /></IconButton>
@@ -98,9 +86,10 @@ export function ThemePreview({ settings }: Props) {
           <IconButton sx={{ color: "white" }}><Settings /></IconButton>
         </Box>
 
-        <Box sx={{ flex: 1, bgcolor: "background.default", p: 3 }}>
-          <Box sx={{ display: "flex", justifyContent: "space-between", mb: 3 }}>
-            <Typography variant="h6" sx={{ color: "#fff" }}>
+
+        <Box sx={{ flex: 1, bgcolor: "background.default", p: { xs: 2, md: 3 } }}>
+          <Box sx={{ display: "flex", justifyContent: "space-between",alignItems:'center', mb: 3, mx: { xs: 'auto' } }}>
+            <Typography variant="h6" sx={{ color: "#11111" }}>
               Miembros
             </Typography>
             <Button
@@ -117,7 +106,7 @@ export function ThemePreview({ settings }: Props) {
             <Box
               sx={{
                 display: "grid",
-                gridTemplateColumns: "1fr 1fr 1fr 1fr",
+                gridTemplateColumns: { xs: "1fr 1fr 1fr", md: "1fr 1fr 1fr 1fr" },
                 p: 1,
                 bgcolor: "background.paper",
                 textAlign: "center",
@@ -126,7 +115,14 @@ export function ThemePreview({ settings }: Props) {
             >
               <Typography variant="body2">Nombre</Typography>
               <Typography variant="body2">Plan</Typography>
-              <Typography variant="body2">Estado</Typography>
+
+              <Typography
+                variant="body2"
+                sx={{ display: { xs: "none", md: "block" } }}
+              >
+                Estado
+              </Typography>
+
               <Typography variant="body2">Acciones</Typography>
             </Box>
 
@@ -140,7 +136,7 @@ export function ThemePreview({ settings }: Props) {
                 key={i}
                 sx={{
                   display: "grid",
-                  gridTemplateColumns: "1fr 1fr 1fr 1fr",
+                  gridTemplateColumns: { xs: "1fr 1fr 1fr", md: "1fr 1fr 1fr 1fr" },
                   p: 1,
                   borderTop: "1px solid #ddd",
                   alignItems: "center",
@@ -149,7 +145,15 @@ export function ThemePreview({ settings }: Props) {
               >
                 <Typography variant="body2">{alumno.nombre}</Typography>
                 <Typography variant="body2">{alumno.plan}</Typography>
-                <StateCheap code={alumno.code as any} label={alumno.label} daysDiff={alumno.daysDiff} />
+
+                <Box sx={{ display: { xs: "none", md: "block" } }}>
+                  <StateCheap
+                    code={alumno.code as any}
+                    label={alumno.label}
+                    daysDiff={alumno.daysDiff}
+                  />
+                </Box>
+
                 <Box sx={{ display: "flex", gap: 1, justifyContent: "center" }}>
                   <IconButton color="primary" size="small"><Edit fontSize="small" /></IconButton>
                   <IconButton color="error" size="small"><Delete fontSize="small" /></IconButton>
@@ -158,7 +162,6 @@ export function ThemePreview({ settings }: Props) {
             ))}
           </Paper>
 
-          {/* KPIs */}
           <Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", md: "1fr 1fr 1fr" }, gap: 2 }}>
             <Card>
               <CardContent sx={{ display: "flex", alignItems: "center", gap: 1 }}>

@@ -39,14 +39,12 @@ export function ManageGymUsers() {
   const [loadingUsers, setLoadingUsers] = useState(false)
   const [error, setError] = useState("")
 
-  // form crear usuario
   const [name, setName] = useState("")
   const [dni, setDni] = useState("")
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
   const [roleId, setRoleId] = useState<number>(3)
 
-  // cargar gimnasios
   useEffect(() => {
     (async () => {
       setLoadingGyms(true)

@@ -3,17 +3,28 @@ import { supabaseAdmin, supabase } from "../db/supabaseClient.js"
 export async function listUsers(gymId) {
   let query = supabaseAdmin
     .from("users")
-    .select("*")
+    .select("id, name, dni, role_id, gym_id, auth_user_id")
+    .is("deleted_at", null)
     .order("id", { ascending: true })
 
   if (gymId) {
     query = query.eq("gym_id", gymId)
   }
 
-  const { data, error } = await query
+  const { data: users, error } = await query
   if (error) throw error
 
-  return data ?? []
+  const { data: allAuth } = await supabaseAdmin.auth.admin.listUsers()
+
+  const enriched = users.map(u => {
+    const authUser = allAuth.users.find(a => a.id === u.auth_user_id)
+    return {
+      ...u,
+      email: authUser?.email ?? null,
+    }
+  })
+
+  return enriched
 }
 
 export async function changePasswordService(email, currentPassword, newPassword) {
@@ -48,4 +59,29 @@ export async function changePasswordService(email, currentPassword, newPassword)
     console.error("Service error:", err)
     return { success: false, error: "Error en el servicio", status: 500 }
   }
+}
+
+export async function updateUserRole(userId, newRoleId) {
+  const { data, error } = await supabaseAdmin
+    .from("users")
+    .update({ role_id: newRoleId })
+    .eq("id", userId)
+    .is("deleted_at", null)
+    .select("*")
+    .single()
+
+  if (error) throw error
+  return data
+}
+
+export async function deleteUser(userId) {
+  const { data, error } = await supabaseAdmin
+    .from("users")
+    .update({ deleted_at: new Date().toISOString() })
+    .eq("id", userId)
+    .select("*")
+    .single()
+
+  if (error) throw error
+  return data
 }

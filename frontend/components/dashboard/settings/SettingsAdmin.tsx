@@ -17,7 +17,7 @@ export function SettingsAdmin() {
     const [themeSettings, setThemeSettings] = useState<ThemeSettings | null>(null)
 
     return (
-        <Box sx={{ maxWidth: 'xl', mx: 'auto', py: 2 }}>
+        <Box>
             <CustomBreadcrumbs
                 items={[
                     { label: 'Dashboard', href: '' },

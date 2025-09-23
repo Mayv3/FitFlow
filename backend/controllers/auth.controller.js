@@ -5,15 +5,38 @@ export async function handleRegisterUser(req, res) {
     const { email, password, dni, gym_id, role_id, name } = req.body
 
     if (!email || !password || !dni || !gym_id || !role_id || !name) {
-      return res.status(400).json({ error: 'Faltan campos requeridos' })
+      return res.status(400).json({ error: "Faltan campos requeridos" })
     }
 
     const user = await registerUser({ email, password, dni, gym_id, role_id, name })
 
-    res.status(201).json({ message: 'Usuario registrado', user })
+    return res.status(201).json({ message: "Usuario registrado", user })
   } catch (err) {
-    console.error('Error al registrar usuario:', err)
-    res.status(500).json({ error: err.message })
+    console.error("Error al registrar usuario:", err)
+
+    let mensaje = "Ocurrió un error en la autenticación"
+
+    if (err.message.includes("User already registered")) {
+      mensaje = "El usuario ya está registrado"
+    } else if (err.message.includes("A user with this email address has already been registered")) {
+      mensaje = "Ya existe un usuario registrado con este correo electrónico"
+    } else if (err.message.includes("Invalid login credentials")) {
+      mensaje = "Credenciales inválidas"
+    } else if (err.message.includes("Email not confirmed")) {
+      mensaje = "El correo electrónico no fue confirmado"
+    } else if (err.message.includes("Invalid email")) {
+      mensaje = "El correo electrónico no es válido"
+    } else if (err.message.includes("Password should be at least 6 characters")) {
+      mensaje = "La contraseña debe tener al menos 6 caracteres"
+    } else if (err.message.includes("Token expired")) {
+      mensaje = "El token ha expirado"
+    } else if (err.message.includes("Refresh Token Not Found")) {
+      mensaje = "No se encontró el token de sesión"
+    } else if (err.message.includes("Email rate limit exceeded")) {
+      mensaje = "Se superó el límite de envíos de correo electrónico. Intenta más tarde."
+    }
+
+    return res.status(400).json({ error: mensaje })
   }
 }
 
@@ -76,7 +99,7 @@ export async function handleResetPassword(req, res) {
       return res.status(result.status).json({ error: result.error })
     }
 
-    return res.json({ success: true, message: "Contraseña actualizada correctamente ✅" })
+    return res.json({ success: true, message: "Contraseña actualizada correctamente" })
   } catch (err) {
     console.error("Controller error:", err)
     return res.status(500).json({ error: "Error interno del servidor" })

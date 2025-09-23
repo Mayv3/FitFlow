@@ -1,25 +1,71 @@
 import { supabase, supabaseAdmin } from '../db/supabaseClient.js'
 
 export async function registerUser({ email, password, dni, gym_id, role_id, name }) {
+  const { data: authList, error: listError } = await supabaseAdmin.auth.admin.listUsers()
+  if (listError) throw listError
+
+  const existingAuthUser = authList?.users?.find(u => u.email === email)
+
+  if (existingAuthUser) {
+    // Buscar en tabla users
+    const { data: dbUser, error: dbError } = await supabaseAdmin
+      .from("users")
+      .select("*")
+      .eq("auth_user_id", existingAuthUser.id)
+      .single()
+
+    if (dbError && dbError.code !== "PGRST116") throw dbError // salvo "no rows found"
+
+    if (dbUser?.deleted_at) {
+      const { data: updatedAuth, error: updateAuthError } =
+        await supabaseAdmin.auth.admin.updateUserById(existingAuthUser.id, {
+          password,
+          user_metadata: { dni, gym_id, role_id, name },
+        })
+      if (updateAuthError) throw updateAuthError
+
+      const { data: revived, error: reviveError } = await supabaseAdmin
+        .from("users")
+        .update({
+          deleted_at: null,
+          dni,
+          gym_id,
+          role_id,
+          name,
+        })
+        .eq("id", dbUser.id)
+        .select("*")
+        .single()
+
+      if (reviveError) throw reviveError
+      return { user_id: existingAuthUser.id, ...revived }
+    }
+
+    throw new Error("Ya existe un usuario registrado con este correo electrónico")
+  }
+
   const { data: authData, error: authError } = await supabaseAdmin.auth.admin.createUser({
     email,
     password,
-    user_metadata: { dni, gym_id, role_id },
-    email_confirm: true
+    user_metadata: { dni, gym_id, role_id, name },
+    email_confirm: true,
   })
   if (authError) throw authError
 
   const auth_user_id = authData.user.id
 
   const { data: insertData, error: insertError } = await supabaseAdmin
-    .from('users')
+    .from("users")
     .insert({ dni, gym_id, role_id, auth_user_id, name })
-    .select('*')
-  if (insertError) throw insertError
-  if (!insertData?.length) throw new Error('No se pudo insertar el usuario en la tabla users')
+    .select("*")
+    .single()
 
-  return { user_id: auth_user_id, ...insertData[0] }
+  if (insertError) throw insertError
+
+  return { user_id: auth_user_id, ...insertData }
 }
+
+
 
 export async function loginUser({ email, password }) {
   const { data, error } = await supabase.auth.signInWithPassword({ email, password })
@@ -113,7 +159,7 @@ export async function resetPasswordService(access_token, newPassword) {
       return { success: false, error: msg, status: 400 }
     }
 
-    return { success: true, status: 200, message: "Contraseña actualizada correctamente ✅" }
+    return { success: true, status: 200, message: "Contraseña actualizada correctamente" }
   } catch (err) {
     console.error("Service error:", err)
     return { success: false, error: "Error en el servicio", status: 500 }

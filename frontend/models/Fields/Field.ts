@@ -4,7 +4,7 @@ import { FieldLayout } from "./FieldLayout";
 export type Field = {
   label: string;
   name: string;
-  type: 'string' | 'number' | 'email' | 'date' | 'search-select' | 'time' | 'select' | 'color';
+  type: 'string' | 'number' | 'email' | 'date' | 'search-select' | 'time' | 'select' | 'color' | 'password';
   required?: boolean;
   minLength?: number;
   maxLength?: number;

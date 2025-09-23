@@ -223,7 +223,6 @@ export const FormModal = <T extends Record<string, any>>({
                 const allOptions = field.searchFromCache(gymId ?? '', '')
                 let results = term ? field.searchFromCache(gymId ?? '', term) : allOptions
 
-                // 👇 Fallback: si no hay resultados, mostrar todos
                 if (!results || results.length === 0) {
                   results = allOptions
                 }
@@ -238,7 +237,7 @@ export const FormModal = <T extends Record<string, any>>({
                       options={results}
                       isOptionEqualToValue={(o, v) => o.value === v.value}
                       getOptionLabel={(option) => option.label}
-                      value={selectedOption}   // en create = null, en edit = alumno correcto
+                      value={selectedOption}
                       onInputChange={(_, newInputValue) => {
                         setSearchTerms(prev => ({ ...prev, [field.name]: newInputValue }))
                       }}

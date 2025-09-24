@@ -1,4 +1,3 @@
-// hooks/pagos/usePagosApi.ts
 import { useQuery, useMutation, keepPreviousData, useQueryClient } from '@tanstack/react-query';
 import axios from 'axios';
 import Cookies from 'js-cookie';

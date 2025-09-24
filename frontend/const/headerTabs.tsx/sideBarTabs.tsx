@@ -18,7 +18,7 @@ export const adminTabs = [
   { label: 'Turnos', icon: <TodayIcon />, route: '/dashboard/administrator/appointments' },
   { label: 'Asistencias', icon: <AssignmentTurnedInIcon />, route: '/dashboard/administrator/assists' },
   { label: 'Configuración', icon: <SettingsIcon />, route: '/dashboard/administrator/settings' },
-  { label: 'Soporte', icon: <HelpIcon />, route: '/dashboard/administrator/support' },
+  // { label: 'Soporte', icon: <HelpIcon />, route: '/dashboard/administrator/support' },
 ];
 
 export const recepcionistTabs = [
@@ -28,8 +28,14 @@ export const recepcionistTabs = [
   { label: 'Servicios', icon: <AccessibilityNewIcon />, route: '/dashboard/receptionist/services' },
   { label: 'Turnos', icon: <TodayIcon />, route: '/dashboard/receptionist/appointments' },
   { label: 'Asistencias', icon: <AssignmentTurnedInIcon />, route: '/dashboard/receptionist/assists' },
-  { label: 'Soporte', icon: <HelpIcon />, route: '/dashboard/receptionist/support' },
+  // { label: 'Soporte', icon: <HelpIcon />, route: '/dashboard/receptionist/support' },
 ];
+
+export const ownerTabs = [
+  { label: "Onboarding", icon: <StorefrontIcon />, route: "/dashboard/owner/onboarding" },
+]
+
+// To do
 
 export const memberTabs = [
   { label: 'Mi cuenta', icon: <GroupIcon />, route: '/dashboard/member' },
@@ -38,7 +44,3 @@ export const memberTabs = [
   { label: 'Asistencias', icon: <AssignmentTurnedInIcon />, route: '/dashboard/receptionist/assists' },
   { label: 'Configuración', icon: <SettingsIcon />, route: '/dashboard/member/settings' },
 ];
-
-export const ownerTabs = [
-  { label: "Onboarding", icon: <StorefrontIcon />, route: "/dashboard/owner/onboarding" },
-]

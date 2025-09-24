@@ -78,10 +78,7 @@ const server = createServer(app);
 
 const io = new Server(server, {
   cors: {
-    origin: [
-      "http://localhost:3000",
-      "https://fit-flow-m2cp65af-mavy3s-projects.vercel.app",
-    ],
+    origin: allowedOrigins,
     credentials: true,
   },
 });

@@ -31,7 +31,9 @@ const app = express();
 const allowedOrigins = [
   "http://localhost:3000",
   "https://fit-flow-rouge.vercel.app",
-  "https://fit-flow-f7a3ewq3f-mavy3s-projects.vercel.app"
+  "https://fit-flow-f7a3ewq3f-mavy3s-projects.vercel.app",
+  "https://fitnessflow.com.ar",
+  "https://www.fitnessflow.com.ar"
 ];
 
 app.use(cors({

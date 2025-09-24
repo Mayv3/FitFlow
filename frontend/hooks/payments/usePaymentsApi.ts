@@ -4,7 +4,7 @@ import axios from 'axios';
 import Cookies from 'js-cookie';
 import { Payment } from '@/models/Payment/Payment';
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
+const API_URL = process.env.NEXT_PUBLIC_API_URL;
 
 const axiosInstance = axios.create({
   baseURL: API_URL,

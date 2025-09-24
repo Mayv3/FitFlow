@@ -29,9 +29,14 @@ dotenv.config();
 const app = express();
 
 app.use(cors({
-  origin: 'http://localhost:3000',
+  origin: [
+    "http://localhost:3000",
+    "https://fit-flow-m2cp65af-mavy3s-projects.vercel.app",
+    "https://fit-flow-ruby.vercel.app"
+  ],
   credentials: true
 }));
+
 app.use(express.json());
 
 app.use((req, res, next) => {

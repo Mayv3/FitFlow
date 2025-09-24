@@ -47,7 +47,7 @@ app.use('/api/roles', rolesRoutes);
 app.use('/api/asistencias', asistenciasRoutes);
 app.use('/api/gyms', gymsRoutes)
 app.use('/api/test', testRoutes);
-app.use('/api/stats',verifyToken, supaPerRequest, statsRoutes);
+app.use('/api/stats', verifyToken, supaPerRequest, statsRoutes);
 app.use('/api/planes', planesRoutes);
 app.use('/api/servicios', servicesRoutes);
 app.use('/api/turnos', appointmentsRoutes);
@@ -63,7 +63,13 @@ const PORT = process.env.PORT || 3001;
 const server = createServer(app);
 
 const io = new Server(server, {
-  cors: { origin: 'http://localhost:3000', credentials: true },
+  cors: {
+    origin: [
+      "http://localhost:3000",
+      "https://fit-flow-m2cp65af-mavy3s-projects.vercel.app",
+    ],
+    credentials: true,
+  },
 });
 
 io.on('connection', (socket) => {

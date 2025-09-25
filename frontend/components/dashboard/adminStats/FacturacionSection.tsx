@@ -10,7 +10,7 @@ import {
   ResponsiveContainer, PieChart, Pie, Cell, Tooltip as ReTooltip,
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip,
 } from 'recharts';
-import { InfoTooltip } from '@/components/ui/tooltip/InfoTooltip';
+import { InfoTooltip, RoundedTooltip } from '@/components/ui/tooltip/InfoTooltip';
 import moment from 'moment';
 import { useKpis } from '@/hooks/dashboard/useKpis';
 
@@ -174,11 +174,15 @@ export function FacturacionSection() {
                 </Pie>
 
                 <ReTooltip
-                  formatter={(v: any, _n: any, p: any) => {
-                    const customTooltip = p.payload.tooltip || p.payload.label;
-                    return [String(v), customTooltip];
-                  }}
+                  content={
+                    <RoundedTooltip
+                      formatter={(entry) =>
+                        `${entry.payload.tooltip || entry.payload.label}: ${entry.value.toLocaleString("es-AR")}`
+                      }
+                    />
+                  }
                 />
+
               </PieChart>
             </ResponsiveContainer>
           </Box>
@@ -299,7 +303,13 @@ export function FacturacionSection() {
 
                 <Tooltip
                   cursor={{ fill: alpha(t.palette.primary.main, 0.06) }}
-                  formatter={(v: any) => [fmtARS(v, data.currency), 'Facturación']}
+                  content={
+                    <RoundedTooltip
+                      formatter={(entry) =>
+                        `${entry.name}: ${fmtARS(entry.value, data.currency)}`
+                      }
+                    />
+                  }
                 />
 
                 <Bar dataKey="revenue" fill="url(#revenueGrad)" radius={[8, 8, 0, 0]} barSize={barSize} />

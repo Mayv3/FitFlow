@@ -72,7 +72,9 @@ app.use("/api/users", usersRoutes)
 app.use('/api/payment-methods', paymentMethodsRoutes);
 app.use('/api/auth', authRoutes);
 
-app.get('/ping', (req, res) => res.sendStatus(200));
+app.get("/ping", (req, res) => {
+  res.status(200).json({ message: "OK" });
+});
 
 const PORT = process.env.PORT || 3001;
 

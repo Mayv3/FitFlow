@@ -52,6 +52,7 @@ export function FacturacionSection() {
   const [range, setRange] = useState<Rango>('12m');
   const { data } = useKpis();
 
+
   if (!data) {
     return (
       <Box display="grid" gridTemplateColumns={{ xs: '1fr', md: '2fr 3fr' }} gap={1.5} mb={1.5}>
@@ -127,6 +128,10 @@ export function FacturacionSection() {
     boxShadow: '0 2px 6px rgba(0,0,0,0.04)',
   } as const;
 
+
+  useEffect(() => {
+    console.table(barData); // revisa si algún facturacion es NaN/undefined/null
+  }, [barData]);
   return (
     <Box display="grid" gridTemplateColumns={{ xs: '1fr', md: '2fr 3fr' }} gap={1.5} alignItems="stretch" mb={1.5}>
       <Card sx={cardSx}>
@@ -304,7 +309,9 @@ export function FacturacionSection() {
                   cursor={{ fill: alpha(t.palette.primary.main, 0.06) }}
                   content={
                     <RoundedTooltip
-                      formatter={(value) => `Facturación: ${fmtARS(value as number, data.currency)}`}
+                      formatter={(entry: any) =>
+                        `Facturación: ${fmtARS(Number(entry?.value), data.currency)}`
+                      }
                     />
                   }
                 />

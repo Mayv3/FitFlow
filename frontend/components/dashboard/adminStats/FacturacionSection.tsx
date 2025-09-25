@@ -106,11 +106,11 @@ export function FacturacionSection() {
     { key: 'bajas', label: 'Bajas', tooltip: 'Bajas (más de 10 días sin pagar)', value: charts?.bajas ?? 0 },
   ];
 
-  const barsByRange: Record<Rango, { m: string; revenue: number }[]> = {
-    '12m': (charts?.por_mes ?? []).map((p: any) => ({ m: formatMonth(p.fecha), revenue: p.monto_centavos })),
-    '30d': (charts?.por_dia ?? []).map((p: any) => ({ m: formatDay(p.fecha), revenue: p.monto_centavos })),
-    '7w': (charts?.por_semana ?? []).map((p: any) => ({ m: formatWeek(p.fecha), revenue: p.monto_centavos })),
-    '24h': (charts?.por_hora ?? []).map((p: any) => ({ m: p.fecha.slice(11, 16), revenue: p.monto_centavos })),
+  const barsByRange: Record<Rango, { m: string; facturacion: number }[]> = {
+    '12m': (charts?.por_mes ?? []).map((p: any) => ({ m: formatMonth(p.fecha), facturacion: p.monto_centavos })),
+    '30d': (charts?.por_dia ?? []).map((p: any) => ({ m: formatDay(p.fecha), facturacion: p.monto_centavos })),
+    '7w': (charts?.por_semana ?? []).map((p: any) => ({ m: formatWeek(p.fecha), facturacion: p.monto_centavos })),
+    '24h': (charts?.por_hora ?? []).map((p: any) => ({ m: p.fecha.slice(11, 16), facturacion: p.monto_centavos })),
   };
 
   const barData = barsByRange[range];
@@ -312,7 +312,8 @@ export function FacturacionSection() {
                   }
                 />
 
-                <Bar dataKey="revenue" fill="url(#revenueGrad)" radius={[8, 8, 0, 0]} barSize={barSize} />
+                <Bar dataKey="facturacion" fill="url(#revenueGrad)" radius={[8, 8, 0, 0]} barSize={barSize} />
+
               </BarChart>
             </ResponsiveContainer>
           </Box>

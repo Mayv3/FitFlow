@@ -37,6 +37,7 @@ export default function PlansList() {
 
     const {
         rows: planes,
+        total,
         isLoading,
         isFetching,
     } = usePlanesPrecios(gymId, page, pageSize, q)
@@ -170,7 +171,7 @@ export default function PlansList() {
                 rows={planes}
                 columns={columns}
                 paginationMode="server"
-                rowCount={planes.length}
+                rowCount={total}
                 page={page - 1}
                 pageSize={pageSize}
                 onPaginationModelChange={({ page: newPage }) => setPage(newPage + 1)}

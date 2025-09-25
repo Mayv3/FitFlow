@@ -1,13 +1,15 @@
 import React, { useState, useEffect } from 'react';
 import {
   Dialog, DialogTitle, DialogContent, DialogActions,
-  Button, Box, TextField, Typography, MenuItem,
+  Button, Box, TextField, Typography, MenuItem, useMediaQuery
 } from '@mui/material';
+import { useTheme } from '@mui/material/styles';
 import { Field, FormModalProps } from '@/models/Fields/Field';
 import { debounce } from '@/utils/debounce/debounce';
 import { Autocomplete } from '@mui/material';
 import { notify } from '@/lib/toast';
 import { ColorPickerPopover } from '../colorSelector/colorSelector';
+
 export const FormModal = <T extends Record<string, any>>({
   open,
   title,
@@ -33,7 +35,19 @@ export const FormModal = <T extends Record<string, any>>({
   const [searchTerms, setSearchTerms] = useState<Record<string, string>>({});
   const showError = (msg: string) => notify.error(msg);
 
-  const setFieldError = (name: string, msg?: string) => setExternalErrors(prev => ({ ...prev, [name]: msg }));
+  const theme = useTheme();
+  const isSmDown = useMediaQuery(theme.breakpoints.down('sm'));
+  const isMdUp = useMediaQuery(theme.breakpoints.up('md'));
+
+  // anchos responsivos
+  const paperWidth = {
+    xs: '92vw',
+    sm: 560,
+    md: 720,
+  };
+
+  const setFieldError = (name: string, msg?: string) =>
+    setExternalErrors(prev => ({ ...prev, [name]: msg }));
 
   const isLockedField = (fieldName: string) => lockedFields.includes(fieldName);
 
@@ -57,17 +71,18 @@ export const FormModal = <T extends Record<string, any>>({
   }, [open, initialValues, fields]);
 
   const runAsyncValidation = React.useMemo(
-    () => debounce(async (name: string, value: any, allValues: T) => {
-      const fn = asyncValidators?.[name];
-      if (!fn) return;
+    () =>
+      debounce(async (name: string, value: any, allValues: T) => {
+        const fn = asyncValidators?.[name];
+        if (!fn) return;
 
-      const current = String(value);
-      const msg = await fn(value, allValues);
+        const current = String(value);
+        const msg = await fn(value, allValues);
 
-      if (String((allValues as any)[name]) === current) {
-        setFieldError(name, msg ?? undefined);
-      }
-    }, asyncDebounceMs),
+        if (String((allValues as any)[name]) === current) {
+          setFieldError(name, msg ?? undefined);
+        }
+      }, asyncDebounceMs),
     [asyncValidators, asyncDebounceMs]
   );
 
@@ -81,7 +96,11 @@ export const FormModal = <T extends Record<string, any>>({
 
     if (f.regex && !f.regex.test(newVal)) return;
     if (f.type === 'string' && f.maxLength != null) newVal = newVal.slice(0, f.maxLength);
-    if (f.type === 'select' && Array.isArray(f.options) && typeof f.options[0]?.value === 'number') {
+    if (
+      f.type === 'select' &&
+      Array.isArray(f.options) &&
+      typeof f.options[0]?.value === 'number'
+    ) {
       newVal = Number(newVal);
     }
 
@@ -114,7 +133,12 @@ export const FormModal = <T extends Record<string, any>>({
         showError(`El campo "${field.label}" es obligatorio.`);
         return;
       }
-      if (field.type === 'string' && field.minLength != null && typeof val === 'string' && val.length < field.minLength) {
+      if (
+        field.type === 'string' &&
+        field.minLength != null &&
+        typeof val === 'string' &&
+        val.length < field.minLength
+      ) {
         showError(`El campo "${field.label}" debe tener al menos ${field.minLength} caracteres.`);
         return;
       }
@@ -124,13 +148,25 @@ export const FormModal = <T extends Record<string, any>>({
       }
       if (field.type === 'number') {
         const n = Number(val);
-        if (Number.isNaN(n)) { showError(`El campo "${field.label}" debe ser numérico.`); return; }
-        if (field.min != null && n < field.min) { showError(`El campo "${field.label}" debe ser al menos ${field.min}.`); return; }
-        if (field.max != null && n > field.max) { showError(`El campo "${field.label}" no debe superar ${field.max}.`); return; }
+        if (Number.isNaN(n)) {
+          showError(`El campo "${field.label}" debe ser numérico.`);
+          return;
+        }
+        if (field.min != null && n < field.min) {
+          showError(`El campo "${field.label}" debe ser al menos ${field.min}.`);
+          return;
+        }
+        if (field.max != null && n > field.max) {
+          showError(`El campo "${field.label}" no debe superar ${field.max}.`);
+          return;
+        }
       }
       if (field.validate) {
         const msg = field.validate(val);
-        if (msg) { showError(msg); return; }
+        if (msg) {
+          showError(msg);
+          return;
+        }
       }
     }
 
@@ -149,21 +185,56 @@ export const FormModal = <T extends Record<string, any>>({
 
   const hasEmptyRequired = fields.some(f => f.required && isEmpty(f, values[f.name]));
 
+  const computeCellStyle = (fieldName: string): React.CSSProperties => {
+    if (!isMdUp) {
+      return { gridColumn: `1 / span 12`, minWidth: 0 };
+    }
+    const lay = (layout as any)[fieldName] ?? {};
+    return {
+      gridColumn:
+        lay.colStart != null
+          ? `${lay.colStart} / span ${lay.colSpan ?? 1}`
+          : `auto / span ${lay.colSpan ?? 1}`,
+      gridRow: lay.rowStart != null ? `${lay.rowStart} / span ${lay.rowSpan ?? 1}` : undefined,
+      minWidth: 0,
+    };
+  };
+
   return (
-    <Dialog open={open} onClose={onClose} maxWidth="sm" fullWidth>
+    <Dialog
+      open={open}
+      onClose={onClose}
+      fullWidth
+      maxWidth={false}
+      scroll="paper"
+      PaperProps={{
+        sx: {
+          width: paperWidth,
+          m: { xs: 2, sm: 3 },
+          borderRadius: 2,
+        },
+      }}
+    >
       <form onSubmit={handleSubmit}>
-        <DialogTitle>{title}</DialogTitle>
-        <DialogContent dividers>
-          <Box display="grid" gridTemplateColumns={`repeat(${gridColumns}, 1fr)`} gap={`${gridGap}px`}>
+        <DialogTitle sx={{ px: { xs: 2, sm: 3 }, py: { xs: 1.5, sm: 2 } }}>{title}</DialogTitle>
+
+        <DialogContent
+          dividers
+          sx={{
+            px: { xs: 2, sm: 3 },
+            py: { xs: 2, sm: 3 },
+            maxHeight: { xs: '68vh', sm: '72vh' },
+            overflowY: 'auto',
+          }}
+        >
+          <Box
+            display="grid"
+            gridTemplateColumns={`repeat(${isMdUp ? gridColumns : 12}, 1fr)`}
+            gap={`${isSmDown ? 12 : gridGap}px`}
+          >
             {fields.map(field => {
               const val = values[field.name] ?? '';
-              const lay = layout[field.name] ?? {};
-
-              const style: React.CSSProperties = {
-                gridColumn: lay.colStart != null ? `${lay.colStart} / span ${lay.colSpan ?? 1}` : `auto / span ${lay.colSpan ?? 1}`,
-                gridRow: lay.rowStart != null ? `${lay.rowStart} / span ${lay.rowSpan ?? 1}` : undefined,
-                minWidth: 0,
-              };
+              const style = computeCellStyle(field.name);
 
               const trimmedVal = typeof val === 'string' ? val.trim() : val;
               const length = String(trimmedVal).length;
@@ -174,23 +245,29 @@ export const FormModal = <T extends Record<string, any>>({
               const isTooShort = field.type === 'string' && length < minLen;
               const isTooLong = field.type === 'string' && length > maxLen;
 
-              const isBelowMin = field.type === 'number' && field.min != null && Number(val) < field.min;
-              const isAboveMax = field.type === 'number' && field.max != null && Number(val) > field.max;
+              const isBelowMin =
+                field.type === 'number' && field.min != null && Number(val) < field.min;
+              const isAboveMax =
+                field.type === 'number' && field.max != null && Number(val) > field.max;
 
               const syncMsg = field.validate?.(val);
               const asyncMsg = externalErrors[field.name];
               const validationMessage = asyncMsg || syncMsg;
 
-              const isError = !!validationMessage || isTooShort || isTooLong || isBelowMin || isAboveMax;
+              const isError =
+                !!validationMessage || isTooShort || isTooLong || isBelowMin || isAboveMax;
 
-              const helperText =
-                validationMessage
-                  ? validationMessage
-                  : isTooShort ? `Mínimo ${minLen} caracteres`
-                    : isTooLong ? `Máximo ${maxLen} caracteres`
-                      : isBelowMin ? `Debe ser al menos ${field.min}`
-                        : isAboveMax ? `No debe superar ${field.max}`
-                          : '';
+              const helperText = validationMessage
+                ? validationMessage
+                : isTooShort
+                  ? `Mínimo ${minLen} caracteres`
+                  : isTooLong
+                    ? `Máximo ${maxLen} caracteres`
+                    : isBelowMin
+                      ? `Debe ser al menos ${field.min}`
+                      : isAboveMax
+                        ? `No debe superar ${field.max}`
+                        : '';
 
               const inputProps: React.InputHTMLAttributes<HTMLInputElement> = {
                 maxLength: field.maxLength ?? undefined,
@@ -210,41 +287,37 @@ export const FormModal = <T extends Record<string, any>>({
                   <Box key={field.name} style={style}>
                     <ColorPickerPopover
                       value={val || ''}
-                      onChange={(c) => setValues((prev) => ({ ...prev, [field.name]: c }))}
+                      onChange={c => setValues(prev => ({ ...prev, [field.name]: c }))}
                       label={field.label}
                     />
                   </Box>
-                )
+                );
               }
 
               if (field.type === 'search-select' && field.searchFromCache) {
-                const term = searchTerms[field.name] ?? ''
-
-                const allOptions = field.searchFromCache(gymId ?? '', '')
-                let results = term ? field.searchFromCache(gymId ?? '', term) : allOptions
-
-                if (!results || results.length === 0) {
-                  results = allOptions
-                }
+                const term = searchTerms[field.name] ?? '';
+                const allOptions = field.searchFromCache(gymId ?? '', '');
+                let results = term ? field.searchFromCache(gymId ?? '', term) : allOptions;
+                if (!results || results.length === 0) results = allOptions;
 
                 const selectedOption = values[field.name]
                   ? allOptions.find(o => o.value === values[field.name]) || null
-                  : null
+                  : null;
 
                 return (
                   <Box key={field.name} style={style}>
                     <Autocomplete
                       options={results}
                       isOptionEqualToValue={(o, v) => o.value === v.value}
-                      getOptionLabel={(option) => option.label}
+                      getOptionLabel={option => option.label}
                       value={selectedOption}
                       onInputChange={(_, newInputValue) => {
-                        setSearchTerms(prev => ({ ...prev, [field.name]: newInputValue }))
+                        setSearchTerms(prev => ({ ...prev, [field.name]: newInputValue }));
                       }}
                       onChange={(_, newValue) => {
-                        setValues(prev => ({ ...prev, [field.name]: newValue?.value ?? null }))
+                        setValues(prev => ({ ...prev, [field.name]: newValue?.value ?? null }));
                       }}
-                      renderInput={(params) => (
+                      renderInput={params => (
                         <TextField
                           {...params}
                           label={field.label}
@@ -252,13 +325,16 @@ export const FormModal = <T extends Record<string, any>>({
                           required={field.required}
                           error={isError}
                           helperText={helperText}
+                          fullWidth
+                          size={isSmDown ? 'small' : 'medium'}
                         />
                       )}
                       disabled={locked}
                       noOptionsText={null}
+                      fullWidth
                     />
                   </Box>
-                )
+                );
               }
 
               return (
@@ -267,6 +343,7 @@ export const FormModal = <T extends Record<string, any>>({
                     onBlur={e => !locked && handleBlur(field.name, String(e.target.value))}
                     select={field.type === 'select'}
                     fullWidth
+                    size={isSmDown ? 'small' : 'medium'}
                     label={field.label}
                     name={field.name}
                     type={field.type !== 'select' ? (field.type as any) : undefined}
@@ -278,44 +355,78 @@ export const FormModal = <T extends Record<string, any>>({
                     error={isError}
                     helperText={helperText}
                     disabled={locked || field.disabled}
-                    InputProps={{ readOnly: locked }}
+                    InputProps={{
+                      readOnly: locked,
+                      sx: {
+                        height: '60px',
+                        '& .MuiInputBase-input': {
+                          py: 1, // padding interno
+                        },
+                      },
+                    }}
                     SelectProps={{
                       displayEmpty: true,
-                      renderValue: (selected) => {
-                        const match = options.find(o =>
-                          (o.value === selected) ||
-                          (o.value == null && (selected == null || selected === ''))
+                      renderValue: selected => {
+                        const match = options.find(
+                          o =>
+                            o.value === selected ||
+                            (o.value == null && (selected == null || selected === ''))
                         );
                         if (match) return match.label;
                         return field.placeholder ?? '';
                       },
+                      MenuProps: { PaperProps: { sx: { maxHeight: 320 } } },
                     }}
                   >
-                    {field.type === 'select' && options.map(opt => (
-                      <MenuItem key={String(opt.value)} value={opt.value}>
-                        {opt.label}
-                      </MenuItem>
-                    ))}
+                    {field.type === 'select' &&
+                      options.map(opt => (
+                        <MenuItem key={String(opt.value)} value={opt.value}>
+                          {opt.label}
+                        </MenuItem>
+                      ))}
                   </TextField>
 
-                  {field.maxLength != null && !isError && field.type === 'string' && (
-                    <Typography variant="caption" color={reachedMax ? 'error' : 'text.secondary'}>
-                      {length} / {maxLen}
-                    </Typography>
-                  )}
+                  {
+                    field.maxLength != null && !isError && field.type === 'string' && (
+                      <Typography
+                        variant="caption"
+                        color={reachedMax ? 'error' : 'text.secondary'}
+                      >
+                        {length} / {maxLen}
+                      </Typography>
+                    )
+                  }
                 </Box>
               );
             })}
           </Box>
         </DialogContent>
-        <DialogActions>
-          <Button onClick={onClose}>{cancelText}</Button>
+
+        <DialogActions
+          sx={{
+            position: 'sticky',
+            bottom: 0,
+            zIndex: 1,
+            px: { xs: 2, sm: 3 },
+            py: { xs: 1.5, sm: 2 },
+            gap: 1.5,
+            bgcolor: 'background.paper',
+            borderTop: theme => `1px solid ${theme.palette.divider}`,
+            flexDirection: { xs: 'column-reverse', sm: 'row' },
+            '& > :is(button, .MuiBox-root)': {
+              width: { xs: '100%', sm: 'auto' },
+            },
+          }}
+        >
+          <Button onClick={onClose} variant="outlined">
+            {cancelText}
+          </Button>
           {extraActions}
           <Button type="submit" variant="contained" disabled={hasErrors || hasEmptyRequired}>
             {confirmText}
           </Button>
         </DialogActions>
       </form>
-    </Dialog>
+    </Dialog >
   );
 };

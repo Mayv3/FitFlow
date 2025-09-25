@@ -170,11 +170,8 @@ export default function PlansList() {
             <GenericDataGrid
                 rows={planes}
                 columns={columns}
-                paginationMode="server"
+                paginationMode="client"
                 rowCount={total}
-                page={page - 1}
-                pageSize={pageSize}
-                onPaginationModelChange={({ page: newPage }) => setPage(newPage + 1)}
                 loading={isFetching}
             />
 

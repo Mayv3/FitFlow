@@ -1,4 +1,4 @@
-import { Box, Paper } from '@mui/material';
+import { Box } from '@mui/material';
 import { DataGrid, GridColDef, GridPaginationModel } from '@mui/x-data-grid';
 
 type GenericDataGridProps<T extends { id: string | number }> = {
@@ -10,8 +10,6 @@ type GenericDataGridProps<T extends { id: string | number }> = {
   page?: number;
   pageSize?: number;
   loading?: boolean;
-  pageSizeOptions?: number[];
-  initialPagination?: GridPaginationModel;
   height?: number;
   onPaginationModelChange?: (model: GridPaginationModel) => void;
 };
@@ -25,37 +23,21 @@ export function GenericDataGrid<T extends { id: string | number }>({
   pageSize,
   onPaginationModelChange,
   loading = false,
-  pageSizeOptions = [5, 10],
-  initialPagination = { page: 0, pageSize: 5 },
   height = 600,
 }: GenericDataGridProps<T>) {
   return (
-
-    <Box
-      sx={{
-        overflowX: 'auto',
-      }}
-    >
-      <Box
-        sx={{
-          minWidth: '1400px',
-        }}
-      >
+    <Box sx={{ overflowX: 'auto' }}>
+      <Box sx={{ minWidth: '1400px' }}>
         <DataGrid
           sx={{
             backgroundColor: 'white',
             maxHeight: { xs: '70vh' },
-
             '& .MuiDataGrid-main': { backgroundColor: 'white' },
             '& .MuiDataGrid-columnHeaders': { backgroundColor: 'white' },
             '& .MuiDataGrid-columnHeader': { backgroundColor: 'white' },
             '& .MuiDataGrid-columnHeadersInner': { backgroundColor: 'white' },
             '& .MuiDataGrid-virtualScroller': { backgroundColor: 'white' },
             '& .MuiDataGrid-footerContainer': { backgroundColor: 'white' },
-
-            ...(rows || []).reduce((acc, r) => {
-              return acc
-            }, {} as any),
           }}
           checkboxSelection={false}
           hideFooterSelectedRowCount
@@ -73,12 +55,11 @@ export function GenericDataGrid<T extends { id: string | number }>({
           {...(paginationMode === 'client' && {
             initialState: {
               sorting: { sortModel: [{ field: 'nombre', sort: 'asc' }] },
-              pagination: { paginationModel: initialPagination },
+              pagination: { paginationModel: { page: 0, pageSize: 20 } }, // 👈 siempre 20
             },
           })}
-          pageSizeOptions={pageSizeOptions}
+          pageSizeOptions={[20]} // 👈 solo permite 20
         />
-
       </Box>
     </Box>
   );

@@ -9,13 +9,6 @@ export const getPlanes = async (req, res) => {
   try {
     const { gymId, page, pageSize, q } = req.query
 
-    const { items: allPlanes } = await getPlanesSvc({ gymId, q })
-    const total = allPlanes.length
-
-    if (total <= 100) {
-      return res.status(200).json({ items: allPlanes, total })
-    }
-
     if (page && pageSize) {
       const { items, total } = await getPlanesSvc({
         gymId,
@@ -23,17 +16,24 @@ export const getPlanes = async (req, res) => {
         pageSize: parseInt(pageSize, 10),
         q,
       })
+
+      if (total <= 100) {
+        const allPlanes = await getPlanesSvc({ gymId, q })
+        return res.status(200).json({ items: allPlanes, total })
+      }
+
       return res.status(200).json({ items, total })
     }
 
-    return res.status(200).json({ items: allPlanes, total })
+    const planes = await getPlanesSvc({ gymId, q })
+    return res.status(200).json({ items: planes, total: planes.length })
   } catch (err) {
-    res
-      .status(500)
-      .json({ message: 'Error al obtener los planes', detail: err.message })
+    res.status(500).json({
+      message: 'Error al obtener los planes',
+      detail: err.message,
+    })
   }
 }
-
 
 export const createPlan = async (req, res) => {
   try {

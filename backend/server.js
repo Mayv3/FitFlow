@@ -72,7 +72,7 @@ app.use("/api/users", usersRoutes)
 app.use('/api/payment-methods', paymentMethodsRoutes);
 app.use('/api/auth', authRoutes);
 
-app.get("/ping", (req, res) => {
+app.get("/api/ping", (req, res) => {
   res.status(200).json({ message: "OK" });
 });
 

@@ -300,14 +300,11 @@ export function FacturacionSection() {
                     domain={[0, 'auto']}
                   />
                 )}
-
                 <Tooltip
                   cursor={{ fill: alpha(t.palette.primary.main, 0.06) }}
                   content={
                     <RoundedTooltip
-                      formatter={(entry) =>
-                        `${entry.name}: ${fmtARS(entry.value, data.currency)}`
-                      }
+                      formatter={(value) => `Facturación: ${fmtARS(value as number, data.currency)}`}
                     />
                   }
                 />

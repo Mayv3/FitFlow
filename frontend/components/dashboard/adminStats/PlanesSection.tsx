@@ -184,53 +184,69 @@ export function PlanesSection() {
           </Typography>
           <Box sx={{ height: 360 }}>
             <ResponsiveContainer>
-              <PieChart>
-                <defs>
-                  {gradients.map(([c1, c2], i) => (
-                    <linearGradient
-                      key={i}
-                      id={`donut-plan-grad-${i}`}
-                      x1="0"
-                      y1="0"
-                      x2="1"
-                      y2="1"
-                    >
-                      <stop offset="0%" stopColor={c1} />
-                      <stop offset="100%" stopColor={c2} />
-                    </linearGradient>
-                  ))}
-                </defs>
-                <Pie
-                  data={donutData}
-                  dataKey="value"
-                  nameKey="label"
-                  innerRadius="55%"
-                  outerRadius="85%"
-                  startAngle={90}
-                  endAngle={-270}
-                  stroke="transparent"
-                >
-                  {donutData.map((d: any, i: number) => (
-                    <Cell
-                      key={d.key}
-                      fill={`url(#donut-plan-grad-${i % gradients.length})`}
-                    />
-                  ))}
-                </Pie>
-                <ReTooltip
+              <BarChart
+                data={donutData}
+                barCategoryGap={8}
+                margin={{
+                  top: 0,
+                  right: 0,
+                  bottom: 0,
+                  left: 0,
+                }}
+              >
+                <CartesianGrid
+                  vertical={false}
+                  stroke={alpha(t.palette.text.primary, 0.08)}
+                />
+
+                {/* Eje X numérico (cantidad de alumnos) */}
+                <XAxis
+                  dataKey="label"
+                  tick={false}          // oculta nombres
+                  axisLine={false}
+                  tickLine={false}
+                />
+
+                {/* Eje Y con valores */}
+                <YAxis
+                  tickLine={false}
+                  axisLine={false}
+                  domain={[0, 'auto']}
+                  tickFormatter={(v) => v.toLocaleString('es-AR')}
+                />
+
+                <Tooltip
+                  cursor={{ fill: alpha(t.palette.primary.main, 0.06) }}
                   content={
                     <RoundedTooltip
                       formatter={(entry) =>
-                        `${entry.payload.label}: ${entry.value}`
+                        `${Number(entry.value).toLocaleString("es-AR")} alumnos`
                       }
                     />
                   }
                 />
-              </PieChart>
+
+
+
+                <defs>
+                  <linearGradient id="barGradient" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stopColor="#FF6A00" />
+                    <stop offset="100%" stopColor="#FF2D55" />
+                  </linearGradient>
+                </defs>
+
+                <Bar
+                  dataKey="value"
+                  radius={[8, 8, 0, 0]}
+                  fill="url(#barGradient)"
+                />
+              </BarChart>
             </ResponsiveContainer>
           </Box>
         </CardContent>
       </Card>
+
+
 
       {/* Facturación actual por plan */}
       <Card sx={cardSx}>

@@ -193,12 +193,6 @@ export default function Appointments() {
       />
       {isMobile ? (
         <Stack spacing={1.5} mb={2} alignItems="stretch">
-          <CustomBreadcrumbs
-            items={[
-              { label: 'Dashboard', href: '/dashboard/receptionist' },
-              { label: 'Turnos' },
-            ]}
-          />
           <Button
             variant="contained"
             sx={{ py: 1.5, fontWeight: 700, borderRadius: 1 }}

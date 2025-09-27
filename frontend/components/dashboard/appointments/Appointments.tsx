@@ -56,8 +56,6 @@ function toLocalISOString(date: Date): string {
   return tzDate.toISOString().slice(0, 16)
 }
 
-
-
 export default function Appointments() {
   const calendarRef = useRef<FullCalendar | null>(null);
 
@@ -116,7 +114,6 @@ export default function Appointments() {
 
   const handleEditTurno = async (values: any) => {
     if (!selectedId) return
-    console.log(selectedId, values)
     await editAppointment.mutateAsync({ id: selectedId, values })
     setOpen(false)
   }

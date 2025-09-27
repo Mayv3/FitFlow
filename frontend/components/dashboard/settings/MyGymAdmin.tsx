@@ -25,6 +25,7 @@ import {
 } from "@mui/material"
 import DeleteIcon from "@mui/icons-material/Delete"
 import { getInputFieldsGymUsers } from "@/const/inputs/gymUsers"
+import { GenericModal } from "@/components/ui/modals/GenericModal"
 
 type UserRow = {
     id: number
@@ -45,6 +46,9 @@ export function MyGymUsers() {
     const [loadingUsers, setLoadingUsers] = useState(false)
     const [error, setError] = useState("")
     const currentUserId = Cookies.get("id") || ""
+    const [openDeleteModal, setOpenDeleteModal] = useState(false)
+    const [userToDelete, setUserToDelete] = useState<UserRow | null>(null)
+
 
     const [formValues, setFormValues] = useState<Record<string, string>>({
         name: "",
@@ -135,7 +139,6 @@ export function MyGymUsers() {
     }
 
     const onDeleteUser = async (userId: number) => {
-        if (!confirm("¿Seguro que querés eliminar este usuario?")) return
         try {
             const token = Cookies.get("token")
             await axios.delete(
@@ -146,6 +149,23 @@ export function MyGymUsers() {
         } catch (e: any) {
             setError(e?.response?.data?.error || "No se pudo eliminar el usuario")
         }
+    }
+
+    const handleOpenDelete = (user: UserRow) => {
+        setUserToDelete(user)
+        setOpenDeleteModal(true)
+    }
+
+    const handleCloseDelete = () => {
+        setUserToDelete(null)
+        setOpenDeleteModal(false)
+    }
+
+    const handleConfirmDelete = async () => {
+        if (userToDelete) {
+            await onDeleteUser(userToDelete.id)
+        }
+        handleCloseDelete()
     }
 
     useEffect(() => {
@@ -278,7 +298,7 @@ export function MyGymUsers() {
                                                 >
                                                     <span>
                                                         <IconButton
-                                                            onClick={() => onDeleteUser(u.id)}
+                                                            onClick={() => handleOpenDelete(u)}
                                                             color="error"
                                                             disabled={String(u.id) === currentUserId}
                                                         >
@@ -302,6 +322,19 @@ export function MyGymUsers() {
                     )}
                 </Box>
             </Stack>
+            <GenericModal
+                open={openDeleteModal}
+                title="Eliminar usuario"
+                content={
+                    <Typography>
+                        ¿Seguro que querés eliminar al usuario <b>{userToDelete?.name}</b>?
+                    </Typography>
+                }
+                onClose={handleCloseDelete}
+                onConfirm={handleConfirmDelete}
+                confirmText="Eliminar"
+                cancelText="Cancelar"
+            />
         </Paper>
     )
 }

@@ -39,8 +39,24 @@ type AlumnoSimple = { id: number; nombre: string; dni?: string }
 function toLocalInputValue(date: Date | string | null) {
   if (!date) return ''
   const d = new Date(date)
-  return d.toISOString().slice(0, 16)
+
+  d.setHours(d.getHours() + 3)
+
+  const year = d.getFullYear()
+  const month = String(d.getMonth() + 1).padStart(2, '0')
+  const day = String(d.getDate()).padStart(2, '0')
+  const hours = String(d.getHours()).padStart(2, '0')
+  const minutes = String(d.getMinutes()).padStart(2, '0')
+
+  return `${year}-${month}-${day}T${hours}:${minutes}`
 }
+
+function toLocalISOString(date: Date): string {
+  const tzDate = new Date(date.getTime() - date.getTimezoneOffset() * 60000)
+  return tzDate.toISOString().slice(0, 16)
+}
+
+
 
 export default function Appointments() {
   const calendarRef = useRef<FullCalendar | null>(null);
@@ -100,6 +116,7 @@ export default function Appointments() {
 
   const handleEditTurno = async (values: any) => {
     if (!selectedId) return
+    console.log(selectedId, values)
     await editAppointment.mutateAsync({ id: selectedId, values })
     setOpen(false)
   }
@@ -135,8 +152,8 @@ export default function Appointments() {
       await editAppointment.mutateAsync({
         id: ev.id,
         values: {
-          inicio_at: toIsoMinute(newStart),
-          fin_at: toIsoMinute(newEnd),
+          inicio_at: toLocalISOString(newStart),
+          fin_at: toLocalISOString(newEnd),
         },
         skipInvalidate: true,
       })
@@ -155,8 +172,8 @@ export default function Appointments() {
       await editAppointment.mutateAsync({
         id: ev.id,
         values: {
-          inicio_at: toIsoMinute(ev.start),
-          fin_at: toIsoMinute(ev.end ?? ev.start),
+          inicio_at: toLocalISOString(ev.start),
+          fin_at: toLocalISOString(ev.end ?? ev.start),
         },
         skipInvalidate: true,
       })
@@ -280,6 +297,7 @@ export default function Appointments() {
           ref={calendarRef}
           plugins={[dayGridPlugin, interactionPlugin]}
           initialView="dayGridMonth"
+          timeZone="America/Argentina/Cordoba"
           locale={esLocale}
           height="100%"
           contentHeight="100%"

@@ -17,20 +17,17 @@ import {
     CircularProgress,
     Divider,
     Chip,
-    LinearProgress,
-    Avatar,
-    Fade,
     Grow,
     Zoom,
 } from '@mui/material'
+
+
 import { useTheme, alpha } from '@mui/material/styles'
-import CheckCircleRoundedIcon from '@mui/icons-material/CheckCircleRounded'
+import CheckCircleIcon from "@mui/icons-material/CheckCircle";
+import CancelIcon from "@mui/icons-material/Cancel";
 import AssignmentTurnedInIcon from '@mui/icons-material/AssignmentTurnedIn'
-import PersonIcon from '@mui/icons-material/Person'
-import EmailIcon from '@mui/icons-material/Email'
 import CalendarMonthIcon from '@mui/icons-material/CalendarMonth'
 import FitnessCenterIcon from '@mui/icons-material/FitnessCenter'
-import Inventory2Icon from '@mui/icons-material/Inventory2'
 import Cookies from 'js-cookie'
 import { useMutation } from '@tanstack/react-query'
 import axios, { AxiosError } from 'axios'
@@ -64,6 +61,17 @@ type Asistencia = {
     alumno_id: string
     plan_id: string | null
     gym_id: string
+}
+
+const formatDate = (dateStr?: string | null) => {
+    if (!dateStr) return "—"
+    const date = new Date(dateStr)
+    if (isNaN(date.getTime())) return "—"
+    return date.toLocaleDateString("es-AR", {
+        day: "2-digit",
+        month: "2-digit",
+        year: "numeric",
+    })
 }
 
 export default function Assists() {
@@ -143,10 +151,15 @@ export default function Assists() {
             setErrorMsg(err.message || 'No se pudo registrar la asistencia')
         },
     })
-
     const closeModal = () => {
         setOpenModal(false)
-        setTimeout(() => inputRef.current?.focus(), 0)
+        setTimeout(() => {
+            const input = inputRef.current
+            if (input) {
+                input.focus()
+                input.select()
+            }
+        }, 250)
     }
 
     const handleSubmit = (e: React.FormEvent) => {
@@ -167,8 +180,22 @@ export default function Assists() {
 
     useEffect(() => {
         if (!openModal) return
-        const t = setTimeout(closeModal, 4000)
+        const t = setTimeout(closeModal, 400000000)
         return () => clearTimeout(t)
+    }, [openModal])
+
+    useEffect(() => {
+        if (!openModal) return
+
+        const handleKeyDown = (e: KeyboardEvent) => {
+            if (e.key === 'Enter') {
+                e.preventDefault()
+                closeModal()
+            }
+        }
+
+        window.addEventListener('keydown', handleKeyDown)
+        return () => window.removeEventListener('keydown', handleKeyDown)
     }, [openModal])
 
     useEffect(() => {
@@ -259,168 +286,181 @@ export default function Assists() {
             <Dialog
                 open={openModal}
                 onClose={closeModal}
+                TransitionComponent={Grow}
+                keepMounted
+                maxWidth="sm" // <-- más ancho
                 fullWidth
-                maxWidth="sm"
                 PaperProps={{
                     sx: {
-                        borderRadius: 2,
-                        boxShadow: '0 10px 30px rgba(0,0,0,0.18)',
-                        overflow: 'hidden',
+                        borderRadius: 5,
+                        overflow: "hidden",
                         bgcolor: theme.palette.background.paper,
-                        backdropFilter: 'blur(6px)',
+                        boxShadow: "0 12px 48px rgba(0,0,0,0.3)",
+                        textAlign: "center",
+                        backdropFilter: "blur(8px)",
+                        transition: "all 0.3s ease",
+                        p: { xs: 3, md: 4 },
                     },
                 }}
             >
                 <DialogTitle
                     sx={{
-                        display: 'flex',
-                        justifyContent: 'center',
-                        alignItems: 'center',
+                        display: "flex",
+                        flexDirection: "column",
+                        alignItems: "center",
                         gap: 1,
-                        py: 1,
-                        fontSize: { xs: 18, md: 20 },
-                        fontWeight: 800,
+                        pb: 0,
+                        pt: 2,
                     }}
                 >
-                    Asistencia registrada
+                    {/* Animación de entrada del ícono */}
+                    <Zoom in={openModal} timeout={400}>
+                        <Box>
+                            {dleft && dleft > 0 && (summary?.plan?.clases_restantes ?? 0) > 0 ? (
+                                <CheckCircleIcon
+                                    sx={{
+                                        fontSize: 88,
+                                        color: theme.palette.success.main,
+                                        mb: 1,
+                                        filter: "drop-shadow(0 3px 6px rgba(0,0,0,0.15))",
+                                    }}
+                                />
+                            ) : (
+                                <CancelIcon
+                                    sx={{
+                                        fontSize: 88,
+                                        color: theme.palette.error.main,
+                                        mb: 1,
+                                        filter: "drop-shadow(0 3px 6px rgba(0,0,0,0.15))",
+                                    }}
+                                />
+                            )}
+                        </Box>
+                    </Zoom>
+
+                    {/* Texto principal */}
+                    <Typography
+                        variant="h4"
+                        fontWeight={800}
+                        sx={{
+                            color:
+                                dleft && dleft > 0 && (summary?.plan?.clases_restantes ?? 0) > 0
+                                    ? theme.palette.success.dark
+                                    : theme.palette.error.dark,
+                            mt: 0.5,
+                        }}
+                    >
+                        {dleft && dleft > 0 && (summary?.plan?.clases_restantes ?? 0) > 0
+                            ? `¡Bienvenido ${summary?.alumno?.nombre || ""}!`
+                            : "Acceso Denegado"}
+                    </Typography>
                 </DialogTitle>
 
                 <DialogContent
-                    dividers
                     sx={{
-                        p: { xs: 2, md: 3 },
-                        bgcolor: theme.palette.background.default,
+                        mt: 3,
+                        px: 5,
+                        pb: 4,
+                        display: "flex",
+                        flexDirection: "column",
+                        alignItems: "center",
+                        gap: 2.5,
                     }}
                 >
-                    {asistencia && summary ? (
-                        <Grow in timeout={220}>
-                            <Stack spacing={2}>
-                                <Stack
-                                    direction={{ xs: 'column', sm: 'row' }}
-                                    alignItems={{ xs: 'center', sm: 'center' }}
-                                    justifyContent="space-between"
-                                    gap={2}
-                                >
-                                    <Stack direction="row" alignItems="center" gap={1.25}>
-                                        <Zoom in timeout={200}>
-                                            <Avatar
-                                                sx={{
-                                                    bgcolor: theme.palette.primary.main,
-                                                    color: theme.palette.primary.contrastText,
-                                                    width: 52,
-                                                    height: 52,
-                                                    fontWeight: 800,
-                                                    boxShadow: 2,
-                                                }}
-                                            >
-                                                {summary.alumno.nombre?.[0]?.toUpperCase() || 'A'}
-                                            </Avatar>
-                                        </Zoom>
+                    <Stack
+                        direction="row"
+                        alignItems="center"
+                        justifyContent="center"
+                        gap={1.5}
+                        sx={{
+                            bgcolor: alpha(theme.palette.primary.main, 0.08),
+                            borderRadius: 3,
+                            px: 3,
+                            py: 1.2,
+                            minWidth: 280,
+                        }}
+                    >
+                        <FitnessCenterIcon sx={{ fontSize: 28, color: theme.palette.primary.main }} />
+                        <Typography
+                            variant="h5"
+                            fontWeight={800}
+                            sx={{
+                                color: theme.palette.text.primary,
+                                letterSpacing: 0.3,
+                            }}
+                        >
+                            {summary?.plan?.nombre ?? "—"}
+                        </Typography>
+                    </Stack>
 
-                                        <Stack spacing={0.25}>
-                                            <Stack direction="row" alignItems="center" gap={1} sx={{ flexWrap: 'wrap' }}>
-                                                <PersonIcon color="action" fontSize="small" />
-                                                <Typography variant="h6" fontWeight={800} lineHeight={1.15}>
-                                                    {summary.alumno.nombre}
-                                                </Typography>
-                                                <Chip label={`DNI ${summary.alumno.dni}`} size="small" variant="outlined" />
-                                            </Stack>
+                    <Stack
+                        direction="row"
+                        alignItems="center"
+                        justifyContent="center"
+                        gap={1.5}
+                        sx={{
+                            bgcolor: alpha(theme.palette.primary.main, 0.08),
+                            borderRadius: 3,
+                            px: 3,
+                            py: 1.2,
+                            minWidth: 280,
+                        }}
+                    >
+                        <CalendarMonthIcon sx={{ fontSize: 28, color: theme.palette.primary.main }} />
+                        <Typography
+                            variant="h5"
+                            fontWeight={700}
+                            sx={{
+                                color: theme.palette.text.primary,
+                            }}
+                        >
+                            Vence: {formatDate(summary?.vencimiento)}
+                        </Typography>
+                    </Stack>
 
-                                            <Stack direction="row" alignItems="center" gap={0.75}>
-                                                <EmailIcon color="action" fontSize="small" />
-                                                <Typography variant="body2" color="text.secondary">
-                                                    {summary.alumno.email}
-                                                </Typography>
-                                            </Stack>
-                                        </Stack>
-                                    </Stack>
-
-                                    <Stack>{statusChip}</Stack>
-                                </Stack>
-
-                                <Divider flexItem />
-                                <Stack
-                                    direction={{ xs: 'column', md: 'row' }}
-                                    gap={1.25}
-                                    alignItems="center"
-                                    justifyContent="center"
-                                    sx={{
-                                        p: 1.5,
-                                        borderRadius: 3,
-                                        bgcolor: alpha(theme.palette.primary.main, 0.04),
-                                        border: `1px solid ${alpha(theme.palette.primary.main, 0.08)}`,
-                                    }}
-                                >
-                                    <Stack direction="row" alignItems="center" gap={1}>
-                                        <Inventory2Icon color="action" fontSize="small" />
-                                        <Typography variant="body1">
-                                            <strong>Plan:</strong> {summary.plan?.nombre ?? '—'}
-                                        </Typography>
-                                    </Stack>
-
-                                    <Stack direction="row" alignItems="center" gap={1} sx={{ opacity: 0.5 }}>
-                                        ·
-                                    </Stack>
-
-                                    <Stack direction="row" alignItems="center" gap={1}>
-                                        <CalendarMonthIcon color="action" fontSize="small" />
-                                        <Typography variant="body1">
-                                            <strong>Vence:</strong> {summary.vencimiento ? summary.vencimiento : '—'}
-                                        </Typography>
-                                    </Stack>
-                                </Stack>
-
-                                <Stack spacing={1}>
-                                    <Stack direction="row" alignItems="center" justifyContent="space-between">
-                                        <Stack direction="row" alignItems="center" gap={0.75}>
-                                            <FitnessCenterIcon color="action" fontSize="small" />
-                                            <Typography variant="body2" fontWeight={800}>
-                                                Usadas: {summary.plan.clases_realizadas}/{summary.plan.clases_pagadas}
-                                            </Typography>
-                                        </Stack>
-                                        <Typography variant="body2" color="text.secondary">
-                                            Restantes: {summary.plan.clases_restantes}
-                                        </Typography>
-                                    </Stack>
-
-                                    <LinearProgress variant="determinate" value={pct} sx={barSx} />
-                                </Stack>
-
-                                <Fade in timeout={200}>
-                                    <Typography
-                                        variant="caption"
-                                        color="text.secondary"
-                                        sx={{ display: 'block', pt: 0.5, textAlign: 'center' }}
-                                    >
-                                        ID: {asistencia.id} • Fecha: {asistencia.fecha} • Hora: {asistencia.hora} • Gym
-                                        ID: {summary.gym_id}
-                                    </Typography>
-                                </Fade>
-                            </Stack>
-                        </Grow>
-                    ) : (
-                        <Typography variant="body2">Sin datos</Typography>
-                    )}
+                    <Typography
+                        variant="h4"
+                        fontWeight={900}
+                        sx={{
+                            mt: 1,
+                            color: theme.palette.primary.main,
+                            bgcolor: alpha(theme.palette.primary.main, 0.1),
+                            px: 5,
+                            py: 1.5,
+                            borderRadius: 2,
+                            letterSpacing: 0.5,
+                        }}
+                    >
+                        {`Clases restantes: ${summary?.plan?.clases_restantes ?? 0}`}
+                    </Typography>
                 </DialogContent>
 
-                <DialogActions
-                    sx={{
-                        p: 1.5,
-                        justifyContent: 'center',
-                        gap: 1,
-                        bgcolor: alpha(theme.palette.background.paper, 0.6),
-                    }}
-                >
+                <DialogActions sx={{ justifyContent: "center", pb: 3 }}>
                     <Button
-                        onClick={() => setOpenModal(false)}
+                        onClick={closeModal}
                         variant="contained"
                         size="large"
-                        sx={{ px: 4, borderRadius: 999, textTransform: 'none', fontWeight: 700, boxShadow: 'none' }}
+                        sx={{
+                            px: 5,
+                            py: 1.4,
+                            borderRadius: 999,
+                            textTransform: "none",
+                            fontSize: 17,
+                            fontWeight: 700,
+                            boxShadow: "0 3px 8px rgba(0,0,0,0.25)",
+                            background:
+                                dleft && dleft > 0 && (summary?.plan?.clases_restantes ?? 0) > 0
+                                    ? `linear-gradient(90deg, ${theme.palette.success.main}, ${theme.palette.success.dark})`
+                                    : `linear-gradient(90deg, ${theme.palette.error.main}, ${theme.palette.error.dark})`,
+                        }}
                     >
                         Aceptar
                     </Button>
                 </DialogActions>
             </Dialog>
+
+
+
         </Box>
     )
 }

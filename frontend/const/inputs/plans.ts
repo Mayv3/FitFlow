@@ -2,13 +2,6 @@ import { Field } from "@/models/Fields/Field";
 
 export const getInputFieldsPlans = (): Field[] => [
     {
-        label: 'Color',
-        name: 'color',
-        type: 'color',
-        required: true,
-        placeholder: '#000000',
-    },
-    {
         label: 'Nombre del plan (obligatorio)',
         name: 'nombre',
         type: 'string',
@@ -16,6 +9,17 @@ export const getInputFieldsPlans = (): Field[] => [
         placeholder: 'Ej: Plan Básico',
         minLength: 3,
         maxLength: 50,
+        inputProps: {
+            style: { textTransform: 'capitalize' },
+        },
+    },
+    {
+        label: 'Precio (obligatorio)',
+        name: 'precio',
+        type: 'number',
+        required: true,
+        placeholder: 'Ej: 30000',
+        regex: /^$|^\d+$/,
     },
     {
         label: 'Número de clases (obligatorio)',
@@ -26,12 +30,11 @@ export const getInputFieldsPlans = (): Field[] => [
         regex: /^$|^\d+$/,
     },
     {
-        label: 'Precio (obligatorio)',
-        name: 'precio',
-        type: 'number',
+        label: 'Color',
+        name: 'color',
+        type: 'color',
         required: true,
-        placeholder: 'Ej: 30000',
-        regex: /^$|^\d+$/,
+        placeholder: '#000000',
     },
 
 ]

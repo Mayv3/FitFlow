@@ -16,6 +16,9 @@ export const getInputFieldsTurnos = ({
             placeholder: "Ej: Evaluación inicial",
             minLength: 3,
             maxLength: 60,
+            inputProps: {
+                style: { textTransform: 'capitalize' },
+            },
         },
         {
             label: "Servicio (obligatorio)",
@@ -33,6 +36,9 @@ export const getInputFieldsTurnos = ({
             placeholder: "Ej: Lic. Ana Gómez",
             minLength: 3,
             maxLength: 60,
+            inputProps: {
+                style: { textTransform: 'capitalize' },
+            },
         },
         {
             label: "Alumno (obligatorio)",

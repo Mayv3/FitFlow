@@ -10,6 +10,9 @@ export const getInputFieldsServices = (): Field[] => [
     minLength: 3,
     maxLength: 50,
     regex: /^[a-zA-ZÀ-ÿ\s]+$/,
+    inputProps: {
+      style: { textTransform: 'capitalize' },
+    },
   },
   {
     label: 'Descripción (opcional)',

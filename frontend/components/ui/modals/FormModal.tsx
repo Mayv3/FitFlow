@@ -9,6 +9,7 @@ import { debounce } from '@/utils/debounce/debounce';
 import { Autocomplete } from '@mui/material';
 import { notify } from '@/lib/toast';
 import { ColorPickerPopover } from '../colorSelector/colorSelector';
+import { FormEnterToTab } from "@/components/ui/tables/FormEnterToTab"
 
 export const FormModal = <T extends Record<string, any>>({
   open,
@@ -33,13 +34,14 @@ export const FormModal = <T extends Record<string, any>>({
   const [values, setValues] = useState<T>({} as T);
   const [externalErrors, setExternalErrors] = useState<Record<string, string | undefined>>({});
   const [searchTerms, setSearchTerms] = useState<Record<string, string>>({});
+  const firstInputRef = React.useRef<HTMLInputElement | null>(null)
+
   const showError = (msg: string) => notify.error(msg);
 
   const theme = useTheme();
   const isSmDown = useMediaQuery(theme.breakpoints.down('sm'));
   const isMdUp = useMediaQuery(theme.breakpoints.up('md'));
 
-  // anchos responsivos
   const paperWidth = {
     xs: '92vw',
     sm: 560,
@@ -200,6 +202,17 @@ export const FormModal = <T extends Record<string, any>>({
     };
   };
 
+  useEffect(() => {
+    if (!open) return
+    const t = setTimeout(() => {
+      if (firstInputRef.current) {
+        firstInputRef.current.focus()
+        firstInputRef.current.select()
+      }
+    }, 150)
+    return () => clearTimeout(t)
+  }, [open])
+
   return (
     <Dialog
       open={open}
@@ -215,7 +228,7 @@ export const FormModal = <T extends Record<string, any>>({
         },
       }}
     >
-      <form onSubmit={handleSubmit}>
+      <FormEnterToTab onSubmit={handleSubmit}>
         <DialogTitle sx={{ px: { xs: 2, sm: 3 }, py: { xs: 1.5, sm: 2 } }}>{title}</DialogTitle>
 
         <DialogContent
@@ -232,7 +245,7 @@ export const FormModal = <T extends Record<string, any>>({
             gridTemplateColumns={`repeat(${isMdUp ? gridColumns : 12}, 1fr)`}
             gap={`${isSmDown ? 12 : gridGap}px`}
           >
-            {fields.map(field => {
+            {fields.map((field, index) => {
               const val = values[field.name] ?? '';
               const style = computeCellStyle(field.name);
 
@@ -340,6 +353,7 @@ export const FormModal = <T extends Record<string, any>>({
               return (
                 <Box key={field.name} style={style}>
                   <TextField
+                    inputRef={index === 0 ? firstInputRef : undefined}
                     onBlur={e => !locked && handleBlur(field.name, String(e.target.value))}
                     select={field.type === 'select'}
                     fullWidth
@@ -426,7 +440,7 @@ export const FormModal = <T extends Record<string, any>>({
             {confirmText}
           </Button>
         </DialogActions>
-      </form>
+      </FormEnterToTab>
     </Dialog >
   );
 };

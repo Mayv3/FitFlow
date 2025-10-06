@@ -11,6 +11,9 @@ export const getInputFieldsGymUsers: Field[] = [
     maxLength: 10,
     placeholder: "Ej: Juan Pérez",
     regex: /^[a-zA-ZñÑáéíóúÁÉÍÓÚ\s]*$/,
+    inputProps: {
+      style: { textTransform: 'capitalize' },
+    },
   },
   {
     label: "DNI",

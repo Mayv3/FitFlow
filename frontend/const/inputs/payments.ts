@@ -58,12 +58,6 @@ export const getInputFieldsPagos = ({
             regex: /^$|^\d+$/,
         },
         {
-            label: 'Hora (obligatorio)',
-            name: 'hora',
-            type: 'time',
-            defaultValue: horaActualArgentina,
-        },
-        {
             label: 'Fecha de pago (obligatorio)',
             name: 'fecha_de_pago',
             type: 'date',
@@ -79,6 +73,12 @@ export const getInputFieldsPagos = ({
             type: 'date',
             defaultValue: fechaHoyMasUnMesISO,
             inputProps: { min: fechaHoyArgentinaISO },
+        },
+        {
+            label: 'Hora (obligatorio)',
+            name: 'hora',
+            type: 'time',
+            defaultValue: horaActualArgentina,
         },
         {
             label: 'Responsable',

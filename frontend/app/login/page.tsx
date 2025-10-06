@@ -114,7 +114,7 @@ const LoginPage = () => {
           Ingresar al sistema
         </Typography>
 
-        <FormEnterToTab>
+        <FormEnterToTab onSubmit={handleLogin}>
           <TextField
             label="Email"
             variant="outlined"
@@ -137,12 +137,12 @@ const LoginPage = () => {
           />
 
           <Button
+            type="submit"
             variant="contained"
             color="primary"
             fullWidth
             sx={{ mt: 2 }}
-            onClick={handleLogin}
-            disabled={loading}
+            disabled={loading || !email.trim() || !password.trim()}
           >
             {loading ? <CircularProgress size={24} color="inherit" /> : "Ingresar"}
           </Button>

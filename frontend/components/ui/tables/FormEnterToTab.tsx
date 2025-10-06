@@ -1,4 +1,3 @@
-// components/FormEnterToTab.tsx
 "use client"
 
 import React from "react"
@@ -7,14 +6,15 @@ interface Props extends React.FormHTMLAttributes<HTMLFormElement> {
   children: React.ReactNode
 }
 
-export const FormEnterToTab: React.FC<Props> = ({
-  children,
-  ...formProps
-}) => {
+export const FormEnterToTab: React.FC<Props> = ({ children, ...formProps }) => {
   const handleKeyDown = (e: React.KeyboardEvent<HTMLFormElement>) => {
     if (e.key !== "Enter") return
 
     const target = e.target as HTMLElement
+
+    if (target instanceof HTMLSelectElement) {
+      return // 🔹 no interceptamos el Enter dentro del select
+    }
 
     if (
       (target instanceof HTMLInputElement && target.type === "submit") ||
@@ -30,14 +30,17 @@ export const FormEnterToTab: React.FC<Props> = ({
           el instanceof HTMLSelectElement ||
           el instanceof HTMLTextAreaElement ||
           el instanceof HTMLButtonElement) &&
-        !(el as HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement | HTMLButtonElement).disabled
+        !(el as any).disabled
     ) as HTMLElement[]
 
     const idx = focusables.indexOf(target)
     if (idx > -1) {
       e.preventDefault()
       const next = focusables[idx + 1]
-      if (next) next.focus()
+      if (next) {
+        next.focus()
+        if (next instanceof HTMLInputElement) next.select?.()
+      }
     }
   }
 

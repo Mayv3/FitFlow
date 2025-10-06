@@ -11,6 +11,9 @@ export const getInputFieldsAlumnos: Field[] = [
     maxLength: 40,
     placeholder: 'Ingresa un nombre',
     regex: /^[a-zA-ZñÑ\s]*$/,
+    inputProps: {
+      style: { textTransform: 'capitalize' },
+    },
   },
   {
     label: 'DNI (obligatorio)',
@@ -110,7 +113,7 @@ export const layoutAlumnos = {
   clases_pagadas: { rowStart: 4, colStart: 1, colSpan: 4 },
   clases_realizadas: { rowStart: 4, colStart: 5, colSpan: 4 },
   sexo: { rowStart: 4, colStart: 9, colSpan: 4 },
-  fecha_de_vencimiento: { rowStart: 5, colStart: 1, colSpan: 4 },
-  fecha_nacimiento: { rowStart: 5, colStart: 5, colSpan: 4 },
-  fecha_inicio: { rowStart: 5, colStart: 9, colSpan: 4 },
+  fecha_nacimiento: { rowStart: 5, colStart: 1, colSpan: 4 },
+  fecha_inicio: { rowStart: 5, colStart: 5, colSpan: 4 },
+  fecha_de_vencimiento: { rowStart: 5, colStart: 9, colSpan: 4 },
 }

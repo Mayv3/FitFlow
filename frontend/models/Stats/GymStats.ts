@@ -5,5 +5,6 @@ export interface GymStats {
   activeMembers: number;
   todaysAttendance: number;
   withPlanPct: number;
+  activePct: number;
   plansDistribution: PlanItem[];
 };

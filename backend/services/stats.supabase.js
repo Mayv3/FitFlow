@@ -237,16 +237,22 @@ export async function getGymStatsService({ gymId } = {}) {
     getPlansDistribution(gymId),
   ]);
 
-  const withPlanPct = totalMembers === 0 ? 0 : Math.round((withPlanCount * 100) / totalMembers);
+  const activePct = Math.floor((activeMembers / totalMembers) * 100);
+  const withPlanPct = Math.floor((withPlanCount / totalMembers) * 100);
+  const attendancePct = Math.floor((todaysAttendance / activeMembers) * 100);
 
   return {
     totalMembers,
     activeMembers,
+    withPlanCount,
     todaysAttendance,
-    withPlanPct,
     plansDistribution,
+    activePct,
+    withPlanPct,
+    attendancePct,
   };
 }
+
 
 export async function getPlanesStatsService({ gymId }) {
   const { data, error } = await supabaseAdmin

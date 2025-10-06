@@ -29,8 +29,8 @@ export const MemberStats = ({ gymId }: { gymId?: string }) => {
   )
   const withPlanCount = clamp(withPlanRaw, 0, total)
 
-  const percentActive = total ? Math.round((active * 100) / total) : 0
-  const percentWithPlan = total ? Math.round((withPlanCount * 100) / total) : 0
+  const percentActive = data?.activePct ?? 0
+  const percentWithPlan = data?.withPlanPct ?? 0
 
   const maxCapacity = 30
   const rawAttendance = data?.todaysAttendance ?? 0
@@ -61,7 +61,7 @@ export const MemberStats = ({ gymId }: { gymId?: string }) => {
         value={
           isLoading ? '—' : `${todaysAttendance} / ${maxCapacity}`
         }
-        icon={<EventSeatIcon sx={iconStyle} />} // icono más relacionado con "capacidad"
+        icon={<EventSeatIcon sx={iconStyle} />}
         chart={<ProgressChart percentage={attendancePercent} />}
       />
 

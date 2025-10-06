@@ -71,7 +71,7 @@ export const layoutTurnos = {
     titulo: { rowStart: 1, colStart: 1, colSpan: 12 },
     servicio_id: { rowStart: 2, colStart: 1, colSpan: 6 },
     profesional: { rowStart: 2, colStart: 7, colSpan: 6 },
-    alumno_id: { rowStart: 3, colStart: 1, colSpan: 12 }, // 👈 se comporta como en pagos
+    alumno_id: { rowStart: 3, colStart: 1, colSpan: 12 },
     inicio_at: { rowStart: 4, colStart: 1, colSpan: 4 },
     fin_at: { rowStart: 4, colStart: 5, colSpan: 4 },
     color: { rowStart: 4, colStart: 9, colSpan: 4 },

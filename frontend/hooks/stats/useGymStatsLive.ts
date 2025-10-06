@@ -80,7 +80,6 @@ export function useGymStatsLive(gymId?: string) {
       qc.setQueryData(['stats', gymId], (prevStats: any) => {
         if (!prevStats) return prevStats;
 
-        // --- Helpers locales
         const dist: any[] = Array.isArray(prevStats.plansDistribution)
           ? prevStats.plansDistribution.map((x: any) => ({ ...x }))
           : [];
@@ -91,36 +90,29 @@ export function useGymStatsLive(gymId?: string) {
           return it?.Plan ?? String(id);
         };
 
-        // Intento 1: tomar del evento
         let prevPlanId = evt.prev?.planId;
         const nextPlanId = evt.next?.planId ?? null;
 
-        // Intento 2 (fallback): si no vino en el evento, lo resolvemos desde la lista cacheada
         if (prevPlanId === undefined) {
           const alumnosCache: any[] | undefined = qc.getQueryData(['alumnos', gymId]) as any[] | undefined;
           const m = alumnosCache?.find((x) => x?.dni === evt.dni);
-          prevPlanId = m?.plan_id ?? m?.planId ?? null; // puede seguir siendo null
+          prevPlanId = m?.plan_id ?? m?.planId ?? null;
         }
 
-        // Log lindo con nombres
         console.log(
           '📊 Cambio de plan:',
           'Anterior →', prevPlanId, `(${findPlanName(prevPlanId as any)})`,
           '| Nuevo →', nextPlanId, `(${findPlanName(nextPlanId as any)})`
         );
 
-        // --- Actualizaciones
         let plansDistribution = dist;
 
-        // Si cambió de plan, aplicamos -1/+1. Ojo con undefined → null (debe restar)
         const changedPlan = (prevPlanId ?? null) !== (nextPlanId ?? null);
 
         if (changedPlan) {
-          // Restar del plan anterior si lo conocemos y no es null
           if (prevPlanId != null) {
             plansDistribution = decPlan(plansDistribution, Number(prevPlanId));
           }
-          // Sumar al plan nuevo si es no-null
           if (nextPlanId != null) {
             plansDistribution = incPlan(
               plansDistribution,
@@ -137,7 +129,6 @@ export function useGymStatsLive(gymId?: string) {
           activeMembers = Math.max(0, activeMembers + (nextActivo ? 1 : -1));
         }
 
-        // Recalcular porcentaje con plan
         const total = prevStats.totalMembers ?? 0;
         const withPlanCount = sumDist(plansDistribution);
         const withPlanPct = total ? Math.round((withPlanCount * 100) / total) : 0;

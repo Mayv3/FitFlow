@@ -81,7 +81,7 @@ export default function ResetPasswordPage() {
                     {loading ? <CircularProgress size={24} /> : "Cambiar contraseña"}
                 </Button>
                 {message && (
-                    <Typography sx={{ mt: 2, fontWeight: 500, color: message.includes("✅") ? "green" : "red" }}>
+                    <Typography sx={{ mt: 2, fontWeight: 500, color: message.includes("✅") ? "success.main" : "error.main" }}>
                         {message}
                     </Typography>
                 )}

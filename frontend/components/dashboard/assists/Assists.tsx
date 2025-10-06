@@ -241,18 +241,23 @@ export default function Assists() {
                         <Stack direction={{ xs: 'column', sm: 'row' }} gap={2}>
                             <TextField
                                 inputRef={inputRef}
-                                type='number'
-
+                                type='text'
                                 label="DNI del alumno"
                                 placeholder="Ej: 12345678"
                                 value={dni}
+                                inputProps={{
+                                    inputMode: 'numeric',
+                                    pattern: '[0-9]*',
+                                }}
                                 onChange={(e) => {
-                                    const val = e.target.value.slice(0, 9)
-                                    setDni(val)
+                                    const val = e.target.value
+                                    if (/^[0-9]*$/.test(val)) {
+                                        setDni(val.slice(0, 9))
+                                    }
                                 }}
                                 onFocus={(e) => e.currentTarget.select()}
                                 fullWidth
-                                inputProps={{ inputMode: 'numeric' }}
+
                             />
                             <Button
                                 type="submit"
@@ -288,7 +293,7 @@ export default function Assists() {
                 onClose={closeModal}
                 TransitionComponent={Grow}
                 keepMounted
-                maxWidth="sm" // <-- más ancho
+                maxWidth="sm"
                 fullWidth
                 PaperProps={{
                     sx: {

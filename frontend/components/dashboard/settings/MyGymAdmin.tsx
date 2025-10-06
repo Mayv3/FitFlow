@@ -250,7 +250,7 @@ export function MyGymUsers() {
 
                 <Box flex={2} sx={{ maxWidth: "100%", overflowX: "auto" }}>
                     <Typography variant="h6" sx={{ mb: 1 }}>
-                        Lista de empleados
+                        Staff
                     </Typography>
 
                     {loadingUsers ? (

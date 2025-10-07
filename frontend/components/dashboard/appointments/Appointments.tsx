@@ -5,6 +5,8 @@ import FullCalendar from '@fullcalendar/react'
 import dayGridPlugin from '@fullcalendar/daygrid'
 import interactionPlugin from '@fullcalendar/interaction'
 import esLocale from '@fullcalendar/core/locales/es'
+import Image from 'next/image'
+
 import {
   Box,
   Button,
@@ -12,6 +14,8 @@ import {
   ButtonGroup,
   Stack,
   useMediaQuery,
+  Tooltip,
+  Checkbox,
 } from '@mui/material'
 import { useTheme } from '@mui/material/styles'
 import { FormModal } from '@/components/ui/modals/FormModal'
@@ -34,12 +38,13 @@ import { ReactQueryDevtools } from '@tanstack/react-query-devtools'
 import { GenericModal } from '@/components/ui/modals/GenericModal'
 import { CustomBreadcrumbs } from '@/components/ui/breadcrums/CustomBreadcrumbs'
 
+// ---------------------- Helper Functions ----------------------
+
 type AlumnoSimple = { id: number; nombre: string; dni?: string }
 
 function toLocalInputValue(date: Date | string | null) {
   if (!date) return ''
   const d = new Date(date)
-
   d.setHours(d.getHours() + 3)
 
   const year = d.getFullYear()
@@ -56,14 +61,38 @@ function toLocalISOString(date: Date): string {
   return tzDate.toISOString().slice(0, 16)
 }
 
-export default function Appointments() {
-  const calendarRef = useRef<FullCalendar | null>(null);
+function generarLinkGoogleCalendar(turno: any) {
+  if (!turno?.inicio_at || !turno?.titulo) return ''
+  const inicio = new Date(turno.inicio_at)
+  if (isNaN(inicio.getTime())) return ''
+  const fin = new Date(inicio.getTime() + 60 * 60 * 1000)
 
+  const formatDate = (d: Date) => d.toISOString().replace(/[-:]|\.\d{3}/g, '')
+
+  const base = 'https://calendar.google.com/calendar/render?action=TEMPLATE'
+  const params = new URLSearchParams({
+    text: turno.titulo,
+    dates: `${formatDate(inicio)}/${formatDate(fin)}`,
+    details: `Profesional: ${turno.profesional || ''}`,
+  })
+
+  // ✅ Si hay correos, los agregamos al link (separados por coma)
+  if (turno.emails && Array.isArray(turno.emails) && turno.emails.length > 0) {
+    params.append('add', turno.emails.join(','))
+  }
+
+  return `${base}&${params.toString()}`
+}
+
+// ---------------------- Componente Principal ----------------------
+
+export default function Appointments() {
+  const calendarRef = useRef<FullCalendar | null>(null)
   const [openDelete, setOpenDelete] = useState(false)
+  const [addToCalendar, setAddToCalendar] = useState(false)
 
   const theme = useTheme()
   const isMobile = useMediaQuery(theme.breakpoints.down('md'))
-
 
   const { user } = useUser()
   const gymId = user?.gym_id ?? ''
@@ -80,7 +109,8 @@ export default function Appointments() {
   const searchFromCache = useCallback(
     (_: string, q: string) => {
       const list = alumnos
-      if (!q) return list.map(a => ({ label: `${a.nombre} (${a.dni ?? ''})`, value: a.id }))
+      if (!q)
+        return list.map(a => ({ label: `${a.nombre} (${a.dni ?? ''})`, value: a.id }))
       const lower = q.toLowerCase()
       return list
         .filter(a => a.nombre?.toLowerCase().includes(lower) || String(a.dni ?? '').includes(lower))
@@ -101,23 +131,44 @@ export default function Appointments() {
 
   const [open, setOpen] = useState(false)
   const [mode, setMode] = useState<'create' | 'edit'>('create')
-
   const [initialValues, setInitialValues] = useState<any>(null)
   const [selectedId, setSelectedId] = useState<string | null>(null)
-
-  const toIsoMinute = (d: Date) => d.toISOString().slice(0, 16)
+  const [formValues, setFormValues] = useState<any>({})
 
   const handleAddTurno = async (values: any) => {
-    await addAppointment.mutateAsync({ ...values, gym_id: gymId })
+    const { emails, ...valuesLimpios } = values
+
+    const inicio = new Date(valuesLimpios.inicio_at)
+    const fin = new Date(inicio.getTime() + 60 * 60 * 1000)
+    valuesLimpios.fin_at = fin.toISOString()
+
+    await addAppointment.mutateAsync({ ...valuesLimpios, gym_id: gymId })
     setOpen(false)
+
+    if (addToCalendar) {
+      const link = generarLinkGoogleCalendar({ ...valuesLimpios, emails })
+      if (link) window.open(link, '_blank')
+    }
   }
 
   const handleEditTurno = async (values: any) => {
     if (!selectedId) return
-    await editAppointment.mutateAsync({ id: selectedId, values })
+    const { emails, ...valuesLimpios } = values
+
+    const inicio = new Date(valuesLimpios.inicio_at)
+    const fin = new Date(inicio.getTime() + 60 * 60 * 1000)
+    valuesLimpios.fin_at = fin.toISOString()
+
+    await editAppointment.mutateAsync({ id: selectedId, values: valuesLimpios })
     setOpen(false)
+
+    if (addToCalendar) {
+      const link = generarLinkGoogleCalendar({ ...valuesLimpios, emails })
+      if (link) window.open(link, '_blank')
+    }
   }
 
+  // ---------- Click sobre evento ----------
   const handleEventClick = (clickInfo: any) => {
     const ev = clickInfo.event
     setSelectedId(ev.id)
@@ -128,57 +179,12 @@ export default function Appointments() {
       profesional: ev.extendedProps.profesional,
       alumno_id: ev.extendedProps.alumno_id ?? null,
       inicio_at: toLocalInputValue(ev.start),
-      fin_at: toLocalInputValue(ev.end),
       color: ev.backgroundColor,
     })
     setOpen(true)
   }
 
-  const handleEventDrop = async (info: EventDropArg) => {
-    const { event: ev, oldEvent: old } = info
-    if (!old.start || !ev.start) {
-      info.revert()
-      return
-    }
-    try {
-      const oldStart = old.start.getTime()
-      const oldEnd = old.end ? old.end.getTime() : oldStart + 60 * 60 * 1000
-      const durationMs = Math.max(1, oldEnd - oldStart)
-      const newStart = ev.start
-      const newEnd = new Date(newStart.getTime() + durationMs)
-      await editAppointment.mutateAsync({
-        id: ev.id,
-        values: {
-          inicio_at: toLocalISOString(newStart),
-          fin_at: toLocalISOString(newEnd),
-        },
-        skipInvalidate: true,
-      })
-    } catch {
-      info.revert()
-    }
-  }
-
-  const handleEventResize = async (info: EventResizeDoneArg) => {
-    const ev = info.event
-    if (!ev.start) {
-      info.revert()
-      return
-    }
-    try {
-      await editAppointment.mutateAsync({
-        id: ev.id,
-        values: {
-          inicio_at: toLocalISOString(ev.start),
-          fin_at: toLocalISOString(ev.end ?? ev.start),
-        },
-        skipInvalidate: true,
-      })
-    } catch {
-      info.revert()
-    }
-  }
-
+  // ---------- Loader ----------
   if (isLoading || isFetching) {
     return (
       <Box sx={{ textAlign: 'center', mt: 4 }}>
@@ -193,7 +199,6 @@ export default function Appointments() {
     profesional: '',
     alumno_id: null,
     inicio_at: '',
-    fin_at: '',
     color: '#1976d2',
   }
 
@@ -205,79 +210,35 @@ export default function Appointments() {
           { label: 'Turnos' },
         ]}
       />
-      {isMobile ? (
-        <Stack spacing={1.5} mb={2} alignItems="stretch">
-          <Button
-            variant="contained"
-            sx={{ py: 1.5, fontWeight: 700, borderRadius: 1 }}
-            onClick={() => {
-              setMode('create')
-              setInitialValues(emptyTurno)
-              setSelectedId(null)
-              setOpen(true)
-            }}
-          >
-            Añadir turno
-          </Button>
 
-          <Stack direction="row" spacing={1}>
-            <Button
-              fullWidth
-              variant="outlined"
-              onClick={() => calendarRef.current?.getApi().prev()}
-            >
-              Anterior
-            </Button>
-            <Button
-              fullWidth
-              variant="outlined"
-              onClick={() => calendarRef.current?.getApi().today()}
-            >
-              Hoy
-            </Button>
-            <Button
-              fullWidth
-              variant="outlined"
-              onClick={() => calendarRef.current?.getApi().next()}
-            >
-              Siguiente
-            </Button>
-          </Stack>
-        </Stack>
-      ) : (
-        <Box
-          mb={2}
-          display="flex"
-          alignItems="center"
-          justifyContent="space-between"
-          gap={2}
+      {/* Toolbar superior */}
+      <Box
+        mb={2}
+        display="flex"
+        alignItems="center"
+        justifyContent="space-between"
+        gap={2}
+      >
+        <ButtonGroup variant="outlined">
+          <Button onClick={() => calendarRef.current?.getApi().prev()}>Anterior</Button>
+          <Button onClick={() => calendarRef.current?.getApi().today()}>Hoy</Button>
+          <Button onClick={() => calendarRef.current?.getApi().next()}>Siguiente</Button>
+        </ButtonGroup>
+
+        <Button
+          variant="contained"
+          onClick={() => {
+            setMode('create')
+            setInitialValues(emptyTurno)
+            setSelectedId(null)
+            setOpen(true)
+          }}
         >
-          <ButtonGroup variant="outlined">
-            <Button onClick={() => calendarRef.current?.getApi().prev()}>
-              Anterior
-            </Button>
-            <Button onClick={() => calendarRef.current?.getApi().today()}>
-              Hoy
-            </Button>
-            <Button onClick={() => calendarRef.current?.getApi().next()}>
-              Siguiente
-            </Button>
-          </ButtonGroup>
+          Añadir turno
+        </Button>
+      </Box>
 
-          <Button
-            variant="contained"
-            onClick={() => {
-              setMode('create')
-              setInitialValues(emptyTurno)
-              setSelectedId(null)
-              setOpen(true)
-            }}
-          >
-            Añadir turno
-          </Button>
-        </Box>
-      )}
-
+      {/* Calendario */}
       <Box
         sx={{
           width: '100%',
@@ -301,37 +262,17 @@ export default function Appointments() {
           aspectRatio={isMobile ? 0.8 : 1.4}
           selectable
           editable
-          longPressDelay={200}
           eventDisplay="block"
           events={data?.rows ?? []}
           eventClick={handleEventClick}
-          eventDrop={handleEventDrop}
-          eventResize={handleEventResize}
           dayCellClassNames={() => 'cursor-pointer'}
-          headerToolbar={{
-            left: '',
-            center: 'title',
-            right: '',
-          }}
+          headerToolbar={{ left: '', center: 'title', right: '' }}
           titleFormat={{ year: 'numeric', month: 'long' }}
           dateClick={(info) => {
             setMode('create')
             setInitialValues({
               ...emptyTurno,
               inicio_at: info.dateStr + 'T10:00',
-              fin_at: info.dateStr + 'T11:00',
-            })
-            setSelectedId(null)
-            setOpen(true)
-          }}
-          select={(selectInfo) => {
-            const end = new Date(selectInfo.endStr)
-            end.setMinutes(end.getMinutes() - 1)
-            setMode('create')
-            setInitialValues({
-              ...emptyTurno,
-              inicio_at: selectInfo.startStr + 'T09:00',
-              fin_at: end.toISOString().slice(0, 16),
             })
             setSelectedId(null)
             setOpen(true)
@@ -339,6 +280,7 @@ export default function Appointments() {
         />
       </Box>
 
+      {/* Modal de formulario */}
       <FormModal
         open={open}
         title={mode === 'create' ? 'Añadir un turno' : 'Editar turno'}
@@ -353,15 +295,66 @@ export default function Appointments() {
         mode={mode}
         layout={layoutTurnos}
         gymId={gymId}
+        onValuesChange={setFormValues}
         extraActions={
-          mode === 'edit' && (
-            <Button variant="contained" color="error" onClick={() => setOpenDelete(true)}>
-              Eliminar
-            </Button>
-          )
+          <Box display="flex" alignItems="center" gap={2}>
+            {/* Solo se muestra en modo "create" */}
+            {mode === 'create' && (
+              <Tooltip title="Agregar a Google Calendar">
+                <Checkbox
+                  checked={addToCalendar}
+                  onChange={(e) => setAddToCalendar(e.target.checked)}
+                  icon={
+                    <Image
+                      src="/images/google-calendar.png"
+                      alt="Google Calendar"
+                      width={46}
+                      height={46}
+                      style={{
+                        opacity: 0.5,
+                        transition: '0.25s',
+                        filter: 'grayscale(40%)',
+                      }}
+                    />
+                  }
+                  checkedIcon={
+                    <Image
+                      src="/images/google-calendar.png"
+                      alt="Google Calendar"
+                      width={46}
+                      height={46}
+                      style={{
+                        opacity: 1,
+                        transform: 'scale(1.1)',
+                        transition: '0.25s',
+                        filter: 'none',
+                      }}
+                    />
+                  }
+                  sx={{
+                    '& .MuiSvgIcon-root': { fontSize: 0 },
+                    p: 0.3,
+                    cursor: 'pointer',
+                    '&:hover img': { transform: 'scale(1.1)', opacity: 1 },
+                  }}
+                />
+              </Tooltip>
+            )}
+
+            {/* Botón eliminar solo en modo "edit" */}
+            {mode === 'edit' && (
+              <Button
+                variant="contained"
+                color="error"
+                onClick={() => setOpenDelete(true)}
+              >
+                Eliminar
+              </Button>
+            )}
+          </Box>
         }
       />
-
+      {/* Modal de eliminación */}
       <GenericModal
         open={openDelete}
         title="Eliminar turno"

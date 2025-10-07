@@ -57,19 +57,21 @@ export const getInputFieldsTurnos = ({
             inputProps: { type: "datetime-local", min: fechaHoyArgentinaISO },
         },
         {
-            label: "Fecha y hora de fin (obligatorio)",
-            name: "fin_at",
-            type: "date",
-            required: true,
-            defaultValue: fechaHoyArgentinaISO,
-            inputProps: { type: "datetime-local", min: fechaHoyArgentinaISO },
-        },
-        {
             label: "Color",
             name: "color",
             type: "color",
             required: false,
             defaultValue: "#1976d2",
+        },
+        {
+            label: "Emails de notificación",
+            name: "emails",
+            type: "string",
+            required: false,
+            placeholder: "Ej: juan@gmail.com, ana@hotmail.com",
+            inputProps: {
+                style: { textTransform: 'lowercase' },
+            },
         },
     ]
 
@@ -78,7 +80,8 @@ export const layoutTurnos = {
     servicio_id: { rowStart: 2, colStart: 1, colSpan: 6 },
     profesional: { rowStart: 2, colStart: 7, colSpan: 6 },
     alumno_id: { rowStart: 3, colStart: 1, colSpan: 12 },
-    inicio_at: { rowStart: 4, colStart: 1, colSpan: 4 },
-    fin_at: { rowStart: 4, colStart: 5, colSpan: 4 },
+    inicio_at: { rowStart: 4, colStart: 1, colSpan: 8 },
     color: { rowStart: 4, colStart: 9, colSpan: 4 },
+    emails: { rowStart: 5, colStart: 1, colSpan: 12 },
 }
+

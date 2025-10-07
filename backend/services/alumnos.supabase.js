@@ -164,7 +164,7 @@ export async function getAlumnosService({ page, limit, q = '' }, supaClient) {
 export async function getAlumnosSimpleService(supaClient) {
   const { data, error } = await supaClient
     .from('alumnos')
-    .select('id, nombre, dni')
+    .select('id, nombre, dni, email')
     .is('deleted_at', null)
     .order('nombre', { ascending: true });
 

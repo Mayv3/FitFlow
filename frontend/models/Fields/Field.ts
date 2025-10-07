@@ -44,4 +44,5 @@ export interface FormModalProps<T> {
   asyncDebounceMs?: number;
   gymId?: string;
   extraActions?: React.ReactNode
+  onValuesChange?: (values: T) => void;
 }

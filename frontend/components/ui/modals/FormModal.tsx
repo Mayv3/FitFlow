@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import {
   Dialog, DialogTitle, DialogContent, DialogActions,
-  Button, Box, TextField, Typography, MenuItem, useMediaQuery
+  Button, Box, TextField, Typography, MenuItem, useMediaQuery,
+  Chip
 } from '@mui/material';
 import { useTheme } from '@mui/material/styles';
 import { Field, FormModalProps } from '@/models/Fields/Field';
@@ -30,6 +31,7 @@ export const FormModal = <T extends Record<string, any>>({
   asyncDebounceMs = 400,
   gymId,
   extraActions,
+  onValuesChange,
 }: FormModalProps<T>) => {
   const [values, setValues] = useState<T>({} as T);
   const [externalErrors, setExternalErrors] = useState<Record<string, string | undefined>>({});
@@ -152,6 +154,7 @@ export const FormModal = <T extends Record<string, any>>({
       if (asyncTrigger === 'change') runAsyncValidation(name, newVal, next);
       return next;
     });
+
   };
 
   const handleBlur = (name: string, raw: any) => {
@@ -265,6 +268,9 @@ export const FormModal = <T extends Record<string, any>>({
     return () => clearTimeout(t)
   }, [open])
 
+  useEffect(() => {
+    if (onValuesChange) onValuesChange(values)
+  }, [values]);
   return (
     <Dialog
       open={open}
@@ -357,6 +363,66 @@ export const FormModal = <T extends Record<string, any>>({
                     />
                   </Box>
                 );
+              }
+
+              if (field.name === 'emails') {
+                if (mode === 'edit') return null
+                return (
+                  <Box key={field.name} style={style}>
+                    <Typography fontWeight={500} mb={0.5}>
+                      {field.label || 'Correos electrónicos'}
+                    </Typography>
+
+                    <Box
+                      sx={{
+                        display: 'flex',
+                        flexWrap: 'wrap',
+                        gap: 1,
+                        border: '1px solid rgba(0,0,0,0.23)',
+                        borderRadius: 1,
+                        p: 1,
+                        minHeight: 56,
+                        alignItems: 'center',
+                      }}
+                    >
+                      {(Array.isArray(values.emails) ? values.emails : [])
+                        .map((email: string, i: number) => (
+                          <Chip
+                            key={i}
+                            label={email}
+                            onDelete={() =>
+                              setValues((prev) => ({
+                                ...prev,
+                                emails: prev.emails.filter((_: string, idx: number) => idx !== i),
+                              }))
+                            }
+                            color="primary"
+                            size="small"
+                          />
+                        ))}
+
+                      <TextField
+                        variant="standard"
+                        placeholder="Agregar email y presionar Enter"
+                        InputProps={{ disableUnderline: true }}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') {
+                            e.preventDefault()
+                            const input = (e.target as HTMLInputElement).value.trim()
+                            if (input && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(input)) {
+                              setValues((prev) => ({
+                                ...prev,
+                                emails: [...(Array.isArray(prev.emails) ? prev.emails : []), input],
+                              }))
+                                ; (e.target as HTMLInputElement).value = ''
+                            }
+                          }
+                        }}
+                        sx={{ flex: 1, minWidth: 180 }}
+                      />
+                    </Box>
+                  </Box>
+                )
               }
 
               if (field.type === 'search-select' && field.searchFromCache) {
@@ -484,10 +550,10 @@ export const FormModal = <T extends Record<string, any>>({
             },
           }}
         >
+          {extraActions}
           <Button onClick={onClose} variant="outlined">
             {cancelText}
           </Button>
-          {extraActions}
           <Button type="submit" variant="contained" disabled={hasErrors || hasEmptyRequired}>
             {confirmText}
           </Button>

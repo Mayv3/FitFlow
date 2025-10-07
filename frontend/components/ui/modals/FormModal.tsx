@@ -35,6 +35,19 @@ export const FormModal = <T extends Record<string, any>>({
   const [externalErrors, setExternalErrors] = useState<Record<string, string | undefined>>({});
   const [searchTerms, setSearchTerms] = useState<Record<string, string>>({});
   const firstInputRef = React.useRef<HTMLInputElement | null>(null)
+  const metodoSeleccionado = values['metodo_pago'];
+
+
+  const visibleFields = fields.filter(field => {
+    if (['monto_efectivo', 'monto_mp', 'monto_tarjeta'].includes(field.name)) {
+      if (metodoSeleccionado === 'Efectivo') return field.name === 'monto_efectivo';
+      if (metodoSeleccionado === 'Mercado Pago') return field.name === 'monto_mp';
+      if (metodoSeleccionado === 'Tarjeta') return field.name === 'monto_tarjeta';
+      if (metodoSeleccionado === 'Mixto') return true;
+      return false;
+    }
+    return true;
+  });
 
   const showError = (msg: string) => notify.error(msg);
 
@@ -58,7 +71,7 @@ export const FormModal = <T extends Record<string, any>>({
     const combined = fields.reduce((acc, f) => {
       let initial: any;
       if (f.type === 'select' && Array.isArray(f.options) && f.options.length > 0) {
-        initial = initialValues?.[f.name] ?? f.options[0].value;
+        initial = initialValues?.[f.name] ?? '';
       } else {
         initial = initialValues?.[f.name] ?? f.defaultValue ?? '';
       }
@@ -108,6 +121,28 @@ export const FormModal = <T extends Record<string, any>>({
 
     setValues(prev => {
       const next = { ...prev, [name]: newVal };
+
+      if (name === 'plan_id') {
+        const selectedPlan = fields
+          .find(f => f.name === 'plan_id')
+          ?.options?.find(opt => opt.value === newVal);
+
+        const precioPlan = (selectedPlan && 'precio' in selectedPlan) ? (selectedPlan as any).precio : 0;
+
+        if (precioPlan > 0) {
+          const mutableNext = next as Record<string, any>;
+          if (metodoSeleccionado === 'Efectivo') mutableNext['monto_efectivo'] = String(precioPlan);
+          else if (metodoSeleccionado === 'Mercado Pago') mutableNext['monto_mp'] = String(precioPlan);
+          else if (metodoSeleccionado === 'Tarjeta') mutableNext['monto_tarjeta'] = String(precioPlan);
+          else if (metodoSeleccionado === 'Mixto') {
+            // Por defecto repartir el monto a cero, el usuario puede modificarlo
+            mutableNext['monto_efectivo'] = '';
+            mutableNext['monto_mp'] = '';
+            mutableNext['monto_tarjeta'] = '';
+          }
+        }
+      }
+
       if (asyncTrigger === 'change') runAsyncValidation(name, newVal, next);
       return next;
     });
@@ -191,6 +226,16 @@ export const FormModal = <T extends Record<string, any>>({
     if (!isMdUp) {
       return { gridColumn: `1 / span 12`, minWidth: 0 };
     }
+
+    if (
+      ['monto_efectivo', 'monto_mp', 'monto_tarjeta'].includes(fieldName) &&
+      (metodoSeleccionado === 'Efectivo' ||
+        metodoSeleccionado === 'Mercado Pago' ||
+        metodoSeleccionado === 'Tarjeta')
+    ) {
+      return { gridColumn: '1 / span 12', minWidth: 0 };
+    }
+
     const lay = (layout as any)[fieldName] ?? {};
     return {
       gridColumn:
@@ -201,6 +246,7 @@ export const FormModal = <T extends Record<string, any>>({
       minWidth: 0,
     };
   };
+
 
   useEffect(() => {
     if (!open) return
@@ -245,7 +291,7 @@ export const FormModal = <T extends Record<string, any>>({
             gridTemplateColumns={`repeat(${isMdUp ? gridColumns : 12}, 1fr)`}
             gap={`${isSmDown ? 12 : gridGap}px`}
           >
-            {fields.map((field, index) => {
+            {visibleFields.map((field, index) => {
               const val = values[field.name] ?? '';
               const style = computeCellStyle(field.name);
 
@@ -374,7 +420,7 @@ export const FormModal = <T extends Record<string, any>>({
                       sx: {
                         height: '60px',
                         '& .MuiInputBase-input': {
-                          py: 1, // padding interno
+                          py: 1,
                         },
                       },
                     }}
@@ -394,7 +440,7 @@ export const FormModal = <T extends Record<string, any>>({
                   >
                     {field.type === 'select' &&
                       options.map(opt => (
-                        <MenuItem key={String(opt.value)} value={opt.value}>
+                        <MenuItem key={String(opt.value)} value={opt.value ?? ''}>
                           {opt.label}
                         </MenuItem>
                       ))}

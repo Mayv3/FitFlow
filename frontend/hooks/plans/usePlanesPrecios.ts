@@ -28,6 +28,7 @@ export const usePlanesPrecios = (
       const options = rows.map(p => ({
         label: `${p.nombre} — ${p.numero_clases} clases ($${p.precio})`,
         value: p.id,
+        precio: p.precio,
       }))
       const byId = rows.reduce<Record<string, Plan>>((acc, p) => {
         acc[String(p.id)] = p

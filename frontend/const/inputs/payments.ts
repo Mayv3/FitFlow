@@ -23,12 +23,14 @@ export const getInputFieldsPagos = ({
             type: 'select',
             options: planOptions,
             required: false,
+
             placeholder: 'Selecciona el plan',
         },
         {
             label: 'Tipo (obligatorio)',
             name: 'tipo',
             type: 'select',
+            placeholder: 'Selecciona un tipo de pago',
             options: [
                 { label: 'Mensualidad', value: 'Mensualidad' },
                 { label: 'Inscripción', value: 'Inscripcion' },
@@ -36,6 +38,20 @@ export const getInputFieldsPagos = ({
                 { label: 'Otro', value: 'otro' },
             ],
         },
+        {
+            label: 'Método de pago',
+            name: 'metodo_pago',
+            type: 'select',
+            required: true,
+            options: [
+                { label: 'Efectivo', value: 'Efectivo' },
+                { label: 'Mercado Pago', value: 'Mercado Pago' },
+                { label: 'Tarjeta', value: 'Tarjeta' },
+                { label: 'Mixto', value: 'Mixto' },
+            ],
+            placeholder: 'Selecciona un método de pago',
+        },
+
         {
             label: 'Monto en efectivo',
             name: 'monto_efectivo',
@@ -92,17 +108,20 @@ export const getInputFieldsPagos = ({
 
 export const layoutPayments = {
     alumno_id: { rowStart: 1, colStart: 1, colSpan: 6 },
-    plan_id: { rowStart: 1, colStart: 7, colSpan: 6 },
+    metodo_pago: { rowStart: 1, colStart: 7, colSpan: 6 },
 
     tipo: { rowStart: 2, colStart: 1, colSpan: 12 },
+    plan_id: { rowStart: 3, colStart: 1, colSpan: 12 },
 
-    monto_efectivo: { rowStart: 3, colStart: 1, colSpan: 4 },
-    monto_mp: { rowStart: 3, colStart: 5, colSpan: 4 },
-    monto_tarjeta: { rowStart: 3, colStart: 9, colSpan: 4 },
+    monto_efectivo: { rowStart: 4, colStart: 1, colSpan: 4 },
+    monto_mp: { rowStart: 4, colStart: 5, colSpan: 4 },
+    monto_tarjeta: { rowStart: 4, colStart: 9, colSpan: 4 },
 
-    fecha_de_pago: { rowStart: 4, colStart: 1, colSpan: 6 },
-    fecha_de_venc: { rowStart: 4, colStart: 7, colSpan: 6 },
+    fecha_de_pago: { rowStart: 5, colStart: 1, colSpan: 6 },
+    fecha_de_venc: { rowStart: 5, colStart: 7, colSpan: 6 },
 
-    responsable: { rowStart: 5, colStart: 1, colSpan: 8 },
-    hora: { rowStart: 5, colStart: 9, colSpan: 4 },
+    responsable: { rowStart: 6, colStart: 1, colSpan: 8 },
+    hora: { rowStart: 6, colStart: 9, colSpan: 4 },
 };
+
+

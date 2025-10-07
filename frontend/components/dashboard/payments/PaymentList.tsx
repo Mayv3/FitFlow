@@ -162,34 +162,43 @@ export default function PaymentList() {
             const id = editingPago?.id;
             if (!id) throw new Error("No hay id para editar el pago");
 
-            const items = [];
-            if (values.monto_efectivo) {
-                items.push({ metodo_de_pago_id: 1, monto: Number(values.monto_efectivo) });
-            }
-            if (values.monto_mp) {
-                items.push({ metodo_de_pago_id: 2, monto: Number(values.monto_mp) });
-            }
-            if (values.monto_tarjeta) {
-                items.push({ metodo_de_pago_id: 3, monto: Number(values.monto_tarjeta) });
-            }
+            const efectivo = Number(values.monto_efectivo) || 0;
+            const mp = Number(values.monto_mp) || 0;
+            const tarjeta = Number(values.monto_tarjeta) || 0;
+
+            const items = [
+                { metodo_de_pago_id: 1, monto: efectivo },
+                { metodo_de_pago_id: 2, monto: mp },
+                { metodo_de_pago_id: 3, monto: tarjeta },
+            ].filter(i => i.monto > 0);
+
+            const monto_total = efectivo + mp + tarjeta;
 
             const payload = {
-                ...values,
+                plan_id: values.plan_id,
+                alumno_id: values.alumno_id,
+                tipo: values.tipo,
+                fecha_de_pago: values.fecha_de_pago,
+                fecha_de_venc: values.fecha_de_venc,
+                responsable: values.responsable,
+                hora: values.hora,
+                gym_id: user?.gym_id,
                 items,
+                monto_total,
             };
 
-            delete payload.monto_efectivo;
-            delete payload.monto_mp;
-            delete payload.monto_tarjeta;
+            console.log("🟢 Enviando payload al backend:", payload);
+
+            await editPago.mutateAsync({ id, values: payload });
 
             handleCloseEdit();
-            await editPago.mutateAsync({ id, values: payload });
             notify.success("Pago editado correctamente");
         } catch (error) {
             console.error("Error al editar pago:", error);
-            notify.error("Error al editar el pago");
+            notify.error("❌ Error al editar el pago");
         }
     };
+
 
     const handleDelete = (id: number) => {
         setDeletingId(id);

@@ -119,6 +119,12 @@ export const FormModal = <T extends Record<string, any>>({
       newVal = Number(newVal);
     }
 
+    if (f.inputProps?.style?.textTransform === 'capitalize' && typeof newVal === 'string') {
+      newVal = newVal
+        .toLowerCase()
+        .replace(/\b\w/g, (char) => char.toUpperCase());
+    }
+
     setValues(prev => {
       const next = { ...prev, [name]: newVal };
 

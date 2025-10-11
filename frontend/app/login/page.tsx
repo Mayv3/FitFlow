@@ -7,9 +7,20 @@ import { useRouter } from "next/navigation"
 import { useUser } from "@/context/UserContext"
 import { FormEnterToTab } from "@/components/ui/tables/FormEnterToTab"
 import { ADMINISTRADOR, RECEPCIONISTA, OWNER, SOCIO } from "@/const/roles/roles"
-import { TextField, Button, Typography, Paper, Box, CircularProgress, InputAdornment, IconButton } from "@mui/material"
+import {
+  TextField,
+  Button,
+  Typography,
+  Paper,
+  Box,
+  CircularProgress,
+  InputAdornment,
+  IconButton,
+  useTheme,
+} from "@mui/material"
 import Link from "next/link"
 import { Visibility, VisibilityOff } from "@mui/icons-material"
+import Image from "next/image"
 
 const LoginPage = () => {
   const [email, setEmail] = useState("")
@@ -20,6 +31,7 @@ const LoginPage = () => {
 
   const router = useRouter()
   const { setUser } = useUser()
+  const theme = useTheme()
 
   const handleToggle = () => setShowPassword((prev) => !prev)
 
@@ -100,46 +112,75 @@ const LoginPage = () => {
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
-        backgroundColor: (theme) => theme.palette.background.default,
+        backgroundColor: theme.palette.background.default,
         p: 2,
       }}
     >
       <Paper
         elevation={10}
         sx={{
-          p: 4,
-          maxWidth: 400,
-          width: "100%",
-          backgroundColor: (theme) => theme.palette.background.paper,
-          color: (theme) => theme.palette.text.primary,
+          display: "flex",
+          flexDirection: { xs: "column", md: "row" },
+          maxWidth: 1100,
+          width: { xs: "80%", md: "100%" },
+          height: { xs: 500, md: 600 },
+          overflow: "hidden",
+          borderRadius: 1,
         }}
       >
-        <Typography variant="h5" fontWeight="bold" gutterBottom textAlign='center'>
-          Ingresar al sistema
-        </Typography>
-
-        <FormEnterToTab onSubmit={handleLogin}>
-          <TextField
-            label="Email"
-            variant="outlined"
-            fullWidth
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            margin="normal"
-            autoComplete="username"
+        <Box
+          sx={{
+            flex: { xs: 0.6, sm: 0.8, md: 1 },
+            display: { xs: "none", md: "flex" },
+            alignItems: "center",
+            justifyContent: "center",
+            p: 0,
+          }}
+        >
+          <Image
+            src="/images/login-illustrations.jpg"
+            alt="login illustration"
+            width={200}
+            height={200}
+            style={{ objectFit: "cover", width: "100%", height: "auto" }}
+            priority
           />
+        </Box>
 
-          <TextField
-            fullWidth
-            label="Contraseña"
-            type={showPassword ? "text" : "password"}
-            variant="outlined"
-            margin="normal"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            autoComplete="current-password"
-            slotProps={{
-              input: {
+        <Box
+          sx={{
+            flex: 1,
+            p: { xs: 3, md: 5 },
+            display: "flex",
+            flexDirection: "column",
+            justifyContent: "center",
+          }}
+        >
+          <Typography variant="h5" fontWeight="bold" gutterBottom textAlign="center">
+            Ingresar al sistema
+          </Typography>
+
+          <FormEnterToTab onSubmit={handleLogin}>
+            <TextField
+              label="Email"
+              variant="outlined"
+              fullWidth
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              margin="normal"
+              autoComplete="username"
+            />
+
+            <TextField
+              fullWidth
+              label="Contraseña"
+              type={showPassword ? "text" : "password"}
+              variant="outlined"
+              margin="normal"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              autoComplete="current-password"
+              InputProps={{
                 endAdornment: (
                   <InputAdornment position="end">
                     <IconButton onClick={handleToggle} edge="end">
@@ -147,37 +188,37 @@ const LoginPage = () => {
                     </IconButton>
                   </InputAdornment>
                 ),
-              },
-            }}
-          />
+              }}
+            />
 
-          <Button
-            type="submit"
-            variant="contained"
-            color="primary"
-            fullWidth
-            sx={{ mt: 2 }}
-            disabled={loading || !email.trim() || !password.trim()}
-          >
-            {loading ? <CircularProgress size={24} color="inherit" /> : "Ingresar"}
-          </Button>
-
-          <Box sx={{ mt: 2, textAlign: "center" }}>
-            <Link href="/forgot-password" style={{ color: "#2196F3", fontWeight: 500 }}>
-              ¿Olvidaste tu contraseña?
-            </Link>
-          </Box>
-
-          {errorMessage && (
-            <Typography
-              variant="body2"
-              color="error"
-              sx={{ mt: 2, textAlign: "center", fontWeight: 500 }}
+            <Button
+              type="submit"
+              variant="contained"
+              color="primary"
+              fullWidth
+              sx={{ mt: 2, py: 1.2, fontWeight: 600 }}
+              disabled={loading || !email.trim() || !password.trim()}
             >
-              {errorMessage}
-            </Typography>
-          )}
-        </FormEnterToTab>
+              {loading ? <CircularProgress size={24} color="inherit" /> : "Ingresar"}
+            </Button>
+
+            <Box sx={{ mt: 2, textAlign: "center" }}>
+              <Link href="/forgot-password" style={{ color: theme.palette.primary.main, fontWeight: 500 }}>
+                ¿Olvidaste tu contraseña?
+              </Link>
+            </Box>
+
+            {errorMessage && (
+              <Typography
+                variant="body2"
+                color="error"
+                sx={{ mt: 2, textAlign: "center", fontWeight: 500 }}
+              >
+                {errorMessage}
+              </Typography>
+            )}
+          </FormEnterToTab>
+        </Box>
       </Paper>
     </Box>
   )

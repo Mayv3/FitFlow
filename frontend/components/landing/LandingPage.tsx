@@ -17,12 +17,12 @@ import {
     ArrowForward,
     PlayArrow,
     BarChart,
-    TrendingUp,
     AttachMoney,
     TrackChanges,
     PieChart,
     Timeline,
 } from "@mui/icons-material"
+import Image from "next/image"
 
 export default function FitnessFlowLanding() {
     const router = useRouter()
@@ -32,10 +32,16 @@ export default function FitnessFlowLanding() {
             <header className="border-b bg-card/50 backdrop-blur-sm sticky top-0 z-50">
                 <div className="container mx-auto px-4 py-4 flex items-center justify-between">
                     <div className="flex items-center space-x-2">
-                        <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center">
-                            <span className="text-primary-foreground font-bold text-lg">F</span>
+                        <div className="w-8 h-8 rounded-lg flex items-center justify-center">
+                            <Image
+                                src="/images/icon.png"
+                                alt="Logo de FitnessFlow"
+                                width={28}
+                                height={28}
+                                className="object-contain"
+                            />
                         </div>
-                        <span className="text-xl font-bold text-foreground">FitnessFlow</span>
+                        <span className="text-xl font-bold text-foregroun text-primary">Fitness Flow</span>
                     </div>
                     <nav className="hidden md:flex items-center space-x-6">
                         <a href="#funciones" className="text-muted-foreground hover:text-foreground transition-colors">
@@ -44,23 +50,18 @@ export default function FitnessFlowLanding() {
                         <a href="#estadisticas" className="text-muted-foreground hover:text-foreground transition-colors">
                             Estadísticas
                         </a>
-                        <a href="#precios" className="text-muted-foreground hover:text-foreground transition-colors">
-                            Precios
-                        </a>
-                        <a href="#contacto" className="text-muted-foreground hover:text-foreground transition-colors">
-                            Contacto
-                        </a>
                     </nav>
                     <div className="flex items-center space-x-3">
                         <Button variant="ghost" size="sm" onClick={() => router.push("/login")}>
                             Iniciar Sesión
                         </Button>
-                        <Button size="sm">Probar Gratis</Button>
+                        <Button
+                            onClick={() => window.location.href = "mailto:contacto@fitnessflow.com?subject=Quiero%20probar%20FitnessFlow&body=Hola!%20Quiero%20probar%20FitnessFlow%20en%20mi%20gimnasio.%20%0APodrían%20enviarme%20más%20información?"}
+                            size="sm">Probar Gratis</Button>
                     </div>
                 </div>
             </header>
 
-            {/* Hero Section + Dashboard de Estadísticas */}
             <section className="py-20 px-4">
                 <div className="container mx-auto max-w-10xl">
                     <div className="grid lg:grid-cols-2 gap-12 items-center">
@@ -77,13 +78,14 @@ export default function FitnessFlowLanding() {
                                 </p>
                             </div>
                             <div className="flex flex-col sm:flex-row gap-4">
-                                <Button size="lg" className="text-lg px-8">
+                                <Button
+                                    size="lg"
+                                    variant="secondary"
+                                    className="text-lg px-8 bg-primary text-primary-foreground hover:bg-primary/90"
+                                    onClick={() => window.location.href = "mailto:contacto@fitnessflow.com?subject=Quiero%20probar%20FitnessFlow&body=Hola!%20Quiero%20probar%20FitnessFlow%20en%20mi%20gimnasio.%20%0APodrían%20enviarme%20más%20información?"}
+                                >
                                     <PlayArrow className="w-5 h-5 mr-2" />
                                     Probar Gratis
-                                </Button>
-                                <Button variant="outline" size="lg" className="text-lg px-8 bg-transparent">
-                                    Solicitar Demo
-                                    <ArrowForward className="w-5 h-5 ml-2" />
                                 </Button>
                             </div>
                             <div className="flex items-center space-x-6 text-sm text-muted-foreground w-full md:w-fit justify-center">
@@ -108,7 +110,6 @@ export default function FitnessFlowLanding() {
                 </div>
             </section>
 
-            {/* Gestión de Alumnos Section */}
             <section className="py-20 px-4 bg-muted/30">
                 <div className="container mx-auto max-w-10xl">
                     <div className="grid lg:grid-cols-2 gap-12 items-center">
@@ -351,15 +352,11 @@ export default function FitnessFlowLanding() {
                                 <ul className="space-y-2 text-sm text-muted-foreground">
                                     <li className="flex items-center space-x-2">
                                         <CheckCircle className="w-4 h-4 text-primary" />
-                                        <span>Perfiles completos de miembros</span>
+                                        <span>Perfiles completos de miembros.</span>
                                     </li>
                                     <li className="flex items-center space-x-2">
                                         <CheckCircle className="w-4 h-4 text-primary" />
-                                        <span>Historial de actividades</span>
-                                    </li>
-                                    <li className="flex items-center space-x-2">
-                                        <CheckCircle className="w-4 h-4 text-primary" />
-                                        <span>Comunicación directa</span>
+                                        <span>Registro de asistencias.</span>
                                     </li>
                                 </ul>
                             </CardContent>
@@ -381,16 +378,13 @@ export default function FitnessFlowLanding() {
                                 <ul className="space-y-2 text-sm text-muted-foreground">
                                     <li className="flex items-center space-x-2">
                                         <CheckCircle className="w-4 h-4 text-primary" />
-                                        <span>Facturación automática</span>
+                                        <span>Registro de todos tus pagos.</span>
                                     </li>
                                     <li className="flex items-center space-x-2">
                                         <CheckCircle className="w-4 h-4 text-primary" />
-                                        <span>Múltiples métodos de pago</span>
+                                        <span>Múltiples métodos de pago.</span>
                                     </li>
-                                    <li className="flex items-center space-x-2">
-                                        <CheckCircle className="w-4 h-4 text-primary" />
-                                        <span>Reportes financieros detallados</span>
-                                    </li>
+                         
                                 </ul>
                             </CardContent>
                         </Card>
@@ -411,15 +405,11 @@ export default function FitnessFlowLanding() {
                                 <ul className="space-y-2 text-sm text-muted-foreground">
                                     <li className="flex items-center space-x-2">
                                         <CheckCircle className="w-4 h-4 text-primary" />
-                                        <span>Check-in digital</span>
+                                        <span>Check-in digital.</span>
                                     </li>
                                     <li className="flex items-center space-x-2">
                                         <CheckCircle className="w-4 h-4 text-primary" />
-                                        <span>Estadísticas de asistencia</span>
-                                    </li>
-                                    <li className="flex items-center space-x-2">
-                                        <CheckCircle className="w-4 h-4 text-primary" />
-                                        <span>Alertas automáticas</span>
+                                        <span>Estadísticas de asistencia.</span>
                                     </li>
                                 </ul>
                             </CardContent>
@@ -439,15 +429,15 @@ export default function FitnessFlowLanding() {
                                 <ul className="space-y-2 text-sm text-muted-foreground">
                                     <li className="flex items-center space-x-2">
                                         <CheckCircle className="w-4 h-4 text-primary" />
-                                        <span>Calendario integrado</span>
+                                        <span>Calendario integrado.</span>
                                     </li>
                                     <li className="flex items-center space-x-2">
                                         <CheckCircle className="w-4 h-4 text-primary" />
-                                        <span>Reservas online</span>
+                                        <span>Reservas online.</span>
                                     </li>
                                     <li className="flex items-center space-x-2">
                                         <CheckCircle className="w-4 h-4 text-primary" />
-                                        <span>Notificaciones automáticas</span>
+                                        <span>Integracion con Google Calendar.</span>
                                     </li>
                                 </ul>
                             </CardContent>
@@ -469,15 +459,15 @@ export default function FitnessFlowLanding() {
                                 <ul className="space-y-2 text-sm text-muted-foreground">
                                     <li className="flex items-center space-x-2">
                                         <CheckCircle className="w-4 h-4 text-primary" />
-                                        <span>Planes personalizables</span>
+                                        <span>Planes personalizables.</span>
                                     </li>
                                     <li className="flex items-center space-x-2">
                                         <CheckCircle className="w-4 h-4 text-primary" />
-                                        <span>Promociones y descuentos</span>
+                                        <span>Promociones y descuentos.</span>
                                     </li>
                                     <li className="flex items-center space-x-2">
                                         <CheckCircle className="w-4 h-4 text-primary" />
-                                        <span>Renovaciones automáticas</span>
+                                        <span>Estado del plan de cada miembro.</span>
                                     </li>
                                 </ul>
                             </CardContent>
@@ -595,7 +585,7 @@ export default function FitnessFlowLanding() {
                         </Badge>
                         <h2 className="text-3xl lg:text-4xl font-bold text-balance">Control de acceso para tu equipo</h2>
                         <p className="text-xl text-muted-foreground text-pretty max-w-3xl mx-auto">
-                            Asigná roles dentro del sistema: dueños con acceso total o recepcionistas con permisos específicos.
+                            Asigná roles dentro del sistema: dueños con acceso total o recepcionistas con permisos limitados.
                         </p>
                     </div>
 
@@ -610,19 +600,19 @@ export default function FitnessFlowLanding() {
                                 <ul className="text-left space-y-2 text-sm text-muted-foreground">
                                     <li className="flex items-center space-x-2">
                                         <CheckCircle className="w-4 h-4 text-primary" />
-                                        <span>Gestión completa de alumnos</span>
+                                        <span>Gestión completa de alumnos.</span>
                                     </li>
                                     <li className="flex items-center space-x-2">
                                         <CheckCircle className="w-4 h-4 text-primary" />
-                                        <span>Control total de pagos e ingresos</span>
+                                        <span>Control total de pagos e ingresos.</span>
                                     </li>
                                     <li className="flex items-center space-x-2">
                                         <CheckCircle className="w-4 h-4 text-primary" />
-                                        <span>Acceso a todas las estadísticas</span>
+                                        <span>Acceso a todas las estadísticas.</span>
                                     </li>
                                     <li className="flex items-center space-x-2">
                                         <CheckCircle className="w-4 h-4 text-primary" />
-                                        <span>Configuración del sistema</span>
+                                        <span>Configuración del sistema.</span>
                                     </li>
                                 </ul>
                             </CardHeader>
@@ -638,19 +628,19 @@ export default function FitnessFlowLanding() {
                                 <ul className="text-left space-y-2 text-sm text-muted-foreground">
                                     <li className="flex items-center space-x-2">
                                         <CheckCircle className="w-4 h-4 text-primary" />
-                                        <span>Registro de asistencias</span>
+                                        <span>Registro de asistencias.</span>
                                     </li>
                                     <li className="flex items-center space-x-2">
                                         <CheckCircle className="w-4 h-4 text-primary" />
-                                        <span>Gestión de turnos y agenda</span>
+                                        <span>Gestión de turnos y agenda.</span>
                                     </li>
                                     <li className="flex items-center space-x-2">
                                         <CheckCircle className="w-4 h-4 text-primary" />
-                                        <span>Consulta de información de alumnos</span>
+                                        <span>Consulta de información de alumnos.</span>
                                     </li>
                                     <li className="flex items-center space-x-2">
                                         <CheckCircle className="w-4 h-4 text-primary" />
-                                        <span>Registro de pagos básicos</span>
+                                        <span>Registro de pagos.</span>
                                     </li>
                                 </ul>
                             </CardHeader>
@@ -664,24 +654,21 @@ export default function FitnessFlowLanding() {
                 <div className="container mx-auto max-w-4xl text-center">
                     <div className="space-y-8">
                         <h2 className="text-3xl lg:text-4xl font-bold text-balance">
-                            Simplificá la gestión de tu gimnasio y hacelo crecer con FitnessFlow
+                             Simplificá la gestión de tu gimnasio y hacelo crecer con FitnessFlow
                         </h2>
                         <p className="text-xl text-primary-foreground/90 text-pretty max-w-2xl mx-auto">
-                            Únete a cientos de gimnasios en Latinoamérica que ya confían en FitnessFlow para gestionar su negocio de
+                            Únete a cientos de gimnasios que ya confían en Fitness Flow para gestionar su negocio de
                             forma eficiente.
                         </p>
                         <div className="flex flex-col sm:flex-row gap-4 justify-center">
-                            <Button size="lg" variant="secondary" className="text-lg px-8">
-                                <PlayArrow className="w-5 h-5 mr-2" />
-                                Probar Gratis
-                            </Button>
                             <Button
                                 size="lg"
-                                variant="outline"
-                                className="text-lg px-8 border-primary-foreground/20 text-primary-foreground hover:bg-primary-foreground/10 bg-transparent"
+                                variant="secondary"
+                                className="text-lg px-8"
+                                onClick={() => window.location.href = "mailto:contacto@fitnessflow.com?subject=Quiero%20probar%20FitnessFlow&body=Hola!%20Quiero%20probar%20FitnessFlow%20en%20mi%20gimnasio.%20%0APodrían%20enviarme%20más%20información?"}
                             >
-                                Solicitar Demo
-                                <ArrowForward className="w-5 h-5 ml-2" />
+                                <PlayArrow className="w-5 h-5 mr-2" />
+                                Probar Gratis
                             </Button>
                         </div>
                         <div className="flex flex-col sm:flex-row items-center justify-center space-y-2 sm:space-y-0 sm:space-x-8 text-sm text-primary-foreground/80">
@@ -705,7 +692,7 @@ export default function FitnessFlowLanding() {
             {/* Footer */}
             <footer className="py-12 px-4 bg-card border-t">
                 <div className="text-center text-sm text-muted-foreground">
-                    <p>&copy; 2025 FitnessFlow. Todos los derechos reservados.</p>
+                    <p>&copy; 2025 FitnessFlow. Todos los derechos reservados. Industria Argentina</p>
                 </div>
             </footer>
         </div>

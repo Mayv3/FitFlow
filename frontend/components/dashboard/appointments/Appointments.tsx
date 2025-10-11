@@ -280,7 +280,6 @@ export default function Appointments() {
         />
       </Box>
 
-      {/* Modal de formulario */}
       <FormModal
         open={open}
         title={mode === 'create' ? 'Añadir un turno' : 'Editar turno'}
@@ -298,7 +297,6 @@ export default function Appointments() {
         onValuesChange={setFormValues}
         extraActions={
           <Box display="flex" alignItems="center" gap={2}>
-            {/* Solo se muestra en modo "create" */}
             {mode === 'create' && (
               <Tooltip title="Agregar a Google Calendar">
                 <Checkbox
@@ -341,7 +339,6 @@ export default function Appointments() {
               </Tooltip>
             )}
 
-            {/* Botón eliminar solo en modo "edit" */}
             {mode === 'edit' && (
               <Button
                 variant="contained"

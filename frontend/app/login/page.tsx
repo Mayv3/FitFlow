@@ -7,17 +7,21 @@ import { useRouter } from "next/navigation"
 import { useUser } from "@/context/UserContext"
 import { FormEnterToTab } from "@/components/ui/tables/FormEnterToTab"
 import { ADMINISTRADOR, RECEPCIONISTA, OWNER, SOCIO } from "@/const/roles/roles"
-import { TextField, Button, Typography, Paper, Box, CircularProgress } from "@mui/material"
+import { TextField, Button, Typography, Paper, Box, CircularProgress, InputAdornment, IconButton } from "@mui/material"
 import Link from "next/link"
+import { Visibility, VisibilityOff } from "@mui/icons-material"
 
 const LoginPage = () => {
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
+  const [showPassword, setShowPassword] = useState(false)
   const [errorMessage, setErrorMessage] = useState("")
   const [loading, setLoading] = useState(false)
 
   const router = useRouter()
   const { setUser } = useUser()
+
+  const handleToggle = () => setShowPassword((prev) => !prev)
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -128,12 +132,23 @@ const LoginPage = () => {
           <TextField
             fullWidth
             label="Contraseña"
-            type="password"
+            type={showPassword ? "text" : "password"}
             variant="outlined"
             margin="normal"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             autoComplete="current-password"
+            slotProps={{
+              input: {
+                endAdornment: (
+                  <InputAdornment position="end">
+                    <IconButton onClick={handleToggle} edge="end">
+                      {showPassword ? <VisibilityOff /> : <Visibility />}
+                    </IconButton>
+                  </InputAdornment>
+                ),
+              },
+            }}
           />
 
           <Button

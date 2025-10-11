@@ -19,7 +19,6 @@ export default function ForgotPasswordPage() {
   const [loading, setLoading] = useState(false)
   const [cooldown, setCooldown] = useState(0) // segundos restantes
 
-  // ✅ Función para validar formato de email
   const isValidEmail = (email: string) => {
     return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)
   }

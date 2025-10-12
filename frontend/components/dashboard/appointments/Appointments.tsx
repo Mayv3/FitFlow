@@ -12,7 +12,6 @@ import {
   Button,
   CircularProgress,
   ButtonGroup,
-  Stack,
   useMediaQuery,
   Tooltip,
   Checkbox,
@@ -21,9 +20,6 @@ import { useTheme } from '@mui/material/styles'
 import { FormModal } from '@/components/ui/modals/FormModal'
 import { getInputFieldsTurnos, layoutTurnos } from '@/const/inputs/appointments'
 import { useUser } from '@/context/UserContext'
-
-import type { EventDropArg } from '@fullcalendar/core'
-import type { EventResizeDoneArg } from '@fullcalendar/interaction'
 
 import { useServicesByGym } from '@/hooks/services/useServicesOptions'
 import { useAlumnosSimpleByGym } from '@/hooks/alumnos/useAlumnosByGym'
@@ -38,7 +34,6 @@ import { ReactQueryDevtools } from '@tanstack/react-query-devtools'
 import { GenericModal } from '@/components/ui/modals/GenericModal'
 import { CustomBreadcrumbs } from '@/components/ui/breadcrums/CustomBreadcrumbs'
 
-// ---------------------- Helper Functions ----------------------
 
 type AlumnoSimple = { id: number; nombre: string; dni?: string }
 
@@ -76,7 +71,6 @@ function generarLinkGoogleCalendar(turno: any) {
     details: `Profesional: ${turno.profesional || ''}`,
   })
 
-  // ✅ Si hay correos, los agregamos al link (separados por coma)
   if (turno.emails && Array.isArray(turno.emails) && turno.emails.length > 0) {
     params.append('add', turno.emails.join(','))
   }
@@ -84,7 +78,6 @@ function generarLinkGoogleCalendar(turno: any) {
   return `${base}&${params.toString()}`
 }
 
-// ---------------------- Componente Principal ----------------------
 
 export default function Appointments() {
   const calendarRef = useRef<FullCalendar | null>(null)
@@ -135,6 +128,11 @@ export default function Appointments() {
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [formValues, setFormValues] = useState<any>({})
 
+  const initialFormValues = useMemo(() => {
+    const base = initialValues ?? {};
+    return base.origen_pago ? base : { ...base, origen_pago: 'servicio' };
+  }, [initialValues]);
+
   const handleAddTurno = async (values: any) => {
     const { emails, ...valuesLimpios } = values
 
@@ -168,7 +166,6 @@ export default function Appointments() {
     }
   }
 
-  // ---------- Click sobre evento ----------
   const handleEventClick = (clickInfo: any) => {
     const ev = clickInfo.event
     setSelectedId(ev.id)
@@ -184,7 +181,6 @@ export default function Appointments() {
     setOpen(true)
   }
 
-  // ---------- Loader ----------
   if (isLoading || isFetching) {
     return (
       <Box sx={{ textAlign: 'center', mt: 4 }}>
@@ -211,7 +207,6 @@ export default function Appointments() {
         ]}
       />
 
-      {/* Toolbar superior */}
       <Box
         mb={2}
         display="flex"
@@ -238,7 +233,6 @@ export default function Appointments() {
         </Button>
       </Box>
 
-      {/* Calendario */}
       <Box
         sx={{
           width: '100%',
@@ -284,7 +278,7 @@ export default function Appointments() {
         open={open}
         title={mode === 'create' ? 'Añadir un turno' : 'Editar turno'}
         fields={fieldsTurnos}
-        initialValues={initialValues}
+        initialValues={initialFormValues}
         onClose={() => setOpen(false)}
         onSubmit={mode === 'create' ? handleAddTurno : handleEditTurno}
         confirmText="Guardar"
@@ -351,7 +345,7 @@ export default function Appointments() {
           </Box>
         }
       />
-      {/* Modal de eliminación */}
+
       <GenericModal
         open={openDelete}
         title="Eliminar turno"

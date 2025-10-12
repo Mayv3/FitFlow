@@ -60,7 +60,7 @@ export default function FitnessFlowLanding() {
                     </nav>
                     <div className="flex items-center space-x-3">
                         <Button variant="ghost" size="sm" onClick={() => router.push("/login")}>
-                            Iniciar Sesión
+                            Iniciar sesión
                         </Button>
                         <Button
                             onClick={() => window.location.href = "mailto:contacto@fitnessflow.com?subject=Quiero%20probar%20FitnessFlow&body=Hola!%20Quiero%20probar%20FitnessFlow%20en%20mi%20gimnasio.%20%0APodrían%20enviarme%20más%20información?"}

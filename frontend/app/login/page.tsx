@@ -184,10 +184,6 @@ const LoginPage = () => {
             />
           </div>
 
-          <Typography variant="h5" fontWeight="bold" gutterBottom textAlign="center">
-            Ingresar
-          </Typography>
-
           <FormEnterToTab onSubmit={handleLogin}>
             <TextField
               label="Email"

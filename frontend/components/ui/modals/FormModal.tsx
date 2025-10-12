@@ -42,13 +42,12 @@ export const FormModal = <T extends Record<string, any>>({
   const metodoSeleccionado = values['metodo_pago'];
 
   const visibleFields = fields.filter(field => {
-    if (!origenPago && (field.name === 'plan_id' || field.name === 'servicio_id')) {
-      return false;
-    }
+  const isPagoForm = fields.some(f => f.name === 'origen_pago');
 
+  if (isPagoForm) {
+    if (!origenPago && (field.name === 'plan_id' || field.name === 'servicio_id')) return false;
     if (origenPago === 'plan' && field.name === 'servicio_id') return false;
     if (origenPago === 'servicio' && field.name === 'plan_id') return false;
-
     if (['monto_efectivo', 'monto_mp', 'monto_tarjeta'].includes(field.name)) {
       if (metodoSeleccionado === 'Efectivo') return field.name === 'monto_efectivo';
       if (metodoSeleccionado === 'Mercado Pago') return field.name === 'monto_mp';
@@ -56,9 +55,10 @@ export const FormModal = <T extends Record<string, any>>({
       if (metodoSeleccionado === 'Mixto') return true;
       return false;
     }
+  }
 
-    return true;
-  });
+  return true;
+});
 
 
   const showError = (msg: string) => notify.error(msg);
@@ -334,6 +334,7 @@ export const FormModal = <T extends Record<string, any>>({
   useEffect(() => {
     if (onValuesChange) onValuesChange(values)
   }, [values]);
+
   return (
     <Dialog
       open={open}

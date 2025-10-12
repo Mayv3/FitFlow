@@ -37,10 +37,18 @@ export const FormModal = <T extends Record<string, any>>({
   const [externalErrors, setExternalErrors] = useState<Record<string, string | undefined>>({});
   const [searchTerms, setSearchTerms] = useState<Record<string, string>>({});
   const firstInputRef = React.useRef<HTMLInputElement | null>(null)
+
+  const origenPago = values['origen_pago'];
   const metodoSeleccionado = values['metodo_pago'];
 
-
   const visibleFields = fields.filter(field => {
+    if (!origenPago && (field.name === 'plan_id' || field.name === 'servicio_id')) {
+      return false;
+    }
+
+    if (origenPago === 'plan' && field.name === 'servicio_id') return false;
+    if (origenPago === 'servicio' && field.name === 'plan_id') return false;
+
     if (['monto_efectivo', 'monto_mp', 'monto_tarjeta'].includes(field.name)) {
       if (metodoSeleccionado === 'Efectivo') return field.name === 'monto_efectivo';
       if (metodoSeleccionado === 'Mercado Pago') return field.name === 'monto_mp';
@@ -48,8 +56,10 @@ export const FormModal = <T extends Record<string, any>>({
       if (metodoSeleccionado === 'Mixto') return true;
       return false;
     }
+
     return true;
   });
+
 
   const showError = (msg: string) => notify.error(msg);
 
@@ -151,10 +161,64 @@ export const FormModal = <T extends Record<string, any>>({
         }
       }
 
+      if (name === 'servicio_id') {
+        const selectedService = fields
+          .find(f => f.name === 'servicio_id')
+          ?.options?.find(opt => opt.value === newVal);
+
+        let precioServicio = 0;
+        if (selectedService?.label) {
+          const match = selectedService.label.match(/\$\s?([\d.,]+)/);
+          if (match) {
+            precioServicio = Number(match[1].replace(/\./g, '').replace(',', '.'));
+          }
+        }
+
+        if (precioServicio > 0) {
+          const mutableNext = next as Record<string, any>;
+          if (metodoSeleccionado === 'Efectivo') mutableNext['monto_efectivo'] = String(precioServicio);
+          else if (metodoSeleccionado === 'Mercado Pago') mutableNext['monto_mp'] = String(precioServicio);
+          else if (metodoSeleccionado === 'Tarjeta') mutableNext['monto_tarjeta'] = String(precioServicio);
+          else if (metodoSeleccionado === 'Mixto') {
+            mutableNext['monto_efectivo'] = '';
+            mutableNext['monto_mp'] = '';
+            mutableNext['monto_tarjeta'] = '';
+          }
+        }
+      }
+
+      if (name === 'metodo_pago') {
+        const mutableNext = { ...next } as Record<string, any>;
+
+        const total =
+          Number(mutableNext['monto_efectivo'] || 0) +
+          Number(mutableNext['monto_mp'] || 0) +
+          Number(mutableNext['monto_tarjeta'] || 0);
+
+        if (newVal === 'Efectivo') {
+          mutableNext['monto_efectivo'] = total ? String(total) : '';
+          mutableNext['monto_mp'] = '';
+          mutableNext['monto_tarjeta'] = '';
+        } else if (newVal === 'Mercado Pago') {
+          mutableNext['monto_mp'] = total ? String(total) : '';
+          mutableNext['monto_efectivo'] = '';
+          mutableNext['monto_tarjeta'] = '';
+        } else if (newVal === 'Tarjeta') {
+          mutableNext['monto_tarjeta'] = total ? String(total) : '';
+          mutableNext['monto_efectivo'] = '';
+          mutableNext['monto_mp'] = '';
+        } else if (newVal === 'Mixto') {
+          mutableNext['monto_efectivo'] = '';
+          mutableNext['monto_mp'] = '';
+          mutableNext['monto_tarjeta'] = '';
+        }
+
+        return mutableNext as T;
+      }
+
       if (asyncTrigger === 'change') runAsyncValidation(name, newVal, next);
       return next;
     });
-
   };
 
   const handleBlur = (name: string, raw: any) => {
@@ -255,7 +319,6 @@ export const FormModal = <T extends Record<string, any>>({
       minWidth: 0,
     };
   };
-
 
   useEffect(() => {
     if (!open) return

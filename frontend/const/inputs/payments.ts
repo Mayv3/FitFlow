@@ -4,9 +4,11 @@ import Cookies from "js-cookie";
 
 export const getInputFieldsPagos = ({
     planOptions,
+    serviceOptions,
     searchFromCache
 }: {
     planOptions: { label: string; value: number }[];
+    serviceOptions: { label: string; value: number }[];
     searchFromCache: (gymId: string, q: string) => { label: string; value: any }[];
 }): Field[] => [
         {
@@ -18,6 +20,17 @@ export const getInputFieldsPagos = ({
             searchFromCache,
         },
         {
+            label: '¿Qué vas a cobrar?',
+            name: 'origen_pago',
+            type: 'select',
+            required: true,
+            placeholder: 'Selecciona el tipo de pago',
+            options: [
+                { label: 'Plan', value: 'plan' },
+                { label: 'Servicio', value: 'servicio' },
+            ],
+        },
+        {
             label: 'Plan',
             name: 'plan_id',
             type: 'select',
@@ -25,6 +38,14 @@ export const getInputFieldsPagos = ({
             required: false,
 
             placeholder: 'Selecciona el plan',
+        },
+        {
+            label: 'Servicio',
+            name: 'servicio_id',
+            type: 'select',
+            options: serviceOptions,
+            required: false,
+            placeholder: 'Selecciona un servicio',
         },
         {
             label: 'Tipo (obligatorio)',
@@ -51,7 +72,6 @@ export const getInputFieldsPagos = ({
             ],
             placeholder: 'Selecciona un método de pago',
         },
-
         {
             label: 'Monto en efectivo',
             name: 'monto_efectivo',
@@ -107,21 +127,20 @@ export const getInputFieldsPagos = ({
     ];
 
 export const layoutPayments = {
-    alumno_id: { rowStart: 1, colStart: 1, colSpan: 6 },
-    metodo_pago: { rowStart: 1, colStart: 7, colSpan: 6 },
-
-    tipo: { rowStart: 2, colStart: 1, colSpan: 12 },
+    origen_pago: { rowStart: 1, colStart: 1, colSpan: 6 },
+    alumno_id: { rowStart: 1, colStart: 7, colSpan: 6 },
+    metodo_pago: { rowStart: 2, colStart: 1, colSpan: 6 },
+    tipo: { rowStart: 2, colStart: 7, colSpan: 6 },
     plan_id: { rowStart: 3, colStart: 1, colSpan: 12 },
-
+    servicio_id: { rowStart: 3, colStart: 1, colSpan: 12 },
     monto_efectivo: { rowStart: 4, colStart: 1, colSpan: 4 },
     monto_mp: { rowStart: 4, colStart: 5, colSpan: 4 },
     monto_tarjeta: { rowStart: 4, colStart: 9, colSpan: 4 },
-
     fecha_de_pago: { rowStart: 5, colStart: 1, colSpan: 6 },
     fecha_de_venc: { rowStart: 5, colStart: 7, colSpan: 6 },
-
     responsable: { rowStart: 6, colStart: 1, colSpan: 8 },
     hora: { rowStart: 6, colStart: 9, colSpan: 4 },
 };
+
 
 

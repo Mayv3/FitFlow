@@ -24,14 +24,25 @@ export const FormEnterToTab: React.FC<Props> = ({ children, ...formProps }) => {
     }
 
     const form = e.currentTarget
-    const focusables = Array.from(form.elements).filter(
-      (el) =>
-        (el instanceof HTMLInputElement ||
-          el instanceof HTMLSelectElement ||
-          el instanceof HTMLTextAreaElement ||
-          el instanceof HTMLButtonElement) &&
-        !(el as any).disabled
-    ) as HTMLElement[]
+    const focusables = Array.from(form.elements).filter((el) => {
+      const isFormControl =
+        el instanceof HTMLInputElement ||
+        el instanceof HTMLSelectElement ||
+        el instanceof HTMLTextAreaElement ||
+        el instanceof HTMLButtonElement
+
+      if (!isFormControl) return false
+      if ((el as any).disabled) return false
+
+      if (
+        el instanceof HTMLButtonElement &&
+        (el.closest(".MuiInputAdornment-root") || el.querySelector("svg"))
+      ) {
+        return false
+      }
+
+      return true
+    }) as HTMLElement[]
 
     const idx = focusables.indexOf(target)
     if (idx > -1) {

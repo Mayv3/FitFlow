@@ -115,6 +115,7 @@ export default function PlansList() {
         return <Box sx={{ textAlign: 'center', mt: 4 }}><CircularProgress /></Box>
     }
 
+    console.log(getInputFieldsPlans());
 
     return (
         <Box sx={{ maxWidth: 'xl', mx: 'auto', py: 2 }}>
@@ -180,7 +181,7 @@ export default function PlansList() {
                     open={openAdd}
                     title="Añadir un plan"
                     fields={getInputFieldsPlans()}
-                    initialValues={null}
+                    initialValues={{ origen_pago: "plan" }}
                     onClose={() => setOpenAdd(false)}
                     onSubmit={handleAddPlan}
                     confirmText="Guardar"

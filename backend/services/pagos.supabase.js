@@ -24,12 +24,14 @@ export async function getPagosPaged({
       fecha_de_venc,
       responsable,
       hora,
+      service_id,
       tipo,
       plan_id,
       deleted_at,
       monto_total,
       alumno:alumnos ( nombre, dni ),
       plan:planes_precios ( nombre ),
+      servicio:servicios!service_id ( nombre ),
       items:pago_items (
         monto,
         referencia,
@@ -90,6 +92,7 @@ export async function getPagosPaged({
       ...p,
       alumno_nombre: p?.alumno?.nombre ?? null,
       plan_nombre: p?.plan?.nombre ?? null,
+      servicio_nombre: p?.servicio?.nombre ?? null,
       metodo_legible,
       metodos_legibles: (p?.items ?? []).map(
         i => `${i?.metodo?.nombre ?? '—'} $${i?.monto ?? 0}`
@@ -112,6 +115,7 @@ export async function getPagoById(supaClient, id) {
       tipo,
       monto_total,
       plan:planes_precios ( id, nombre ),
+      servicio:servicios!service_id ( id, nombre ),
       alumno:alumnos ( id, nombre, dni ),
       items:pago_items (
         monto,
@@ -128,6 +132,7 @@ export async function getPagoById(supaClient, id) {
     ...data,
     alumno_nombre: data?.alumno?.nombre ?? null,
     plan_nombre: data?.plan?.nombre ?? null,
+    servicio_nombre: data?.servicio?.nombre ?? null,
     metodos_legibles: (data?.items ?? []).map(
       i => `${i?.metodo?.nombre ?? '—'} $${i?.monto ?? 0}`
     )
@@ -146,13 +151,14 @@ export async function createPago(supaClient, pago) {
       alumno_id: pago.alumno_id,
       plan_id: pago.plan_id,
       tipo: pago.tipo,
+      service_id: pago.service_id ?? null,
       hora: pago.hora,
       fecha_de_pago: pago.fecha_de_pago,
       fecha_de_venc: pago.fecha_de_venc,
       responsable: pago.responsable,
       monto_total: pago.monto_total,
     })
-    .select('id, alumno_id, plan_id, fecha_de_venc')
+    .select('id, alumno_id, plan_id, service_id, fecha_de_venc')
     .single();
 
   if (e1) throw e1;
@@ -169,12 +175,14 @@ export async function createPago(supaClient, pago) {
     if (e2) throw e2;
   }
 
-  if (pago.plan_id) {
-    const { data: planRow } = await supaClient
+  if (pago.isPlan && pago.plan_id) {
+    const { data: planRow, error: planError } = await supaClient
       .from('planes_precios')
       .select('numero_clases, nombre')
       .eq('id', pago.plan_id)
       .single();
+
+    if (planError) throw planError;
 
     const clasesPagadas = planRow?.numero_clases ?? 0;
 
@@ -191,14 +199,13 @@ export async function createPago(supaClient, pago) {
     if (eUpd) throw eUpd;
   }
 
-  // 4. Devolver pago con joins (igual que en GET)
+
   return await getPagoById(supaClient, cab.id);
 }
 
 export async function updatePago(supaClient, id, nuevosDatos, { includeDeleted = false } = {}) {
   const { items, ...cabecera } = nuevosDatos;
 
-  // 1. Traer el pago actual (para conservar monto_total si no se manda nada)
   const { data: pagoPrev, error: ePrev } = await supaClient
     .from('pagos')
     .select('monto_total')
@@ -209,17 +216,15 @@ export async function updatePago(supaClient, id, nuevosDatos, { includeDeleted =
 
   let monto_total = cabecera.monto_total ?? pagoPrev.monto_total;
 
-  // 2. Si vienen items recalculamos
   if (Array.isArray(items)) {
     monto_total = items.reduce((acc, it) => acc + Number(it.monto || 0), 0);
   }
 
-  // 3. Update cabecera (con RLS, el usuario solo puede editar pagos de su gym)
   let q = supaClient
     .from('pagos')
-    .update({ ...cabecera, monto_total })
+    .update({ ...cabecera, monto_total, service_id: cabecera.service_id ?? null })
     .eq('id', id)
-    .select('id, alumno_id, plan_id, fecha_de_venc')
+    .select('id, alumno_id, plan_id, service_id, fecha_de_venc')
     .single();
 
   if (!includeDeleted) q = q.is('deleted_at', null);

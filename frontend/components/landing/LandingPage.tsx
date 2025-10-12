@@ -14,11 +14,9 @@ import {
     Palette,
     TextFields,
     Star,
-    ArrowForward,
     PlayArrow,
     BarChart,
     AttachMoney,
-    TrackChanges,
     PieChart,
     Timeline,
 } from "@mui/icons-material"
@@ -38,7 +36,16 @@ export default function FitnessFlowLanding() {
                                 alt="Logo de FitnessFlow"
                                 width={28}
                                 height={28}
-                                className="object-contain"
+                                style={{
+                                    objectFit: "cover",
+                                    width: "100%",
+                                    height: "auto",
+                                    userSelect: "none",
+                                    pointerEvents: "none",
+                                    // @ts-ignore
+                                    WebkitUserDrag: "none",
+                                    className: "object-contain"
+                                } as React.CSSProperties & { WebkitUserDrag?: string }}
                             />
                         </div>
                         <span className="text-xl font-bold text-foregroun text-primary">Fitness Flow</span>
@@ -104,6 +111,16 @@ export default function FitnessFlowLanding() {
                                 src="/images/dashboard-preview.png"
                                 alt="Dashboard de estadísticas de FitnessFlow con métricas de facturación, alumnos activos y planes"
                                 className="w-full rounded-2xl shadow-2xl border"
+                                style={{
+                                    objectFit: "cover",
+                                    width: "100%",
+                                    height: "auto",
+                                    userSelect: "none",
+                                    pointerEvents: "none",
+                                    // @ts-ignore
+                                    WebkitUserDrag: "none",
+                                    className: "object-contain"
+                                } as React.CSSProperties & { WebkitUserDrag?: string }}
                             />
                         </div>
                     </div>
@@ -154,6 +171,16 @@ export default function FitnessFlowLanding() {
                                 src="/images/members-interface.png"
                                 alt="Interfaz de gestión de miembros mostrando alumnos activos, vencidos y por vencer"
                                 className="w-full rounded-2xl shadow-2xl border"
+                                style={{
+                                    objectFit: "cover",
+                                    width: "100%",
+                                    height: "auto",
+                                    userSelect: "none",
+                                    pointerEvents: "none",
+                                    // @ts-ignore
+                                    WebkitUserDrag: "none",
+                                    className: "object-contain"
+                                } as React.CSSProperties & { WebkitUserDrag?: string }}
                             />
                         </div>
                     </div>
@@ -169,6 +196,16 @@ export default function FitnessFlowLanding() {
                                 src="/images/calendar-schedule.png"
                                 alt="Calendario de turnos y servicios personalizables de FitnessFlow"
                                 className="w-full rounded-lg shadow-2xl border"
+                                style={{
+                                    objectFit: "cover",
+                                    width: "100%",
+                                    height: "auto",
+                                    userSelect: "none",
+                                    pointerEvents: "none",
+                                    // @ts-ignore
+                                    WebkitUserDrag: "none",
+                                    className: "object-contain"
+                                } as React.CSSProperties & { WebkitUserDrag?: string }}
                             />
                         </div>
                         <div className="space-y-8 order-1 lg:order-2">
@@ -384,7 +421,7 @@ export default function FitnessFlowLanding() {
                                         <CheckCircle className="w-4 h-4 text-primary" />
                                         <span>Múltiples métodos de pago.</span>
                                     </li>
-                         
+
                                 </ul>
                             </CardContent>
                         </Card>
@@ -654,7 +691,7 @@ export default function FitnessFlowLanding() {
                 <div className="container mx-auto max-w-4xl text-center">
                     <div className="space-y-8">
                         <h2 className="text-3xl lg:text-4xl font-bold text-balance">
-                             Simplificá la gestión de tu gimnasio y hacelo crecer con FitnessFlow
+                            Simplificá la gestión de tu gimnasio y hacelo crecer con FitnessFlow
                         </h2>
                         <p className="text-xl text-primary-foreground/90 text-pretty max-w-2xl mx-auto">
                             Únete a cientos de gimnasios que ya confían en Fitness Flow para gestionar su negocio de

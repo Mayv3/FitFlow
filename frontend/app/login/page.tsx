@@ -142,7 +142,16 @@ const LoginPage = () => {
             alt="login illustration"
             width={200}
             height={200}
-            style={{ objectFit: "cover", width: "100%", height: "auto" }}
+            style={{
+              objectFit: "cover",
+              width: "100%",
+              height: "auto",
+              userSelect: "none",
+              pointerEvents: "none",
+              // @ts-ignore
+              WebkitUserDrag: "none",
+            } as React.CSSProperties & { WebkitUserDrag?: string }}
+            draggable={false}
             priority
           />
         </Box>
@@ -156,8 +165,27 @@ const LoginPage = () => {
             justifyContent: "center",
           }}
         >
+
+          <div className="flex justify-center mb-10">
+            <Image
+              src="/images/icon.png"
+              alt="login illustration"
+              width={100}
+              height={100}
+              style={{
+                objectFit: "cover",
+                userSelect: "none",
+                pointerEvents: "none",
+                // @ts-ignore
+                WebkitUserDrag: "none",
+              } as React.CSSProperties & { WebkitUserDrag?: string }}
+              draggable={false}
+              priority
+            />
+          </div>
+
           <Typography variant="h5" fontWeight="bold" gutterBottom textAlign="center">
-            Ingresar al sistema
+            Ingresar
           </Typography>
 
           <FormEnterToTab onSubmit={handleLogin}>
@@ -180,14 +208,16 @@ const LoginPage = () => {
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               autoComplete="current-password"
-              InputProps={{
-                endAdornment: (
-                  <InputAdornment position="end">
-                    <IconButton onClick={handleToggle} edge="end">
-                      {showPassword ? <VisibilityOff /> : <Visibility />}
-                    </IconButton>
-                  </InputAdornment>
-                ),
+              slotProps={{
+                input: {
+                  endAdornment: (
+                    <InputAdornment position="end">
+                      <IconButton onClick={handleToggle} edge="end">
+                        {showPassword ? <VisibilityOff /> : <Visibility />}
+                      </IconButton>
+                    </InputAdornment>
+                  ),
+                },
               }}
             />
 

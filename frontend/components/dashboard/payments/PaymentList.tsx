@@ -13,9 +13,9 @@ import { DatePicker } from '@mui/x-date-pickers-pro';
 import { ReactQueryDevtools } from '@tanstack/react-query-devtools';
 import { FormModal } from '@/components/ui/modals/FormModal';
 import { getInputFieldsPagos, layoutPayments } from '@/const/inputs/payments';
-import { useMethodsPaymentsByGym } from '@/hooks/payments/useMethodsPayments';
 import { usePlanesPrecios } from '@/hooks/plans/usePlanesPrecios';
 import { useAlumnosSimpleByGym } from '@/hooks/alumnos/useAlumnosByGym';
+import { useServicesByGym } from '@/hooks/services/useServicesOptions';
 
 import {
     usePagosByGym,
@@ -26,7 +26,7 @@ import {
 import { GenericModal } from '@/components/ui/modals/GenericModal';
 import { notify } from '@/lib/toast';
 import { PaymentStats } from './stats/PaymentStats';
-import { fechaHoyArgentinaSinFormato, finDeMes, inicioDelMes } from '@/utils/date/dateUtils';
+import { fechaHoyArgentinaSinFormato } from '@/utils/date/dateUtils';
 import moment from 'moment';
 import { usePaymentsStats } from '@/hooks/stats/usePaymentsStats';
 
@@ -34,14 +34,13 @@ export default function PaymentList() {
     const { user, loading: userLoading } = useUser();
     const gymId = user?.gym_id ?? '';
     const { data: alumnosRes } = useAlumnosSimpleByGym(gymId);
-
+    const { data: services } = useServicesByGym(gymId);
     const alumnos = useMemo(
         () => (alumnosRes?.items ?? alumnosRes ?? []) as Array<{ id: number; nombre: string; dni?: string }>,
         [alumnosRes]
     );
 
     const { options: planOptions, byId: plansById } = usePlanesPrecios(gymId);
-    const { data: paymentMethods = [] } = useMethodsPaymentsByGym(gymId);
 
     const [openAdd, setOpenAdd] = useState(false);
     const [openEdit, setOpenEdit] = useState(false);
@@ -75,10 +74,21 @@ export default function PaymentList() {
             .map(a => ({ label: `${a.nombre} (${a.dni ?? ''})`, value: a.id }));
     }, [alumnos]);
 
+    const serviceOptions = useMemo(() => {
+        if (!services?.items) return [];
+        return services.items.map((s: any) => {
+            const duracion = s.duracion_minutos ? `${s.duracion_minutos} min` : '';
+            const precio = s.precio ? `($${s.precio.toLocaleString('es-AR')})` : '';
+            const label = `${s.nombre}${duracion ? ` — ${duracion}` : ''} ${precio}`.trim();
+            return { label, value: s.id };
+        });
+    }, [services]);
+
     const fields = useMemo(() => getInputFieldsPagos({
         planOptions,
+        serviceOptions,
         searchFromCache,
-    }), [planOptions, paymentMethods, searchFromCache]);
+    }), [planOptions, serviceOptions, searchFromCache]);
 
     const handleSearchChange = useMemo(
         () =>
@@ -115,42 +125,66 @@ export default function PaymentList() {
 
             const monto_total = items.reduce((acc, i) => acc + i.monto, 0);
 
+            const isPlan = values.origen_pago === "plan";
+
             const payload = {
                 ...values,
                 gym_id: gymId,
                 items,
                 monto_total,
+                isPlan,
             };
 
             delete payload.monto_efectivo;
             delete payload.monto_mp;
             delete payload.monto_tarjeta;
 
+            if (isPlan) {
+                delete payload.service_id;
+            } else {
+                payload.service_id = values.servicio_id ?? null;
+                delete payload.plan_id;
+            }
+
+
+            // Enviamos al backend
             await addPago.mutateAsync(payload);
             setOpenAdd(false);
             notify.success("Pago añadido correctamente");
         } catch (error) {
-            console.error('Error al añadir pago:', error);
+            console.error("Error al añadir pago:", error);
             notify.error("❌ Error al añadir el pago");
         }
     };
+
+
 
     const handleOpenEdit = (payment: any) => {
         const efectivo = payment.items?.find((i: any) => i.metodo_de_pago_id === 1)?.monto ?? '';
         const mp = payment.items?.find((i: any) => i.metodo_de_pago_id === 2)?.monto ?? '';
         const tarjeta = payment.items?.find((i: any) => i.metodo_de_pago_id === 3)?.monto ?? '';
 
+        let metodo_pago = 'Mixto';
+        if (efectivo && !mp && !tarjeta) metodo_pago = 'Efectivo';
+        else if (mp && !efectivo && !tarjeta) metodo_pago = 'Mercado Pago';
+        else if (tarjeta && !efectivo && !mp) metodo_pago = 'Tarjeta';
+
+        const origen_pago = payment.plan_id ? 'plan' : payment.servicio_id ? 'servicio' : '';
+
         const sanitized = {
             ...payment,
             monto_efectivo: efectivo,
             monto_mp: mp,
             monto_tarjeta: tarjeta,
+            metodo_pago,
+            origen_pago,
             hora: payment.hora ? payment.hora.slice(0, 5) : '',
         };
 
         setEditingPago(sanitized);
         setOpenEdit(true);
     };
+
 
     const handleCloseEdit = () => {
         setOpenEdit(false);
@@ -175,19 +209,20 @@ export default function PaymentList() {
             const monto_total = efectivo + mp + tarjeta;
 
             const payload = {
-                plan_id: values.plan_id,
-                alumno_id: values.alumno_id,
-                tipo: values.tipo,
-                fecha_de_pago: values.fecha_de_pago,
-                fecha_de_venc: values.fecha_de_venc,
-                responsable: values.responsable,
-                hora: values.hora,
+                alumno_id: values.alumno_id ?? editingPago.alumno_id,
+                tipo: values.tipo ?? editingPago.tipo,
+                fecha_de_pago: values.fecha_de_pago ?? editingPago.fecha_de_pago,
+                fecha_de_venc: values.fecha_de_venc ?? editingPago.fecha_de_venc,
+                responsable: values.responsable ?? editingPago.responsable,
+                hora: values.hora ?? editingPago.hora,
                 gym_id: user?.gym_id,
+                plan_id: editingPago.plan_id ?? null,
+                service_id: editingPago.servicio_id ?? editingPago.service_id ?? null,
                 items,
-                monto_total,
+                monto_total: monto_total > 0 ? monto_total : editingPago.monto_total,
             };
 
-            console.log("🟢 Enviando payload al backend:", payload);
+            console.log("🟢 Enviando payload final al backend:", payload);
 
             await editPago.mutateAsync({ id, values: payload });
 
@@ -198,6 +233,7 @@ export default function PaymentList() {
             notify.error("❌ Error al editar el pago");
         }
     };
+
 
 
     const handleDelete = (id: number) => {
@@ -347,7 +383,14 @@ export default function PaymentList() {
                 <FormModal
                     open={openEdit}
                     title="Editar pago"
-                    fields={fields}
+                    fields={fields
+                        .filter(f =>
+                            ['tipo', 'metodo_pago', 'monto_efectivo', 'monto_mp', 'monto_tarjeta'].includes(f.name)
+                        )
+                        .sort((a, b) => {
+                            const order = ['tipo', 'metodo_pago', 'monto_efectivo', 'monto_mp', 'monto_tarjeta'];
+                            return order.indexOf(a.name) - order.indexOf(b.name);
+                        })}
                     gridColumns={12}
                     gridGap={16}
                     initialValues={editingPago}
@@ -355,9 +398,14 @@ export default function PaymentList() {
                     onSubmit={handleEditPayment}
                     confirmText="Guardar cambios"
                     mode="edit"
-                    lockedFields={['alumno_id', 'fecha_de_pago', 'hora', 'responsable']}
                     cancelText="Cancelar"
-                    layout={layoutPayments}
+                    layout={{
+                        tipo: { colStart: 1, colSpan: 6 },
+                        metodo_pago: { colStart: 7, colSpan: 6 },
+                        monto_efectivo: { colStart: 1, colSpan: 4 },
+                        monto_mp: { colStart: 5, colSpan: 4 },
+                        monto_tarjeta: { colStart: 9, colSpan: 4 },
+                    }}
                 />
             )}
 

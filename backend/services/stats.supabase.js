@@ -17,7 +17,8 @@ async function countActiveMembers(gymId, today) {
   let q = supabaseAdmin
     .from('alumnos')
     .select('id', { count: 'exact', head: true })
-    .gte('fecha_de_vencimiento', today);
+    .gte('fecha_de_vencimiento', today)
+    .is('deleted_at', null);
   if (gymId) q = q.eq('gym_id', gymId);
   const { count, error } = await q;
   if (error) throw error;
@@ -28,12 +29,16 @@ async function countMembersWithPlan(gymId) {
   let q = supabaseAdmin
     .from('alumnos')
     .select('id', { count: 'exact', head: true })
-    .not('plan_id', 'is', null);
+    .not('plan_id', 'is', null)
+    .is('deleted_at', null);
+
   if (gymId) q = q.eq('gym_id', gymId);
+
   const { count, error } = await q;
   if (error) throw error;
   return count ?? 0;
 }
+
 
 async function countTodaysAttendance(gymId, today) {
   let q = supabaseAdmin
@@ -54,7 +59,8 @@ async function getPlansDistribution(gymId) {
   if (gymId) {
     q = q
       .eq('gym_id', gymId)
-      .eq('alumnos.gym_id', gymId);
+      .eq('alumnos.gym_id', gymId)
+      .is('alumnos.deleted_at', null);
   }
 
   const { data, error } = await q;
@@ -63,7 +69,7 @@ async function getPlansDistribution(gymId) {
   return (data ?? []).map((row) => ({
     id: row.id,
     Plan: row.nombre || `Plan ${row.id}`,
-    valor: Number(row.alumnos?.[0]?.count ?? 0),
+    valor: Array.isArray(row.alumnos) ? row.alumnos.length : 0,
   }));
 }
 

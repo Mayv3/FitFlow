@@ -6,6 +6,7 @@ import {
   getAlumnosService,
   getAlumnosSimpleService,
 } from '../services/alumnos.supabase.js'
+import jwt from 'jsonwebtoken';
 
 function isActiveByDate(dateLike) {
   if (!dateLike) return false;
@@ -94,8 +95,6 @@ export const editAlumno = async (req, res) => {
           ?.to(`gym:${gymId}`)
           .emit('member:updated', {
             dni: req.params.dni,
-            // 👉 El emit puede seguir mandando el mix manual,
-            // o directamente "actualizado" que ya tiene plan_nombre
             member: actualizado,
             prev: { planId: prevPlanId, activo: prevActivo },
             next: { planId: nextPlanId, activo: nextActivo },
@@ -111,6 +110,27 @@ export const editAlumno = async (req, res) => {
 
 export const removeAlumno = async (req, res) => {
   try {
+    const authHeader = req.headers.authorization;
+    if (!authHeader) {
+      console.warn('⚠️ No llegó el header Authorization');
+      return res.status(401).json({ error: 'Token no proporcionado en DELETE' });
+    }
+
+    const token = authHeader.split(' ')[1];
+    const decoded = jwt.decode(token);
+
+    if (!decoded) {
+      console.warn('⚠️ Token inválido o no decodificable');
+      return res.status(401).json({ error: 'Token inválido o corrupto' });
+    }
+
+    console.log('🧾 Token recibido en DELETE:', token.slice(0, 25) + '...');
+    console.log('👤 Usuario del token:', {
+      uid: decoded.sub,
+      email: decoded.email,
+      gym_id: decoded.user_metadata?.gym_id,
+    });
+
     const { before } = await deleteAlumno(req.params.dni, req.supa);
 
     const prevActivo = isActiveByDate(before.fecha_de_vencimiento);
@@ -125,6 +145,7 @@ export const removeAlumno = async (req, res) => {
 
     res.sendStatus(204);
   } catch (error) {
+    console.error('❌ Error en DELETE:', error);
     res.status(400).json({ error: error.message });
   }
 };

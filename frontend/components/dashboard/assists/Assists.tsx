@@ -180,7 +180,7 @@ export default function Assists() {
 
     useEffect(() => {
         if (!openModal) return
-        const t = setTimeout(closeModal, 400000000)
+        const t = setTimeout(closeModal, 4000)
         return () => clearTimeout(t)
     }, [openModal])
 
@@ -309,6 +309,7 @@ export default function Assists() {
                 }}
             >
                 <DialogTitle
+                    component={Box}
                     sx={{
                         display: "flex",
                         flexDirection: "column",

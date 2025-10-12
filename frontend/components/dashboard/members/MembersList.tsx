@@ -83,14 +83,31 @@ export default function MembersList() {
       const clasesField = base.find(f => f.name === 'clases_pagadas');
       if (clasesField) {
         planField.onChange = (newPlanId: string | number | null, next) => {
-          if (!newPlanId) return { ...next, clases_pagadas: '' };
+          if (!newPlanId) {
+            return { ...next, plan_id: null, clases_pagadas: null };
+          }
           const opt = byId[String(newPlanId)];
-          return opt ? { ...next, clases_pagadas: String(opt.numero_clases ?? '') } : next;
+          return { ...next, clases_pagadas: opt?.numero_clases ?? null };
         };
       }
     }
     return base;
   }, [planOptions, byId, plansLoading]);
+
+  const toNumOrNull = (v: any) =>
+    v === '' || v === undefined || v === null ? null : Number(v);
+
+  const normalizeMemberValues = (values: Partial<Member>) => ({
+    ...values,
+    plan_id: values.plan_id === '' || values.plan_id == null ? null : Number(values.plan_id),
+
+    clases_pagadas: toNumOrNull(values.clases_pagadas),
+    clases_realizadas: toNumOrNull(values.clases_realizadas),
+
+    fecha_vencimiento: (values as any).fecha_vencimiento || null,
+    fecha_nacimiento: values.fecha_nacimiento || null,
+    fecha_inicio: values.fecha_inicio || null,
+  });
 
   useEffect(() => {
     if (!user && !userLoading) {
@@ -115,50 +132,68 @@ export default function MembersList() {
   }
 
   const handleAddMember = async (values: Partial<Member>) => {
-    const plan_nombre = getPlanNameFromCache(gymId!, values.plan_id);
+    console.log('Adding member with values:', values);
+    const v = {
+      ...values,
+      plan_id:
+        values.plan_id === '' || values.plan_id === undefined || values.plan_id === null
+          ? null
+          : Number(values.plan_id),
+    };
+
+    const plan_nombre = getPlanNameFromCache(gymId!, v.plan_id);
 
     try {
       const temporalId = Date.now();
-      const valuesWithDates = {
-        ...values,
-        fecha_vencimiento: values.fecha_vencimiento,
-        fecha_nacimiento: values.fecha_nacimiento,
-        fecha_inicio: values.fecha_inicio,
-      };
 
       changeItem({
         queryKey: ['members', gymId, page, pageSize, q],
         identifierKey: 'dni',
         action: 'add',
-        item: { ...valuesWithDates, plan_nombre, id: temporalId.toString() }
+        item: { ...v, plan_nombre, id: temporalId.toString() },
       });
 
       setOpenAdd(false);
-      addmember.mutate({ ...valuesWithDates, gym_id: user.gym_id, },
+
+      addmember.mutate(
+        { ...v, gym_id: user.gym_id },
         {
           onSuccess: () => notify.success('Miembro añadido correctamente'),
           onError: () => notify.error('Error al añadir el miembro'),
-        });
+        }
+      );
     } catch (err) {
       console.error('Error al añadir miembro:', err);
     }
   };
 
+
   const handleEdit = async (values: Partial<Member> & { dni: string }) => {
-    const plan_nombre = getPlanNameFromCache(gymId!, values.plan_id);
+    const plan_id =
+      values.plan_id === '' || values.plan_id === undefined || values.plan_id === null
+        ? null
+        : Number(values.plan_id);
+
+    const plan_nombre = getPlanNameFromCache(gymId!, plan_id);
+
     changeItem({
       queryKey: ['members', gymId, page, pageSize, q],
       identifierKey: 'dni',
       action: 'edit',
-      item: { ...values, plan_nombre },
+      item: { ...values, plan_id, plan_nombre },
     });
+
     setOpenEdit(false);
-    editAlumno.mutate({ dni: values.dni, values },
+
+    editAlumno.mutate(
+      { dni: values.dni, values: { ...values, plan_id } },
       {
         onSuccess: () => notify.success('Miembro editado correctamente'),
         onError: () => notify.error('Error al editar el miembro'),
-      });
+      }
+    );
   };
+
 
   const handleDelete = async (dni: string) => {
     try {
@@ -308,7 +343,7 @@ export default function MembersList() {
         />
       )}
 
-      <ReactQueryDevtools initialIsOpen={false} />
+      <ReactQueryDevtools initialIsOpen={true} />
 
     </Box>
   );

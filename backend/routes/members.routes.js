@@ -16,6 +16,7 @@ router.get('/:dni', getAlumno);
 
 router.post('/', addAlumno);
 router.put('/:dni', editAlumno);
-router.delete('/:dni', removeAlumno);
+router.delete('/:dni', verifyToken, removeAlumno);
+
 
 export default router

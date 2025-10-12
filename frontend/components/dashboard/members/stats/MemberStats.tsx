@@ -23,11 +23,7 @@ export const MemberStats = ({ gymId }: { gymId?: string }) => {
   const rawActive = data?.activeMembers ?? 0
   const active = clamp(rawActive, 0, total)
 
-  const withPlanRaw = (data?.plansDistribution ?? []).reduce(
-    (acc: number, it: any) => acc + (it?.valor ?? it?.value ?? it?.count ?? 0),
-    0
-  )
-  const withPlanCount = clamp(withPlanRaw, 0, total)
+  const withPlanCount = data?.withPlanCount ?? 0
 
   const percentActive = data?.activePct ?? 0
   const percentWithPlan = data?.withPlanPct ?? 0

@@ -1,4 +1,4 @@
-import { supabase } from '../db/supabaseClient.js'
+import { supabase, supabaseAdmin } from '../db/supabaseClient.js'
 
 export async function getAllAlumnos() {
   const { data, error } = await supa
@@ -30,39 +30,48 @@ export async function getAlumnoByDNI(dni, supaClient) {
 }
 
 export async function createAlumno(alumno, supaClient) {
-  const { data: activo } = await supaClient
+  // 1️⃣ Buscar si ya existe activo
+  const { data: activo, error: eActivo } = await supaClient
     .from('alumnos')
-    .select('id, dni, gym_id, plan_id, fecha_de_vencimiento, deleted_at, nombre, email, telefono, fecha_nacimiento, fecha_inicio, clases_pagadas, clases_realizadas')
+    .select('*')
     .eq('dni', alumno.dni)
     .is('deleted_at', null)
-    .single();
+    .maybeSingle();
 
+  if (eActivo) throw eActivo;
   if (activo) return activo;
 
-  const { data: eliminado } = await supaClient
+  // 2️⃣ Buscar eliminado (usa admin para saltar RLS)
+  const { data: eliminado, error: eEliminado } = await supabaseAdmin
     .from('alumnos')
-    .select('id, dni, gym_id, plan_id, fecha_de_vencimiento, deleted_at, nombre, email, telefono, fecha_nacimiento, fecha_inicio, clases_pagadas, clases_realizadas')
+    .select('id')
     .eq('dni', alumno.dni)
+    .eq('gym_id', alumno.gym_id)
     .not('deleted_at', 'is', null)
     .order('deleted_at', { ascending: false })
     .limit(1)
-    .single();
+    .maybeSingle();
 
+  if (eEliminado) throw eEliminado;
+
+  // 3️⃣ Revivir si existía
   if (eliminado) {
-    const { data: reactivado, error: eUpd } = await supaClient
+    const { data: reactivado, error: eUpd } = await supabaseAdmin
       .from('alumnos')
-      .update({ deleted_at: null })
+      .update({ ...alumno, deleted_at: null })
       .eq('id', eliminado.id)
-      .select('id, dni, gym_id, plan_id, fecha_de_vencimiento, deleted_at, nombre, email, telefono, fecha_nacimiento, fecha_inicio, clases_pagadas, clases_realizadas')
+      .select('*')
       .single();
+
     if (eUpd) throw eUpd;
     return reactivado;
   }
 
+  // 4️⃣ Si no existía, crear
   const { data: creado, error: eIns } = await supaClient
     .from('alumnos')
-    .insert(alumno) // sin gym_id manual
-    .select('id, dni, gym_id, plan_id, fecha_de_vencimiento, deleted_at, nombre, email, telefono, fecha_nacimiento, fecha_inicio, clases_pagadas, clases_realizadas')
+    .insert(alumno)
+    .select('*')
     .single();
 
   if (eIns) throw eIns;
@@ -93,27 +102,34 @@ export async function updateAlumno(dni, nuevosDatos, supaClient) {
 }
 
 export async function deleteAlumno(dni, supaClient) {
+  const dniValue = Number(dni); // asegura tipo numérico
+
   const { data: before, error: e1 } = await supaClient
     .from('alumnos')
-    .select('id, dni, gym_id, plan_id, fecha_de_vencimiento')
-    .eq('dni', dni)
+    .select(`
+      id, dni, nombre, email, telefono,
+      fecha_nacimiento, fecha_inicio, fecha_de_vencimiento,
+      clases_pagadas, clases_realizadas, sexo,
+      gym_id, plan_id,
+      plan:planes_precios ( id, nombre )
+    `)
+    .eq('dni', dniValue)
     .is('deleted_at', null)
-    .single();
+    .maybeSingle();
 
-  if (e1 || !before) throw new Error('Alumno no encontrado o ya eliminado');
+  if (e1) throw e1;
+  if (!before) throw new Error('Alumno no encontrado o ya eliminado');
 
-  // Soft delete
-  const { data: after, error: e2 } = await supaClient
+  const { error: e2 } = await supabaseAdmin
     .from('alumnos')
     .update({ deleted_at: new Date().toISOString() })
-    .eq('id', before.id)
-    .select('id, dni, gym_id, plan_id, fecha_de_vencimiento')
-    .single();
+    .eq('id', before.id);
 
   if (e2) throw e2;
 
-  return { before, after };
+  return { before };
 }
+
 
 export async function getAlumnosService({ page, limit, q = '' }, supaClient) {
   const offset = (page - 1) * limit;

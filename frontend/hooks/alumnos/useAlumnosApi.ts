@@ -51,16 +51,26 @@ export function useAlumnosByGym(
 }
 
 export function useDeleteAlumnoByDNI() {
+  const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async (dni: string) => {
       const gymId = Cookies.get('gym_id');
+      const token = Cookies.get('token');
+      if (!token) throw new Error('No se encontró token en la cookie');
       if (!gymId) throw new Error('No se encontró gym_id en la cookie');
 
       await axiosInstance.delete(`/api/alumnos/${dni}`, {
         params: { gym_id: gymId },
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
       });
       return dni;
     },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['members'] });
+      queryClient.invalidateQueries({ queryKey: ['stats'] });
+    }
   });
 }
 
@@ -74,6 +84,7 @@ export function useEditAlumnoByDNI() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['members'] });
+      queryClient.invalidateQueries({ queryKey: ['stats'] });
     }
   });
 }
@@ -88,6 +99,7 @@ export function useAddAlumno() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['members'] });
+      queryClient.invalidateQueries({ queryKey: ['stats'] });
     }
   });
 }

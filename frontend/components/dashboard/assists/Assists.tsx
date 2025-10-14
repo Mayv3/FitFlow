@@ -319,7 +319,6 @@ export default function Assists() {
                         pt: 2,
                     }}
                 >
-                    {/* Animación de entrada del ícono */}
                     <Zoom in={openModal} timeout={400}>
                         <Box>
                             {dleft && dleft > 0 && (summary?.plan?.clases_restantes ?? 0) > 0 ? (

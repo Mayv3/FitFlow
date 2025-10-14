@@ -53,6 +53,20 @@ export async function createAsistencia(supa, asistencia, gymId) {
     throw new Error('El alumno ya llegó al límite de clases de su plan')
   }
 
+  if (alumno.fecha_de_vencimiento) {
+    const hoyArg = new Date(
+      new Date().toLocaleString('en-US', { timeZone: 'America/Argentina/Buenos_Aires' })
+    )
+
+    const hoy = new Date(hoyArg.getFullYear(), hoyArg.getMonth(), hoyArg.getDate())
+    const venc = new Date(alumno.fecha_de_vencimiento)
+    const vencimiento = new Date(venc.getFullYear(), venc.getMonth(), venc.getDate())
+
+    if (vencimiento < hoy) {
+      throw new Error(`El alumno tiene el plan vencido (venció el ${alumno.fecha_de_vencimiento})`)
+    }
+  }
+
   const payload = {
     fecha: fechaArgentina(),
     hora: horaArgentina(),
@@ -60,6 +74,7 @@ export async function createAsistencia(supa, asistencia, gymId) {
     plan_id: alumno.plan_id,
     gym_id: gymId,
   }
+
   const { data: nueva, error } = await supa
     .from('asistencias')
     .insert(payload)
@@ -93,9 +108,9 @@ export async function createAsistencia(supa, asistencia, gymId) {
     vencimiento: alumno.fecha_de_vencimiento ?? null,
     gym_id: gymId,
   }
+
   return { asistencia: nueva, summary }
 }
-
 
 export async function getAsistenciaById(id, gymId) {
   const { data, error } = await supabase

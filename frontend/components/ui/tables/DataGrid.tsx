@@ -55,10 +55,10 @@ export function GenericDataGrid<T extends { id: string | number }>({
           {...(paginationMode === 'client' && {
             initialState: {
               sorting: { sortModel: [{ field: 'nombre', sort: 'asc' }] },
-              pagination: { paginationModel: { page: 0, pageSize: 20 } }, // 👈 siempre 20
+              pagination: { paginationModel: { page: 0, pageSize: 20 } },
             },
           })}
-          pageSizeOptions={[20]} // 👈 solo permite 20
+          pageSizeOptions={[20]}
         />
       </Box>
     </Box>

@@ -19,7 +19,7 @@ const quicksand = Quicksand({
 })
 
 export const metadata: Metadata = {
-  title: 'FitnessFlow',
+  title: 'Fitness Flow',
   description: 'FitnessFlow, la mejor gestion',
   generator: 'N',
 }

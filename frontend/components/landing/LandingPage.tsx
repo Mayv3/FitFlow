@@ -63,7 +63,7 @@ export default function FitnessFlowLanding() {
                             Iniciar sesión
                         </Button>
                         <Button
-                            onClick={() => window.location.href = "mailto:contacto@fitnessflow.com?subject=Quiero%20probar%20FitnessFlow&body=Hola!%20Quiero%20probar%20FitnessFlow%20en%20mi%20gimnasio.%20%0APodrían%20enviarme%20más%20información?"}
+                            onClick={() => window.location.href = "mailto:contactofitnessflow@gmail.com?subject=Solicitud%20de%20prueba%20Fitness%20Flow&body=Hola%20equipo%20de%20Fitness%20Flow,%0A%0AMe%20gustaría%20probar%20la%20plataforma%20en%20mi%20gimnasio%20y%20conocer%20más%20sobre%20sus%20funciones.%0A%0AQuisiera%20saber%20cómo%20puedo%20comenzar%20el%20período%20de%20prueba%20y%20qué%20opciones%20de%20planes%20ofrecen.%0A%0A¡Gracias%20por%20su%20tiempo!%0A%0ASaludos,%0A[Nombre%20del%20gimnasio%20/%20persona]"}
                             size="sm">Probar Gratis</Button>
                     </div>
                 </div>
@@ -89,7 +89,7 @@ export default function FitnessFlowLanding() {
                                     size="lg"
                                     variant="secondary"
                                     className="text-lg px-8 bg-primary text-primary-foreground hover:bg-primary/90"
-                                    onClick={() => window.location.href = "mailto:contacto@fitnessflow.com?subject=Quiero%20probar%20FitnessFlow&body=Hola!%20Quiero%20probar%20FitnessFlow%20en%20mi%20gimnasio.%20%0APodrían%20enviarme%20más%20información?"}
+                                    onClick={() => window.location.href = "mailto:contactofitnessflow@gmail.com?subject=Solicitud%20de%20prueba%20Fitness%20Flow&body=Hola%20equipo%20de%20Fitness%20Flow,%0A%0AMe%20gustaría%20probar%20la%20plataforma%20en%20mi%20gimnasio%20y%20conocer%20más%20sobre%20sus%20funciones.%0A%0AQuisiera%20saber%20cómo%20puedo%20comenzar%20el%20período%20de%20prueba%20y%20qué%20opciones%20de%20planes%20ofrecen.%0A%0A¡Gracias%20por%20su%20tiempo!%0A%0ASaludos,%0A[Nombre%20del%20gimnasio%20/%20persona]"}
                                 >
                                     <PlayArrow className="w-5 h-5 mr-2" />
                                     Probar Gratis
@@ -702,7 +702,7 @@ export default function FitnessFlowLanding() {
                                 size="lg"
                                 variant="secondary"
                                 className="text-lg px-8"
-                                onClick={() => window.location.href = "mailto:contacto@fitnessflow.com?subject=Quiero%20probar%20FitnessFlow&body=Hola!%20Quiero%20probar%20FitnessFlow%20en%20mi%20gimnasio.%20%0APodrían%20enviarme%20más%20información?"}
+                                onClick={() => window.location.href = "mailto:contactofitnessflow@gmail.com?subject=Solicitud%20de%20prueba%20Fitness%20Flow&body=Hola%20equipo%20de%20Fitness%20Flow,%0A%0AMe%20gustaría%20probar%20la%20plataforma%20en%20mi%20gimnasio%20y%20conocer%20más%20sobre%20sus%20funciones.%0A%0AQuisiera%20saber%20cómo%20puedo%20comenzar%20el%20período%20de%20prueba%20y%20qué%20opciones%20de%20planes%20ofrecen.%0A%0A¡Gracias%20por%20su%20tiempo!%0A%0ASaludos,%0A[Nombre%20del%20gimnasio%20/%20persona]"}
                             >
                                 <PlayArrow className="w-5 h-5 mr-2" />
                                 Probar Gratis

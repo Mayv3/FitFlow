@@ -63,15 +63,23 @@ export function DemografiaSection() {
     const porSexo = data.porSexo ?? [];
     const porEdad = data.porEdad ?? [];
 
-    const edades = porEdad.reduce((acc: any[], item: any) => {
+    type EdadRow = { rango_etario: string; M: number; F: number };
+
+    const edades = porEdad.reduce((acc: EdadRow[], item: { rango_etario: string; sexo: 'M' | 'F'; cantidad: number }) => {
         let row = acc.find((r) => r.rango_etario === item.rango_etario);
         if (!row) {
             row = { rango_etario: item.rango_etario, M: 0, F: 0 };
             acc.push(row);
         }
-        row[item.sexo] = item.cantidad;
+        if (item.sexo === 'M' || item.sexo === 'F') {
+            row[item.sexo] = item.cantidad;
+        }
         return acc;
-    }, []);
+    }, [] as EdadRow[]).sort((a: EdadRow, b: EdadRow) => {
+        const orden = ['0-12', '13-17', '18-25', '26-35', '36-45', '46-60', '60+'];
+        return orden.indexOf(a.rango_etario) - orden.indexOf(b.rango_etario);
+    });
+
 
     return (
         <Box mt={2} display="grid" gridTemplateColumns={{ xs: '1fr', md: '1fr 1fr' }} gap={1.5}>
@@ -165,8 +173,8 @@ export function DemografiaSection() {
                             <PieChart margin={{ top: 0, right: 0, bottom: 0, left: 0 }}>
                                 <defs>
                                     {[
-                                        ['#1DC8FF', '#1674FF'], // Hombres
                                         ['#FFA45B', '#FF6CA3'], // Mujeres
+                                        ['#1DC8FF', '#1674FF'], // Hombres
                                     ].map(([c1, c2], i) => (
                                         <linearGradient key={i} id={`donut-grad-sex-${i}`} x1="0" y1="0" x2="1" y2="1">
                                             <stop offset="0%" stopColor={c1} />
@@ -174,7 +182,6 @@ export function DemografiaSection() {
                                         </linearGradient>
                                     ))}
                                 </defs>
-
                                 <Pie
                                     data={porSexo.map((d: any) => ({
                                         ...d,
@@ -207,8 +214,8 @@ export function DemografiaSection() {
                         <Box display="flex" gap={3} flexWrap="wrap" justifyContent="center" mt={2}>
                             {porSexo.map((d: any, i: any) => {
                                 const grads = [
-                                    'linear-gradient(135deg, #1DC8FF, #1674FF)',
-                                    'linear-gradient(135deg, #FFA45B, #FF6CA3)',
+                                    'linear-gradient(135deg, #FFA45B, #FF6CA3)', // Mujeres
+                                    'linear-gradient(135deg, #1DC8FF, #1674FF)', // Hombres
                                 ];
                                 return (
                                     <Box key={d.sexo} display="inline-flex" alignItems="center" gap={1.5}>

@@ -79,26 +79,25 @@ app.get("/api/ping", (req, res) => {
   res.status(200).json({ message: "OK" });
 });
 
-app.post("/api/emails/enviar-por-vencer", async (req, res) => {
+app.all("/api/emails/enviar-por-vencer", async (req, res) => {
   try {
-    const { previewOnly = false, gymIds = [] } = req.body;
-    
-    await enviarEmailsPorVencer({ previewOnly, gymIds });
-    
-    res.status(200).json({ 
-      success: true, 
-      message: previewOnly 
-        ? "Vista previa generada correctamente" 
-        : "Emails enviados correctamente" 
-    });
+    const { previewOnly = false, gymIds = [] } = req.body || {}
+    await enviarEmailsPorVencer({ previewOnly, gymIds })
+
+    res.status(200).json({
+      success: true,
+      message: previewOnly
+        ? "Vista previa generada correctamente"
+        : "Emails enviados correctamente",
+    })
   } catch (error) {
-    res.status(500).json({ 
-      success: false, 
-      message: "Error al enviar emails", 
-      error: error.message 
-    });
+    res.status(500).json({
+      success: false,
+      message: "Error al enviar emails",
+      error: error.message,
+    })
   }
-});
+})
 
 const PORT = process.env.PORT || 3001;
 

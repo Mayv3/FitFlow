@@ -14,6 +14,9 @@ const FROM_EMAIL = process.env.FROM_EMAIL || 'notificaciones@fitnessflow.app'
 const BRAND_NAME = process.env.BRAND_NAME || 'Fitness Flow'
 const BRAND_LOGO_URL = 'https://www.fitnessflow.com.ar/images/icon.png'
 
+// Emails de prueba que deben ser ignorados
+const EMAILS_IGNORADOS = ['123@gmail.com', '7777777@gmail.com']
+
 if (!BREVO_API_KEY) console.error('❌ FALTA BREVO_API_KEY')
 if (!process.env.SUPABASE_URL || !process.env.SUPABASE_SERVICE_ROLE_KEY) {
   console.error('❌ FALTA SUPABASE_URL o SUPABASE_SERVICE_ROLE_KEY')
@@ -32,6 +35,12 @@ function isValidEmail(email = '') {
 
 async function sendBrevoEmail({ to, subject, text, html }) {
   if (!isValidEmail(to)) return console.log(`⚠️ Email inválido: ${to}`)
+  
+  // Ignorar emails de prueba
+  if (EMAILS_IGNORADOS.includes(to.toLowerCase())) {
+    console.log(`⏭️ Email ignorado (prueba): ${to}`)
+    return
+  }
 
   const payload = {
     sender: { email: FROM_EMAIL, name: BRAND_NAME },
@@ -99,8 +108,6 @@ function plantillaVenceEnTres(nombre) {
   `
 }
 
-
-
 const delay = (ms) => new Promise(res => setTimeout(res, ms))
 
 export async function enviarEmailsPorVencer({ previewOnly = true, gymIds = [] } = {}) {
@@ -121,13 +128,16 @@ export async function enviarEmailsPorVencer({ previewOnly = true, gymIds = [] } 
   const { data, error } = await query
   if (error) throw error
 
-  if (!data?.length) {
+  // Filtrar emails ignorados
+  const alumnosFiltrados = data?.filter(a => !EMAILS_IGNORADOS.includes(a.email?.toLowerCase())) || []
+
+  if (!alumnosFiltrados.length) {
     console.log('📭 No hay alumnos para enviar recordatorios.')
     return
   }
 
   if (previewOnly) {
-    console.table(data.map(a => ({
+    console.table(alumnosFiltrados.map(a => ({
       Nombre: a.nombre,
       Email: a.email,
       Vencimiento: a.fecha_de_vencimiento,
@@ -136,7 +146,7 @@ export async function enviarEmailsPorVencer({ previewOnly = true, gymIds = [] } 
     return
   }
 
-  for (const alumno of data) {
+  for (const alumno of alumnosFiltrados) {
     const { email, nombre, fecha_de_vencimiento } = alumno
     const venceHoy = fecha_de_vencimiento === hoyStr
     const subject = venceHoy ? '📅 ¡Tu plan vence hoy!' : '⚠️ Tu plan vence en 3 días'

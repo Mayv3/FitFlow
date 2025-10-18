@@ -79,7 +79,7 @@ app.get("/api/ping", (req, res) => {
   res.status(200).json({ message: "OK" });
 });
 
-app.all("/api/emails/enviar-por-vencer", async (req, res) => {
+app.get("/api/emails", async (req, res) => {
   try {
     const { previewOnly = false, gymIds = [] } = req.body || {}
     await enviarEmailsPorVencer({ previewOnly, gymIds })

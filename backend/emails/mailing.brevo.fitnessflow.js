@@ -78,7 +78,6 @@ function plantillaVenceHoy(nombre) {
       <div style="padding:25px;color:#333;">
         <p>Hola <strong>${nombre || 'atleta'}</strong> 👋,</p>
         <p>Hoy vence tu plan de entrenamiento. No dejes que se corte tu progreso 💪</p>
-        <p>Renová tu plan desde tu cuenta para seguir entrenando sin interrupciones.</p>
       </div>
       <div style="background:#f4f6f8;padding:15px;text-align:center;font-size:12px;color:#777;">
         Enviado automáticamente por <strong>${BRAND_NAME}</strong>

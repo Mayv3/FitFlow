@@ -62,7 +62,10 @@ export async function createAsistencia(supa, asistencia, gymId) {
     const venc = new Date(alumno.fecha_de_vencimiento)
     const vencimiento = new Date(venc.getFullYear(), venc.getMonth(), venc.getDate())
 
-    if (vencimiento < hoy) {
+    if (vencimiento <= hoy) {
+      if (vencimiento.getTime() === hoy.getTime()) {
+        throw new Error(`El plan vence hoy (${alumno.fecha_de_vencimiento}). No se permite registrar asistencia.`)
+      }
       throw new Error(`El alumno tiene el plan vencido (venció el ${alumno.fecha_de_vencimiento})`)
     }
   }

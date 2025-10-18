@@ -19,10 +19,13 @@ import servicesRoutes from './routes/services.routes.js';
 import appointmentsRoutes from "./routes/appointments.routes.js"
 import usersRoutes from "./routes/users.routes.js"
 
+import { enviarEmailsPorVencer } from './emails/mailing.brevo.fitnessflow.js'
 import { verifyToken } from '../backend/middleware/auth.js'
 import { createServer } from 'http';
 import { Server } from 'socket.io';
 import { supaPerRequest } from './middleware/supaPerRequest.js';
+
+// await enviarEmailsPorVencer(); // Comentado - ahora se usa via endpoint
 
 dotenv.config();
 
@@ -74,6 +77,27 @@ app.use('/api/auth', authRoutes);
 
 app.get("/api/ping", (req, res) => {
   res.status(200).json({ message: "OK" });
+});
+
+app.post("/api/emails/enviar-por-vencer", async (req, res) => {
+  try {
+    const { previewOnly = false, gymIds = [] } = req.body;
+    
+    await enviarEmailsPorVencer({ previewOnly, gymIds });
+    
+    res.status(200).json({ 
+      success: true, 
+      message: previewOnly 
+        ? "Vista previa generada correctamente" 
+        : "Emails enviados correctamente" 
+    });
+  } catch (error) {
+    res.status(500).json({ 
+      success: false, 
+      message: "Error al enviar emails", 
+      error: error.message 
+    });
+  }
 });
 
 const PORT = process.env.PORT || 3001;

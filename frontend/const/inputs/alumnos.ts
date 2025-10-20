@@ -105,15 +105,16 @@ export const getInputFieldsAlumnos: Field[] = [
 ];
 
 export const layoutAlumnos = {
-  nombre: { rowStart: 1, colStart: 1, colSpan: 6 },
-  dni: { rowStart: 1, colStart: 7, colSpan: 6 },
+  nombre: { rowStart: 1, colStart: 1, colSpan: 4 },
+  dni: { rowStart: 1, colStart: 5, colSpan: 4 },
+  fecha_nacimiento: { rowStart: 1, colStart: 9, colSpan: 4 },
+
   email: { rowStart: 2, colStart: 1, colSpan: 12 },
   telefono: { rowStart: 3, colStart: 1, colSpan: 6 },
   plan_id: { rowStart: 3, colStart: 7, colSpan: 6 },
   clases_pagadas: { rowStart: 4, colStart: 1, colSpan: 4 },
   clases_realizadas: { rowStart: 4, colStart: 5, colSpan: 4 },
   sexo: { rowStart: 4, colStart: 9, colSpan: 4 },
-  fecha_nacimiento: { rowStart: 5, colStart: 1, colSpan: 4 },
-  fecha_inicio: { rowStart: 5, colStart: 5, colSpan: 4 },
-  fecha_de_vencimiento: { rowStart: 5, colStart: 9, colSpan: 4 },
-}
+  fecha_inicio: { rowStart: 5, colStart: 1, colSpan: 6 },
+  fecha_de_vencimiento: { rowStart: 5, colStart: 7, colSpan: 6 },
+};

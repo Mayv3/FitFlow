@@ -292,45 +292,51 @@ export default function Appointments() {
         extraActions={
           <Box display="flex" alignItems="center" gap={2}>
             {mode === 'create' && (
-              <Tooltip title="Agregar a Google Calendar">
-                <Checkbox
-                  checked={addToCalendar}
-                  onChange={(e) => setAddToCalendar(e.target.checked)}
-                  icon={
-                    <Image
-                      src="/images/google-calendar.png"
-                      alt="Google Calendar"
-                      width={46}
-                      height={46}
-                      style={{
-                        opacity: 0.5,
-                        transition: '0.25s',
-                        filter: 'grayscale(40%)',
-                      }}
-                    />
-                  }
-                  checkedIcon={
-                    <Image
-                      src="/images/google-calendar.png"
-                      alt="Google Calendar"
-                      width={46}
-                      height={46}
-                      style={{
-                        opacity: 1,
-                        transform: 'scale(1.1)',
-                        transition: '0.25s',
-                        filter: 'none',
-                      }}
-                    />
-                  }
-                  sx={{
-                    '& .MuiSvgIcon-root': { fontSize: 0 },
-                    p: 0.3,
-                    cursor: 'pointer',
-                    '&:hover img': { transform: 'scale(1.1)', opacity: 1 },
-                  }}
-                />
-              </Tooltip>
+              <Box display="flex" alignItems="center" gap={1}>
+                <Box component="span" sx={{ fontSize: '0.875rem', color: 'text.secondary' }}>
+                  Añadir a Google Calendar
+                </Box>
+                <Tooltip title="Agregar a Google Calendar">
+                  <Checkbox
+                    checked={addToCalendar}
+                    onChange={(e) => setAddToCalendar(e.target.checked)}
+                    icon={
+                      <Image
+                        src="/images/google-calendar.png"
+                        alt="Google Calendar"
+                        width={46}
+                        height={46}
+                        style={{
+                          opacity: 0.5,
+                          transition: '0.25s',
+                          filter: 'grayscale(40%)',
+                        }}
+                      />
+                    }
+                    checkedIcon={
+                      <Image
+                        src="/images/google-calendar.png"
+                        alt="Google Calendar"
+                        width={46}
+                        height={46}
+                        style={{
+                          opacity: 1,
+                          transform: 'scale(1.1)',
+                          transition: '0.25s',
+                          filter: 'none',
+                        }}
+                      />
+                    }
+                    sx={{
+                      '& .MuiSvgIcon-root': { fontSize: 0 },
+                      p: 0.3,
+                      cursor: 'pointer',
+                      '&:hover img': { transform: 'scale(1.1)', opacity: 1 },
+                    }}
+                  />
+                </Tooltip>
+
+              </Box>
             )}
 
             {mode === 'edit' && (

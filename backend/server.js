@@ -75,9 +75,7 @@ app.use("/api/users", usersRoutes)
 app.use('/api/payment-methods', paymentMethodsRoutes);
 app.use('/api/auth', authRoutes);
 
-app.get("/api/ping", (req, res) => {
-  res.status(200).json({ message: "OK" });
-});
+app.get('/ping', (req, res) => res.sendStatus(200));
 
 app.get("/api/emails", async (req, res) => {
   try {

@@ -1,5 +1,5 @@
 'use client'
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import {
     Box,
     Container,
@@ -16,6 +16,8 @@ import {
 import ContentCopyIcon from '@mui/icons-material/ContentCopy'
 import OpenInNewIcon from '@mui/icons-material/OpenInNew'
 import QrCode2Icon from '@mui/icons-material/QrCode2'
+import DownloadIcon from '@mui/icons-material/Download'
+import { QRCodeSVG } from 'qrcode.react'
 import { notify } from '@/lib/toast'
 import { slugify } from '@/utils/slugify'
 
@@ -23,6 +25,8 @@ export default function PortalPage() {
     const [gymName, setGymName] = useState('')
     const [portalUrl, setPortalUrl] = useState('')
     const [loading, setLoading] = useState(true)
+    const [primaryColor, setPrimaryColor] = useState('#1976d2')
+    const qrRef = useRef<HTMLDivElement>(null)
 
     useEffect(() => {
         // Obtener información del gym de las cookies
@@ -38,6 +42,7 @@ export default function PortalPage() {
 
                 // Obtener gym_name de las cookies
                 const gymName = getCookie('gym_name')
+                const gymColor = getCookie('gym_primary_color')
                 
                 console.log('[loadGymInfo] gym_name desde cookies:', gymName)
                 
@@ -50,6 +55,10 @@ export default function PortalPage() {
 
                 console.log('[loadGymInfo] Gym name final:', gymName)
                 setGymName(gymName)
+                
+                if (gymColor) {
+                    setPrimaryColor(gymColor)
+                }
                 
                 // Generar URL con el slug
                 const slug = slugify(gymName)
@@ -74,6 +83,63 @@ export default function PortalPage() {
 
     const handleOpenUrl = () => {
         window.open(portalUrl, '_blank')
+    }
+
+    const handleDownloadQR = () => {
+        if (!qrRef.current) return
+
+        const svg = qrRef.current.querySelector('svg')
+        if (!svg) return
+
+        // Crear un canvas
+        const canvas = document.createElement('canvas')
+        const ctx = canvas.getContext('2d')
+        if (!ctx) return
+
+        // Configurar el tamaño del canvas
+        const size = 1024 // Tamaño grande para mejor calidad
+        canvas.width = size
+        canvas.height = size + 150 // Espacio extra para el texto
+
+        // Fondo blanco
+        ctx.fillStyle = '#FFFFFF'
+        ctx.fillRect(0, 0, canvas.width, canvas.height)
+
+        // Convertir SVG a imagen
+        const svgData = new XMLSerializer().serializeToString(svg)
+        const svgBlob = new Blob([svgData], { type: 'image/svg+xml;charset=utf-8' })
+        const url = URL.createObjectURL(svgBlob)
+        const img = new Image()
+
+        img.onload = () => {
+            // Dibujar QR centrado
+            const qrSize = size * 0.8
+            const qrX = (size - qrSize) / 2
+            const qrY = 50
+            ctx.drawImage(img, qrX, qrY, qrSize, qrSize)
+
+            // Agregar texto del gimnasio
+            ctx.fillStyle = primaryColor
+            ctx.font = 'bold 48px Arial'
+            ctx.textAlign = 'center'
+            ctx.fillText(gymName, size / 2, size + 100)
+
+            // Descargar
+            canvas.toBlob((blob) => {
+                if (!blob) return
+                const url = URL.createObjectURL(blob)
+                const link = document.createElement('a')
+                link.download = `qr-${slugify(gymName)}.png`
+                link.href = url
+                link.click()
+                URL.revokeObjectURL(url)
+                notify.success('Código QR descargado')
+            })
+
+            URL.revokeObjectURL(url)
+        }
+
+        img.src = url
     }
 
     if (loading) {
@@ -181,76 +247,105 @@ export default function PortalPage() {
                     </Stack>
                 </Paper>
 
-                {/* Instrucciones */}
+                {/* Código QR */}
                 <Paper
-                    elevation={1}
+                    elevation={3}
                     sx={{
                         p: { xs: 3, sm: 4 },
                         borderRadius: 2,
-                        bgcolor: 'background.default',
+                        bgcolor: 'background.paper',
                     }}
                 >
-                    <Stack spacing={2}>
-                        <Typography variant="h6" fontWeight="bold">
-                            ¿Cómo funciona?
-                        </Typography>
-                        
-                        <Box component="ol" sx={{ pl: 2, '& li': { mb: 1.5 } }}>
-                            <li>
-                                <Typography variant="body2">
-                                    <strong>Comparte la URL</strong> con tus alumnos por WhatsApp, email o redes sociales
-                                </Typography>
-                            </li>
-                            <li>
-                                <Typography variant="body2">
-                                    <strong>Los alumnos ingresan</strong> usando únicamente su número de DNI
-                                </Typography>
-                            </li>
-                            <li>
-                                <Typography variant="body2">
-                                    <strong>Acceden a su panel</strong> donde pueden ver:
-                                </Typography>
-                                <Box component="ul" sx={{ pl: 2, mt: 1 }}>
-                                    <li>Sus datos personales</li>
-                                    <li>Plan activo y vencimiento</li>
-                                    <li>Historial de pagos</li>
-                                    <li>Clases inscritas (próximamente)</li>
-                                </Box>
-                            </li>
-                        </Box>
-
-                        <Divider sx={{ my: 2 }} />
-
-                        <Alert severity="success">
-                            <Typography variant="body2">
-                                💡 <strong>Tip:</strong> Puedes agregar esta URL a tu Instagram, Facebook o sitio web 
-                                para que tus alumnos accedan fácilmente.
-                            </Typography>
-                        </Alert>
-                    </Stack>
-                </Paper>
-
-                {/* Próximamente */}
-                <Paper
-                    elevation={1}
-                    sx={{
-                        p: 3,
-                        borderRadius: 2,
-                        bgcolor: 'grey.100',
-                        border: '1px dashed',
-                        borderColor: 'grey.400',
-                    }}
-                >
-                    <Stack direction="row" spacing={2} alignItems="center">
-                        <QrCode2Icon sx={{ fontSize: 40, color: 'text.secondary' }} />
+                    <Stack spacing={3}>
                         <Box>
-                            <Typography variant="subtitle1" fontWeight="bold">
-                                Código QR - Próximamente
+                            <Typography variant="h6" fontWeight="bold" gutterBottom>
+                                <Stack direction="row" spacing={1} alignItems="center">
+                                    <QrCode2Icon />
+                                    <span>Código QR</span>
+                                </Stack>
                             </Typography>
                             <Typography variant="body2" color="text.secondary">
-                                Pronto podrás generar un código QR para que tus alumnos escaneen y accedan directamente
+                                Los alumnos pueden escanear este código para acceder directamente al portal
                             </Typography>
                         </Box>
+
+                        <Divider />
+
+                        <Stack direction={{ xs: 'column', md: 'row' }} spacing={4} alignItems="center">
+                            {/* QR Code */}
+                            <Box
+                                ref={qrRef}
+                                sx={{
+                                    display: 'flex',
+                                    flexDirection: 'column',
+                                    alignItems: 'center',
+                                    p: 3,
+                                    bgcolor: '#fff',
+                                    borderRadius: 2,
+                                    boxShadow: 3,
+                                }}
+                            >
+                                <QRCodeSVG
+                                    value={portalUrl}
+                                    size={256}
+                                    level="H"
+                                    includeMargin={true}
+                                    fgColor={primaryColor}
+                                />
+                                <Typography variant="caption" color="text.secondary" sx={{ mt: 2, textAlign: 'center' }}>
+                                    {gymName}
+                                </Typography>
+                            </Box>
+
+                            {/* Instrucciones */}
+                            <Box flex={1}>
+                                <Stack spacing={2}>
+                                    <Typography variant="subtitle1" fontWeight="bold">
+                                        ¿Cómo usar el código QR?
+                                    </Typography>
+                                    
+                                    <Box component="ol" sx={{ pl: 2, '& li': { mb: 1 } }}>
+                                        <li>
+                                            <Typography variant="body2">
+                                                Descarga el código QR o tómale una captura de pantalla
+                                            </Typography>
+                                        </li>
+                                        <li>
+                                            <Typography variant="body2">
+                                                Compártelo en tu gimnasio (cartelera, entrada, recepción)
+                                            </Typography>
+                                        </li>
+                                        <li>
+                                            <Typography variant="body2">
+                                                Los alumnos lo escanean con su celular
+                                            </Typography>
+                                        </li>
+                                        <li>
+                                            <Typography variant="body2">
+                                                Acceden directamente con su DNI
+                                            </Typography>
+                                        </li>
+                                    </Box>
+
+                                    <Button
+                                        variant="contained"
+                                        startIcon={<DownloadIcon />}
+                                        onClick={handleDownloadQR}
+                                        fullWidth
+                                        sx={{ mt: 2 }}
+                                    >
+                                        Descargar código QR
+                                    </Button>
+
+                                    <Alert severity="success">
+                                        <Typography variant="body2">
+                                            💡 <strong>Recomendación:</strong> Imprime el QR en alta calidad 
+                                            y colócalo en lugares visibles del gimnasio
+                                        </Typography>
+                                    </Alert>
+                                </Stack>
+                            </Box>
+                        </Stack>
                     </Stack>
                 </Paper>
             </Stack>

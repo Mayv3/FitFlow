@@ -239,7 +239,7 @@ export function ClaseDetalleModal({ open, onClose, clase, gymId }: ClaseDetalleM
                                                         <Typography variant="caption" color="text.secondary">
                                                             Inscritos
                                                         </Typography>
-                                                        <Typography variant="body2">
+                                                        <Box sx={{ mt: 0.5 }}>
                                                             <Chip
                                                                 label={sesion.capacidad_actual || 0}
                                                                 size="small"
@@ -249,7 +249,7 @@ export function ClaseDetalleModal({ open, onClose, clase, gymId }: ClaseDetalleM
                                                                         : 'primary'
                                                                 }
                                                             />
-                                                        </Typography>
+                                                        </Box>
                                                     </Box>
                                                     <Box>
                                                         <Typography variant="caption" color="text.secondary">

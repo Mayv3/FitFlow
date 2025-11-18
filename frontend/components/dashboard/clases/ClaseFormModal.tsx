@@ -22,6 +22,7 @@ import {
 } from '@mui/material'
 import AddIcon from '@mui/icons-material/Add'
 import DeleteIcon from '@mui/icons-material/Delete'
+import EditIcon from '@mui/icons-material/Edit'
 import { useState, useEffect } from 'react'
 import { getDiaNombre } from '@/const/inputs/sesiones'
 import axios from 'axios'
@@ -70,6 +71,7 @@ export function ClaseFormModal({
     const [sesiones, setSesiones] = useState<any[]>([])
     const [confirmDelete, setConfirmDelete] = useState(false)
     const [sesionToDelete, setSesionToDelete] = useState<number | null>(null)
+    const [editingSesion, setEditingSesion] = useState<any | null>(null)
 
     // Formulario de nueva sesión
     const [diaSemana, setDiaSemana] = useState<number>(1)
@@ -99,16 +101,63 @@ export function ClaseFormModal({
     const handleAddSesion = () => {
         if (!horaInicio) return
 
-        const nuevaSesion = {
-            id: Date.now(), // ID temporal
-            dia_semana: diaSemana,
-            hora_inicio: horaInicio,
-            capacidad: capacidad,
+        if (editingSesion) {
+            // Actualizar sesión existente
+            const esSesionBD = editingSesion.id < 1000000000000
+            
+            if (esSesionBD && mode === 'edit') {
+                // Actualizar en el backend
+                axios.put(
+                    `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/sesiones/${editingSesion.id}`,
+                    {
+                        dia_semana: diaSemana,
+                        hora_inicio: horaInicio,
+                        capacidad: capacidad,
+                    }
+                ).then(() => {
+                    notify.success('Sesión actualizada correctamente')
+                }).catch((error) => {
+                    console.error('Error actualizando sesión:', error)
+                    notify.error('Error al actualizar la sesión')
+                })
+            }
+
+            // Actualizar en el estado local
+            setSesiones(sesiones.map(s => 
+                s.id === editingSesion.id 
+                    ? { ...s, dia_semana: diaSemana, hora_inicio: horaInicio, capacidad: capacidad }
+                    : s
+            ))
+            
+            setEditingSesion(null)
+        } else {
+            // Crear nueva sesión
+            const nuevaSesion = {
+                id: Date.now(), // ID temporal
+                dia_semana: diaSemana,
+                hora_inicio: horaInicio,
+                capacidad: capacidad,
+            }
+
+            setSesiones([...sesiones, nuevaSesion])
         }
 
-        setSesiones([...sesiones, nuevaSesion])
-
         // Reset form
+        setDiaSemana(1)
+        setHoraInicio('09:00')
+        setCapacidad(capacidadDefault)
+    }
+
+    const handleEditSesion = (sesion: any) => {
+        setEditingSesion(sesion)
+        setDiaSemana(sesion.dia_semana)
+        setHoraInicio(sesion.hora_inicio)
+        setCapacidad(sesion.capacidad)
+    }
+
+    const handleCancelEdit = () => {
+        setEditingSesion(null)
+        setDiaSemana(1)
         setHoraInicio('09:00')
         setCapacidad(capacidadDefault)
     }
@@ -256,8 +305,18 @@ export function ClaseFormModal({
                             Sesiones de la clase
                         </Typography>
                         
-                        {/* Formulario para agregar sesión */}
+                        {/* Formulario para agregar/editar sesión */}
                         <Box sx={{ bgcolor: 'background.default', p: 2, borderRadius: 1, mb: 2 }}>
+                            {editingSesion && (
+                                <Stack direction="row" justifyContent="space-between" alignItems="center" mb={2}>
+                                    <Typography variant="body2" color="primary" fontWeight="medium">
+                                        Editando sesión
+                                    </Typography>
+                                    <Button size="small" onClick={handleCancelEdit}>
+                                        Cancelar
+                                    </Button>
+                                </Stack>
+                            )}
                             <Stack spacing={2}>
                                 <FormControl fullWidth size="small">
                                     <InputLabel>Día de la semana</InputLabel>
@@ -301,12 +360,16 @@ export function ClaseFormModal({
 
                                 <Button
                                     variant="outlined"
-                                    startIcon={<AddIcon />}
+                                    startIcon={editingSesion ? undefined : <AddIcon />}
                                     onClick={handleAddSesion}
                                     fullWidth
-                                    disabled={isDiaOcupado(diaSemana)}
+                                    disabled={!editingSesion && isDiaOcupado(diaSemana)}
                                 >
-                                    {isDiaOcupado(diaSemana) ? 'Día ya ocupado' : 'Añadir sesión'}
+                                    {editingSesion 
+                                        ? 'Guardar cambios' 
+                                        : isDiaOcupado(diaSemana) 
+                                            ? 'Día ya ocupado' 
+                                            : 'Añadir sesión'}
                                 </Button>
                             </Stack>
                         </Box>
@@ -327,14 +390,22 @@ export function ClaseFormModal({
                                         <ListItem
                                             key={sesion.id}
                                             secondaryAction={
-                                                <IconButton
-                                                    edge="end"
-                                                    size="small"
-                                                    color="error"
-                                                    onClick={() => handleRemoveSesion(sesion.id)}
-                                                >
-                                                    <DeleteIcon fontSize="small" />
-                                                </IconButton>
+                                                <Stack direction="row" spacing={0.5}>
+                                                    <IconButton
+                                                        size="small"
+                                                        color="primary"
+                                                        onClick={() => handleEditSesion(sesion)}
+                                                    >
+                                                        <EditIcon fontSize="small" />
+                                                    </IconButton>
+                                                    <IconButton
+                                                        size="small"
+                                                        color="error"
+                                                        onClick={() => handleRemoveSesion(sesion.id)}
+                                                    >
+                                                        <DeleteIcon fontSize="small" />
+                                                    </IconButton>
+                                                </Stack>
                                             }
                                             sx={{ bgcolor: 'background.default', mb: 1, borderRadius: 1 }}
                                         >

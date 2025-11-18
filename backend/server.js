@@ -17,6 +17,7 @@ import planesRoutes from './routes/planes.routes.js';
 import paymentMethodsRoutes from './routes/paymentMethods.routes.js';
 import servicesRoutes from './routes/services.routes.js';
 import appointmentsRoutes from "./routes/appointments.routes.js"
+import appointmentsPublicRoutes from "./routes/appointments.public.routes.js"
 import usersRoutes from "./routes/users.routes.js"
 import clasesRoutes from "./routes/clases.routes.js"
 import sesionesRoutes from "./routes/sesiones.routes.js"
@@ -72,6 +73,7 @@ app.use('/api/stats', verifyToken, supaPerRequest, statsRoutes);
 app.use('/api/planes', planesRoutes);
 app.use('/api/servicios', servicesRoutes);
 app.use('/api/turnos', appointmentsRoutes);
+app.use('/api/public/appointments', appointmentsPublicRoutes);
 app.use("/api/users", usersRoutes)
 app.use('/api/clases', clasesRoutes);
 app.use('/api/sesiones', sesionesRoutes);

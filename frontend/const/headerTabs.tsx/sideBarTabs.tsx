@@ -8,6 +8,7 @@ import AccessibilityNewIcon from '@mui/icons-material/AccessibilityNew';
 import AssignmentTurnedInIcon from '@mui/icons-material/AssignmentTurnedIn';
 import StorefrontIcon from "@mui/icons-material/Storefront"
 import FitnessCenterIcon from '@mui/icons-material/FitnessCenter';
+import LinkIcon from '@mui/icons-material/Link';
 
 export const adminTabs = [
   { label: 'Estadísticas', icon: <BarChartIcon />, route: '/dashboard/administrator/stats' },
@@ -18,6 +19,7 @@ export const adminTabs = [
   { label: 'Clases', icon: <FitnessCenterIcon />, route: '/dashboard/administrator/clases' },
   { label: 'Servicios', icon: <AccessibilityNewIcon />, route: '/dashboard/administrator/services' },
   { label: 'Turnos', icon: <TodayIcon />, route: '/dashboard/administrator/appointments' },
+  { label: 'Portal Alumnos', icon: <LinkIcon />, route: '/dashboard/administrator/portal' },
   { label: 'Configuración', icon: <SettingsIcon />, route: '/dashboard/administrator/settings' },
   // { label: 'Soporte', icon: <HelpIcon />, route: '/dashboard/administrator/support' },
 ];
@@ -30,6 +32,7 @@ export const recepcionistTabs = [
   { label: 'Clases', icon: <FitnessCenterIcon />, route: '/dashboard/receptionist/clases' },
   { label: 'Servicios', icon: <AccessibilityNewIcon />, route: '/dashboard/receptionist/services' },
   { label: 'Turnos', icon: <TodayIcon />, route: '/dashboard/receptionist/appointments' },
+  { label: 'Portal Alumnos', icon: <LinkIcon />, route: '/dashboard/receptionist/portal' },
   // { label: 'Soporte', icon: <HelpIcon />, route: '/dashboard/receptionist/support' },
 ];
 

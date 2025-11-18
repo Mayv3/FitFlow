@@ -11,6 +11,7 @@ import {
 const router = Router();
 
 router.get('/', verifyToken, supaPerRequest, listServicios);
+router.get('/gym/:gym_id/public', listServicios); // Endpoint público para el panel del alumno
 router.post('/', verifyToken, supaPerRequest, addServicio);
 router.put('/:id', verifyToken, supaPerRequest, editServicio);
 router.delete('/:id', verifyToken, supaPerRequest, removeServicio);

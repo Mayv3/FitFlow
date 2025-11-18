@@ -29,6 +29,26 @@ export async function getAlumnoByDNI(dni, supaClient) {
   return data;
 }
 
+export async function getAlumnoById(id) {
+  console.log(`[getAlumnoById] Buscando alumno con id: ${id}`);
+  
+  const { data, error } = await supabase
+    .from('alumnos')
+    .select('id, nombre, dni, email')
+    .eq('id', id)
+    .maybeSingle();
+
+  console.log(`[getAlumnoById] Resultado para id ${id}:`, data);
+  console.log(`[getAlumnoById] Error:`, error);
+
+  if (error) {
+    console.error(`[getAlumnoById] Error obteniendo alumno:`, error);
+    throw error;
+  }
+  
+  return data;
+}
+
 export async function createAlumno(alumno, supaClient) {
   // 1️⃣ Buscar si ya existe activo
   const { data: activo, error: eActivo } = await supaClient

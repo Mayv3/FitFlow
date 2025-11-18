@@ -103,3 +103,17 @@ export function useAddAlumno() {
     }
   });
 }
+
+export function useAlumnosSimpleService(gymId: string) {
+  return useQuery({
+    queryKey: ['members-simple', gymId],
+    enabled: Boolean(gymId),
+    staleTime: 1000 * 60 * 10,
+    queryFn: async () => {
+      const { data } = await axiosInstance.get('/api/alumnos/simple', {
+        params: { gym_id: gymId },
+      });
+      return data;
+    },
+  });
+}

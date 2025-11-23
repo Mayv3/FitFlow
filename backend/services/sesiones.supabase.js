@@ -130,7 +130,7 @@ export async function deleteSesion(id) {
 // ==================== INSCRIPCIONES ====================
 
 // Inscribir alumno a una sesión
-export async function inscribirAlumnoSesion({ sesion_id, alumno_id, gym_id }) {
+export async function inscribirAlumnoSesion({ sesion_id, alumno_id, gym_id, es_fija = false }) {
   // Verificar capacidad
   const { data: sesion, error: e1 } = await supabase
     .from('clases_sesiones')
@@ -161,7 +161,7 @@ export async function inscribirAlumnoSesion({ sesion_id, alumno_id, gym_id }) {
   // Inscribir
   const { data, error } = await supabase
     .from('clases_inscripciones')
-    .insert({ sesion_id, alumno_id, gym_id, estado: 'inscripto' })
+    .insert({ sesion_id, alumno_id, gym_id, estado: 'inscripto', es_fija })
     .select('*')
     .single();
 

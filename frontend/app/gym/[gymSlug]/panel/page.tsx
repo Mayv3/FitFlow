@@ -49,6 +49,12 @@ export default function GymPanelPage() {
     const [sesiones, setSesiones] = useState<any[]>([])
     const [servicioModalOpen, setServicioModalOpen] = useState(false)
     const [loadingSesiones, setLoadingSesiones] = useState(false)
+    const [reloadingSesiones, setReloadingSesiones] = useState(false)
+    const [enrollModalOpen, setEnrollModalOpen] = useState(false)
+    const [selectedSesionId, setSelectedSesionId] = useState<number | null>(null)
+    const [selectedSesionName, setSelectedSesionName] = useState<string>('')
+    const [enrollingSession, setEnrollingSession] = useState<number | null>(null)
+    const [cancelingSession, setCancelingSession] = useState<number | null>(null)
 
     useEffect(() => {
         const loadData = async () => {
@@ -109,7 +115,7 @@ export default function GymPanelPage() {
         setSelectedServicio(servicio)
         setServicioModalOpen(true)
         setLoadingSesiones(true)
-        
+
         try {
             const response = await axios.get(
                 `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/public/appointments/service/${servicio.id}/sessions`,
@@ -126,35 +132,70 @@ export default function GymPanelPage() {
         }
     }
 
-    const handleEnroll = async (sessionId: number) => {
-        if (!datosPersonales?.id) return
+    const handleOpenEnrollModal = (sessionId: number, diaNombre: string) => {
+        setSelectedSesionId(sessionId)
+        setSelectedSesionName(diaNombre)
+        setEnrollModalOpen(true)
+    }
 
+    const handleEnroll = async (esFija: boolean) => {
+        if (!datosPersonales?.id || !selectedSesionId) return
+
+        setEnrollingSession(selectedSesionId)
         try {
             await axios.post(
-                `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/public/appointments/session/${sessionId}/enroll`,
-                { alumno_id: datosPersonales.id }
+                `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/public/appointments/session/${selectedSesionId}/enroll`,
+                { 
+                    alumno_id: datosPersonales.id,
+                    es_fija: esFija
+                }
             )
-            notify.success('¡Inscripción exitosa!')
-            // Recargar sesiones
-            handleOpenServicio(selectedServicio)
+            notify.success(esFija ? '¡Inscripción fija creada!' : '¡Inscripción exitosa!')
+            setEnrollModalOpen(false)
+            // Recargar sesiones con barra de progreso
+            await reloadSesiones()
         } catch (error: any) {
             notify.error(error.response?.data?.error || 'Error en la inscripción')
+        } finally {
+            setEnrollingSession(null)
         }
     }
 
     const handleUnenroll = async (sessionId: number) => {
         if (!datosPersonales?.id) return
 
+        setCancelingSession(sessionId)
         try {
             await axios.post(
                 `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/public/appointments/session/${sessionId}/cancel`,
                 { alumno_id: datosPersonales.id }
             )
             notify.success('Inscripción cancelada')
-            // Recargar sesiones
-            handleOpenServicio(selectedServicio)
+            // Recargar sesiones con barra de progreso
+            await reloadSesiones()
         } catch (error: any) {
             notify.error(error.response?.data?.error || 'Error al cancelar')
+        } finally {
+            setCancelingSession(null)
+        }
+    }
+
+    const reloadSesiones = async () => {
+        if (!selectedServicio) return
+
+        setReloadingSesiones(true)
+        try {
+            const response = await axios.get(
+                `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/public/appointments/service/${selectedServicio.id}/sessions`,
+                {
+                    params: { alumno_id: datosPersonales?.id }
+                }
+            )
+            setSesiones(response.data)
+        } catch (error) {
+            console.error('Error reloading sessions:', error)
+        } finally {
+            setReloadingSesiones(false)
         }
     }
 
@@ -772,7 +813,7 @@ export default function GymPanelPage() {
                     </Box>
 
                     {/* Content del Modal */}
-                    <Box sx={{ p: 3 }}>
+                    <Box sx={{ p: 3, position: 'relative' }}>
                         {loadingSesiones ? (
                             <Box sx={{ display: 'flex', justifyContent: 'center', py: 4 }}>
                                 <CircularProgress sx={{ color: gymColor }} />
@@ -788,7 +829,7 @@ export default function GymPanelPage() {
                                 {sesiones.map((sesion: any, index: number) => {
                                     const diasSemana = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
                                     const diaNombre = diasSemana[sesion.dia_semana] || `Día ${sesion.dia_semana}`;
-                                    
+
                                     return (
                                         <Box
                                             key={`${sesion.id}-${sesion.dia_semana}-${sesion.hora_inicio}-${index}`}
@@ -799,91 +840,114 @@ export default function GymPanelPage() {
                                                 border: '1px solid #e0e0e0',
                                             }}
                                         >
-                                            <Stack spacing={2}>
-                                                {/* Día y Hora */}
-                                                <Stack direction="row" spacing={2} alignItems="center">
-                                                    <CalendarTodayIcon sx={{ fontSize: 18, color: gymColor }} />
-                                                    <Box>
-                                                        <Typography variant="body2" fontWeight={600} sx={{ textTransform: 'capitalize' }}>
-                                                            {diaNombre}
-                                                        </Typography>
-                                                        <Stack direction="row" spacing={1} alignItems="center" mt={0.5}>
-                                                            <AccessTimeIcon sx={{ fontSize: 14, color: 'text.secondary' }} />
-                                                            <Typography variant="caption" color="text.secondary">
-                                                                {sesion.hora_inicio}
+                                            <Stack spacing={3}>
+
+                                                {/* Día + Hora */}
+                                                <Stack direction="row" spacing={2} alignItems="flex-start" justifyContent='space-between'>
+                                                    <Stack spacing={0.5} direction='row' alignItems="start">
+                                                        <Stack>
+                                                            <CalendarTodayIcon sx={{ fontSize: 26, color: gymColor, mt: 0.5 }} />
+                                                        </Stack>
+                                                        <Stack>
+                                                            <Typography
+                                                                variant="h5"
+                                                                fontWeight={700}
+                                                                sx={{ textTransform: 'capitalize', lineHeight: 1.1 }}
+                                                            >
+                                                                {diaNombre}
+                                                            </Typography>
+
+                                                            <Stack direction="row" spacing={1} alignItems="center">
+                                                                <Typography variant="h6" fontWeight={600}>
+                                                                    {sesion.hora_inicio?.substring(0, 5)} hs
+                                                                </Typography>
+                                                            </Stack>
+                                                        </Stack>
+
+                                                    </Stack>
+                                                    <Stack direction="row" spacing={2} alignItems="center">
+                                                        <Stack direction="row" spacing={1} alignItems="center">
+                                                            <GroupIcon sx={{ fontSize: 22, color: gymColor }} />
+
+                                                            <Typography
+                                                                variant="h6"
+                                                                fontWeight={700}
+                                                                color={sesion.cupos_disponibles === 0 ? 'error.main' : gymColor}
+                                                            >
+                                                                {sesion.cupos_disponibles} / {sesion.capacidad}
                                                             </Typography>
                                                         </Stack>
-                                                    </Box>
+
+                                                        <Typography variant="body2" color="text.secondary">
+                                                            cupos
+                                                        </Typography>
+                                                    </Stack>
+
                                                 </Stack>
 
                                                 {/* Capacidad */}
-                                                <Stack direction="row" spacing={2}>
-                                                    {sesion.cupos_disponibles !== undefined && (
-                                                        <Stack direction="row" spacing={0.5} alignItems="center">
-                                                            <GroupIcon sx={{ fontSize: 16, color: 'text.secondary' }} />
-                                                            <Typography variant="caption" color="text.secondary">
-                                                                {sesion.cupos_disponibles} cupos disponibles
-                                                            </Typography>
-                                                        </Stack>
-                                                    )}
-                                                    {sesion.capacidad !== undefined && (
-                                                        <Typography variant="caption" color="text.secondary">
-                                                            Capacidad: {sesion.capacidad}
-                                                        </Typography>
-                                                    )}
-                                                </Stack>
 
-                                                {/* Botones de acción */}
+
+                                                {/* Botones */}
                                                 {sesion.inscrito ? (
-                                                    <Stack direction="row" spacing={1.5}>
-                                                        {/* Botón Ya inscrito */}
+                                                    <Stack direction="row" spacing={1.5} alignItems="center">
+
+                                                        {/* Botón Inscrito */}
                                                         <Box
                                                             sx={{
                                                                 flex: 1,
-                                                                mt: 1,
-                                                                py: 1.5,
+                                                                py: 2,
                                                                 px: 2,
-                                                                bgcolor: '#10B981',
+                                                                bgcolor: sesion.es_fija ? '#F59E0B' : '#10B981',
                                                                 color: '#fff',
-                                                                borderRadius: 2,
+                                                                borderRadius: 20,
                                                                 textAlign: 'center',
                                                             }}
                                                         >
-                                                            <Stack direction="row" spacing={1} alignItems="center" justifyContent="center">
-                                                                <CheckCircleIcon sx={{ fontSize: 18 }} />
-                                                                <Typography variant="body2" fontWeight={600}>
-                                                                    Inscrito
+                                                            <Stack direction="row" spacing={1} justifyContent="center" alignItems="center">
+                                                                <CheckCircleIcon sx={{ fontSize: 20 }} />
+                                                                <Typography variant="body1" fontWeight={600}>
+                                                                    {sesion.es_fija ? 'Inscripción Fija' : 'Inscrito'}
                                                                 </Typography>
                                                             </Stack>
                                                         </Box>
-                                                        {/* Botón Cancelar */}
+
+                                                        {/* Cancelar */}
                                                         <Box
-                                                            onClick={() => handleUnenroll(sesion.id)}
+                                                            onClick={() => !cancelingSession && handleUnenroll(sesion.id)}
                                                             sx={{
-                                                                mt: 1,
-                                                                py: 1.5,
+                                                                py: 1.8,
                                                                 px: 2,
                                                                 bgcolor: '#EF4444',
                                                                 color: '#fff',
-                                                                borderRadius: 2,
-                                                                textAlign: 'center',
-                                                                cursor: 'pointer',
+                                                                borderRadius: 3,
+                                                                cursor: cancelingSession === sesion.id ? 'not-allowed' : 'pointer',
+                                                                display: 'flex',
+                                                                alignItems: 'center',
+                                                                justifyContent: 'center',
                                                                 transition: 'all 0.2s',
+                                                                opacity: cancelingSession === sesion.id ? 0.6 : 1,
                                                                 '&:hover': {
-                                                                    opacity: 0.9,
-                                                                    transform: 'translateY(-2px)',
+                                                                    opacity: cancelingSession === sesion.id ? 0.6 : 0.9,
+                                                                    transform: cancelingSession === sesion.id ? 'none' : 'translateY(-2px)',
                                                                 }
                                                             }}
                                                         >
-                                                            <CloseIcon sx={{ fontSize: 18 }} />
+                                                            {cancelingSession === sesion.id ? (
+                                                                <CircularProgress size={20} sx={{ color: '#fff' }} />
+                                                            ) : (
+                                                                <CloseIcon sx={{ fontSize: 20 }} />
+                                                            )}
                                                         </Box>
                                                     </Stack>
                                                 ) : (
                                                     <Box
-                                                        onClick={() => sesion.cupos_disponibles > 0 && handleEnroll(sesion.id)}
+                                                        onClick={() =>
+                                                            sesion.cupos_disponibles > 0 && handleOpenEnrollModal(sesion.id, diaNombre)
+                                                        }
                                                         sx={{
                                                             mt: 1,
-                                                            py: 1.5,
+                                                            py: 1.8,
                                                             px: 2,
                                                             bgcolor: sesion.cupos_disponibles === 0 ? '#ccc' : gymColor,
                                                             color: '#fff',
@@ -897,18 +961,18 @@ export default function GymPanelPage() {
                                                             }
                                                         }}
                                                     >
-                                                        <Stack direction="row" spacing={1} alignItems="center" justifyContent="center">
+                                                        <Stack direction="row" spacing={1} justifyContent="center" alignItems="center">
                                                             {sesion.cupos_disponibles === 0 ? (
                                                                 <>
-                                                                    <CloseIcon sx={{ fontSize: 18 }} />
-                                                                    <Typography variant="body2" fontWeight={600}>
+                                                                    <CloseIcon sx={{ fontSize: 20 }} />
+                                                                    <Typography variant="body1" fontWeight={600}>
                                                                         Sin cupos
                                                                     </Typography>
                                                                 </>
                                                             ) : (
                                                                 <>
-                                                                    <AddIcon sx={{ fontSize: 18 }} />
-                                                                    <Typography variant="body2" fontWeight={600}>
+                                                                    <AddIcon sx={{ fontSize: 20 }} />
+                                                                    <Typography variant="body1" fontWeight={600}>
                                                                         Inscribirme
                                                                     </Typography>
                                                                 </>
@@ -917,12 +981,206 @@ export default function GymPanelPage() {
                                                     </Box>
                                                 )}
                                             </Stack>
+
                                         </Box>
                                     );
                                 })}
                             </Stack>
                         )}
                     </Box>
+
+                    {/* Barra de carga en la parte inferior */}
+                    {reloadingSesiones && (
+                        <Box
+                            sx={{
+                                position: 'absolute',
+                                bottom: 0,
+                                left: 0,
+                                right: 0,
+                                height: 4,
+                                bgcolor: 'rgba(0, 0, 0, 0.1)',
+                                overflow: 'hidden',
+                                borderBottomLeftRadius: 12,
+                                borderBottomRightRadius: 12,
+                            }}
+                        >
+                            <Box
+                                sx={{
+                                    height: '100%',
+                                    bgcolor: gymColor,
+                                    animation: 'progressBar 1.5s ease-in-out infinite',
+                                    '@keyframes progressBar': {
+                                        '0%': {
+                                            width: '0%',
+                                            marginLeft: '0%',
+                                        },
+                                        '50%': {
+                                            width: '75%',
+                                            marginLeft: '0%',
+                                        },
+                                        '100%': {
+                                            width: '0%',
+                                            marginLeft: '100%',
+                                        },
+                                    },
+                                }}
+                            />
+                        </Box>
+                    )}
+                </Box>
+            </Modal>
+
+            {/* Modal de confirmación de inscripción */}
+            <Modal
+                open={enrollModalOpen}
+                onClose={() => setEnrollModalOpen(false)}
+                sx={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    p: 2,
+                }}
+            >
+                <Box
+                    sx={{
+                        bgcolor: '#fff',
+                        borderRadius: 3,
+                        maxWidth: 450,
+                        width: '100%',
+                        p: 3,
+                    }}
+                >
+                    <Stack spacing={3}>
+                        {/* Header */}
+                        <Stack spacing={1}>
+                            <Typography variant="h6" fontWeight={600} textAlign="center">
+                                ¿Cómo quieres inscribirte?
+                            </Typography>
+                            <Typography variant="body2" color="text.secondary" textAlign="center">
+                                {selectedSesionName} - {selectedServicio?.nombre}
+                            </Typography>
+                        </Stack>
+
+                        <Stack spacing={2}>
+                            {/* Inscripción Solo esta clase */}
+                            <Box
+                                onClick={() => !enrollingSession && handleEnroll(false)}
+                                sx={{
+                                    p: 2.5,
+                                    bgcolor: '#f9f9f9',
+                                    borderRadius: 2,
+                                    border: '2px solid #e0e0e0',
+                                    cursor: enrollingSession ? 'not-allowed' : 'pointer',
+                                    opacity: enrollingSession ? 0.6 : 1,
+                                    transition: 'all 0.2s',
+                                    '&:hover': {
+                                        borderColor: enrollingSession ? '#e0e0e0' : gymColor,
+                                        bgcolor: enrollingSession ? '#f9f9f9' : `${gymColor}08`,
+                                        transform: enrollingSession ? 'none' : 'translateY(-2px)',
+                                        boxShadow: enrollingSession ? 0 : 2,
+                                    }
+                                }}
+                            >
+                                <Stack spacing={1}>
+                                    <Stack direction="row" spacing={1} alignItems="center">
+                                        <Box
+                                            sx={{
+                                                width: 32,
+                                                height: 32,
+                                                borderRadius: 1,
+                                                bgcolor: `${gymColor}15`,
+                                                display: 'flex',
+                                                alignItems: 'center',
+                                                justifyContent: 'center',
+                                            }}
+                                        >
+                                            {enrollingSession ? (
+                                                <CircularProgress size={18} sx={{ color: gymColor }} />
+                                            ) : (
+                                                <Typography fontSize="1.2rem">🎯</Typography>
+                                            )}
+                                        </Box>
+                                        <Typography variant="body1" fontWeight={600}>
+                                            {enrollingSession ? 'Inscribiendo...' : 'Solo a esta clase'}
+                                        </Typography>
+                                    </Stack>
+                                    <Typography variant="caption" color="text.secondary" sx={{ pl: 5 }}>
+                                        Te inscribes únicamente para esta sesión
+                                    </Typography>
+                                </Stack>
+                            </Box>
+
+                            {/* Inscripción Todas las semanas */}
+                            <Box
+                                onClick={() => !enrollingSession && handleEnroll(true)}
+                                sx={{
+                                    p: 2.5,
+                                    bgcolor: '#f9f9f9',
+                                    borderRadius: 2,
+                                    border: '2px solid #e0e0e0',
+                                    cursor: enrollingSession ? 'not-allowed' : 'pointer',
+                                    opacity: enrollingSession ? 0.6 : 1,
+                                    transition: 'all 0.2s',
+                                    '&:hover': {
+                                        borderColor: enrollingSession ? '#e0e0e0' : gymColor,
+                                        bgcolor: enrollingSession ? '#f9f9f9' : `${gymColor}08`,
+                                        transform: enrollingSession ? 'none' : 'translateY(-2px)',
+                                        boxShadow: enrollingSession ? 0 : 2,
+                                    }
+                                }}
+                            >
+                                <Stack spacing={1}>
+                                    <Stack direction="row" spacing={1} alignItems="center">
+                                        <Box
+                                            sx={{
+                                                width: 32,
+                                                height: 32,
+                                                borderRadius: 1,
+                                                bgcolor: `${gymColor}15`,
+                                                display: 'flex',
+                                                alignItems: 'center',
+                                                justifyContent: 'center',
+                                            }}
+                                        >
+                                            {enrollingSession ? (
+                                                <CircularProgress size={18} sx={{ color: gymColor }} />
+                                            ) : (
+                                                <Typography fontSize="1.2rem">🔄</Typography>
+                                            )}
+                                        </Box>
+                                        <Typography variant="body1" fontWeight={600}>
+                                            {enrollingSession ? 'Inscribiendo...' : 'Todas las semanas'}
+                                        </Typography>
+                                    </Stack>
+                                    <Typography variant="caption" color="text.secondary" sx={{ pl: 5 }}>
+                                        Te inscribes automáticamente cada semana en este horario
+                                    </Typography>
+                                </Stack>
+                            </Box>
+                        </Stack>
+
+                        {/* Botón Cancelar */}
+                        <Box
+                            onClick={() => setEnrollModalOpen(false)}
+                            sx={{
+                                mt: 1,
+                                py: 1.5,
+                                textAlign: 'center',
+                                cursor: 'pointer',
+                                color: 'text.secondary',
+                                borderRadius: 1,
+                                transition: 'all 0.2s',
+                                '&:hover': {
+                                    bgcolor: '#f5f5f5',
+                                    color: 'text.primary',
+                                }
+                            }}
+                        >
+                            <Typography variant="body2" fontWeight={500}>
+                                Cancelar
+                            </Typography>
+                        </Box>
+                    </Stack>
                 </Box>
             </Modal>
         </Box>

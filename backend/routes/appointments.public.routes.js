@@ -55,7 +55,7 @@ router.get('/service/:service_id/sessions', async (req, res) => {
           // Verificar si el alumno está inscrito (inscripto o asistido)
           const { data: inscripcion } = await supabaseAdmin
             .from('clases_inscripciones')
-            .select('id, estado')
+            .select('id, estado, es_fija')
             .eq('sesion_id', sesion.id)
             .eq('alumno_id', alumno_id)
             .in('estado', ['inscripto', 'asistio'])
@@ -71,6 +71,7 @@ router.get('/service/:service_id/sessions', async (req, res) => {
           return {
             ...sesion,
             inscrito: !!inscripcion,
+            es_fija: inscripcion?.es_fija || false,
             cupos_disponibles: sesion.capacidad - (inscripciones?.length || 0),
           };
         })
@@ -89,7 +90,7 @@ router.get('/service/:service_id/sessions', async (req, res) => {
 router.post('/session/:session_id/enroll', async (req, res) => {
   try {
     const { session_id } = req.params;
-    const { alumno_id } = req.body;
+    const { alumno_id, es_fija = false } = req.body;
 
     if (!alumno_id) {
       return res.status(400).json({ error: 'alumno_id es requerido' });
@@ -142,6 +143,7 @@ router.post('/session/:session_id/enroll', async (req, res) => {
         alumno_id: alumno_id,
         gym_id: sesion.gym_id,
         estado: 'inscripto',
+        es_fija: es_fija,
         created_at: new Date().toISOString(),
       })
       .select()
@@ -170,15 +172,21 @@ router.post('/session/:session_id/cancel', async (req, res) => {
       return res.status(400).json({ error: 'alumno_id es requerido' });
     }
 
-    // Buscar inscripción
+    // Buscar inscripción activa
     const { data: inscripcion, error: inscripcionError } = await supabaseAdmin
       .from('clases_inscripciones')
       .select('id, sesion_id, estado')
       .eq('sesion_id', session_id)
       .eq('alumno_id', alumno_id)
-      .single();
+      .in('estado', ['inscripto', 'asistio'])
+      .maybeSingle();
 
-    if (inscripcionError || !inscripcion) {
+    if (inscripcionError) {
+      console.error('[cancelSession] Error buscando inscripción:', inscripcionError);
+      throw inscripcionError;
+    }
+
+    if (!inscripcion) {
       return res.status(404).json({ error: 'Inscripción no encontrada' });
     }
 

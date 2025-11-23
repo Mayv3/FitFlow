@@ -71,8 +71,8 @@ export async function handleRemoveSesion(req, res) {
 // Inscribir alumno
 export async function handleInscribirAlumno(req, res) {
   try {
-    const { sesion_id, alumno_id, gym_id } = req.body;
-    const inscripcion = await inscribirAlumnoSesion({ sesion_id, alumno_id, gym_id });
+    const { sesion_id, alumno_id, gym_id, es_fija = false } = req.body;
+    const inscripcion = await inscribirAlumnoSesion({ sesion_id, alumno_id, gym_id, es_fija });
 
     req.app.get('io')
       ?.to(`gym:${gym_id}`)

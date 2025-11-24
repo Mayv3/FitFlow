@@ -39,11 +39,12 @@ router.get('/service/:service_id/sessions', async (req, res) => {
         dia_semana,
         hora_inicio,
         capacidad,
-        gym_id
+        gym_id,
+        fecha_proxima
       `)
       .eq('clase_id', service_id)
       .is('deleted_at', null)
-      .order('dia_semana', { ascending: true })
+      .order('fecha_proxima', { ascending: true, nullsLast: true })
       .order('hora_inicio', { ascending: true });
 
     if (error) throw error;

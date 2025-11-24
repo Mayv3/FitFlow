@@ -44,12 +44,7 @@ export const columnsClases = (
       headerName: 'Nombre',
       flex: 0.25,
       ...center,
-      renderCell: (p) => (
-        <Stack direction="row" spacing={1} alignItems="center" justifyContent="center">
-          <span>{p.row?.nombre ?? '—'}</span>
-          
-        </Stack>
-      ),
+      renderCell: (p) => p.row?.nombre ?? '—',
     },
     {
       field: 'descripcion',

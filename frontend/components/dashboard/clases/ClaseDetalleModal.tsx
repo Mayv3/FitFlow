@@ -41,14 +41,12 @@ import {
 } from '@/hooks/sesiones/useSesiones'
 import { notify } from '@/lib/toast'
 
-// Función para formatear hora a HH:MM
 const formatHora = (hora: string): string => {
     if (!hora) return ''
     const parts = hora.split(':')
     return `${parts[0]}:${parts[1]}`
 }
 
-// Función para formatear fecha
 const formatFecha = (fecha: string): string => {
     if (!fecha) return '-'
     const date = new Date(fecha + 'T00:00:00')
@@ -87,7 +85,6 @@ export function ClaseDetalleModal({ open, onClose, clase, gymId }: ClaseDetalleM
         console.log(`[ClaseDetalleModal] Alumnos inscritos en sesión ${index}:`, sesion.alumnos_inscritos)
     })
 
-    // Actualizar selectedSesion cuando cambian las sesiones
     useEffect(() => {
         if (selectedSesion && sesiones.length > 0) {
             const sesionActualizada = sesiones.find(s => s.id === selectedSesion.id)

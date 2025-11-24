@@ -122,7 +122,7 @@ const LoginPage = () => {
           display: "flex",
           flexDirection: { xs: "column", md: "row" },
           maxWidth: 1100,
-          width: { xs: "80%", md: "100%" },
+          width: { xs: "95%", md: "100%" },
           height: { xs: 500, md: 600 },
           overflow: "hidden",
           borderRadius: 1,
@@ -166,7 +166,7 @@ const LoginPage = () => {
           }}
         >
 
-          <div className="flex justify-center mb-10">
+          <div className="flex justify-center mb-5">
             <Image
               src="/images/icon.png"
               alt="login illustration"
@@ -184,6 +184,9 @@ const LoginPage = () => {
             />
           </div>
 
+          <Typography variant="h4" sx={{ fontWeight: 700, color: '#2ECC71', textAlign: "center" }}>
+            Fitness Flow
+          </Typography>
           <FormEnterToTab onSubmit={handleLogin}>
             <TextField
               label="Email"
@@ -220,16 +223,23 @@ const LoginPage = () => {
             <Button
               type="submit"
               variant="contained"
-              color="primary"
               fullWidth
-              sx={{ mt: 2, py: 1.2, fontWeight: 600 }}
+              sx={{ 
+                mt: 2, 
+                py: 1.2, 
+                fontWeight: 600,
+                bgcolor: '#2ECC71',
+                '&:hover': {
+                  bgcolor: '#27AE60'
+                }
+              }}
               disabled={loading || !email.trim() || !password.trim()}
             >
               {loading ? <CircularProgress size={24} color="inherit" /> : "Ingresar"}
             </Button>
 
             <Box sx={{ mt: 2, textAlign: "center" }}>
-              <Link href="/forgot-password" style={{ color: theme.palette.primary.main, fontWeight: 500 }}>
+              <Link href="/forgot-password" style={{ color: '#2ECC71', fontWeight: 500 }}>
                 ¿Olvidaste tu contraseña?
               </Link>
             </Box>

@@ -145,7 +145,7 @@ export default function GymPanelPage() {
         try {
             await axios.post(
                 `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/public/appointments/session/${selectedSesionId}/enroll`,
-                { 
+                {
                     alumno_id: datosPersonales.id,
                     es_fija: esFija
                 }
@@ -844,9 +844,9 @@ export default function GymPanelPage() {
 
                                                 {/* Día + Hora */}
                                                 <Stack direction="row" spacing={2} alignItems="flex-start" justifyContent='space-between'>
-                                                    <Stack spacing={0.5} direction='row' alignItems="start">
+                                                    <Stack direction='row' alignItems="center" spacing={2}>
                                                         <Stack>
-                                                            <CalendarTodayIcon sx={{ fontSize: 26, color: gymColor, mt: 0.5 }} />
+                                                            <CalendarTodayIcon sx={{ fontSize: 26, color: gymColor }} />
                                                         </Stack>
                                                         <Stack>
                                                             <Typography
@@ -858,8 +858,13 @@ export default function GymPanelPage() {
                                                             </Typography>
 
                                                             <Stack direction="row" spacing={1} alignItems="center">
-                                                                <Typography variant="h6" fontWeight={600}>
-                                                                    {sesion.hora_inicio?.substring(0, 5)} hs
+                                                                <Typography sx={{fontSize:'18px'}} fontWeight={600}>
+                                                                    {new Date(sesion.fecha_proxima + 'T00:00:00').toLocaleDateString('es-AR', {
+                                                                        day: '2-digit',
+                                                                        month: '2-digit',
+                                                                        year: 'numeric',
+                                                                        timeZone: 'America/Argentina/Buenos_Aires'
+                                                                    })} - {sesion.hora_inicio?.substring(0, 5)} hs
                                                                 </Typography>
                                                             </Stack>
                                                         </Stack>
@@ -867,10 +872,9 @@ export default function GymPanelPage() {
                                                     </Stack>
                                                     <Stack direction="row" spacing={2} alignItems="center">
                                                         <Stack direction="row" spacing={1} alignItems="center">
-                                                            <GroupIcon sx={{ fontSize: 22, color: gymColor }} />
-
+                                                            <GroupIcon sx={{ fontSize: 26, color: gymColor }} />
                                                             <Typography
-                                                                variant="h6"
+                                                                variant="h5"
                                                                 fontWeight={700}
                                                                 color={sesion.cupos_disponibles === 0 ? 'error.main' : gymColor}
                                                             >
@@ -1104,7 +1108,7 @@ export default function GymPanelPage() {
                                             {enrollingSession ? 'Inscribiendo...' : 'Solo a esta clase'}
                                         </Typography>
                                     </Stack>
-                                    <Typography variant="caption" color="text.secondary" sx={{ pl: 5 }}>
+                                    <Typography sx={{ fontSize: '16px' }} color="text.primary">
                                         Te inscribes únicamente para esta sesión
                                     </Typography>
                                 </Stack>
@@ -1152,7 +1156,7 @@ export default function GymPanelPage() {
                                             {enrollingSession ? 'Inscribiendo...' : 'Todas las semanas'}
                                         </Typography>
                                     </Stack>
-                                    <Typography variant="caption" color="text.secondary" sx={{ pl: 5 }}>
+                                    <Typography sx={{ fontSize: '16px' }} color="text.primary">
                                         Te inscribes automáticamente cada semana en este horario
                                     </Typography>
                                 </Stack>

@@ -80,10 +80,13 @@ export default function GymPanelPage() {
                 // Obtener info del gimnasio
                 if (gymId) {
                     const gymResponse = await axios.get(
-                        `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/gyms/${gymId}`
+                        `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/gyms/${gymId}?include_settings=true`
                     )
                     setGymName(gymResponse.data.name || 'GymSpace')
-                    setGymColor(gymResponse.data.primaryColor || '#FF6B35')
+                    
+                    // Obtener color del gimnasio desde settings
+                    const primaryColor = gymResponse.data?.settings?.colors?.primary || '#2196F3'
+                    setGymColor(primaryColor)
 
                     // Obtener servicios/clases del gimnasio
                     const serviciosResponse = await axios.get(

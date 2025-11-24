@@ -1,8 +1,9 @@
-import { Box, IconButton } from '@mui/material'
+import { Box, IconButton, Chip, Stack } from '@mui/material'
 import { GridColDef } from '@mui/x-data-grid'
 import EditIcon from '@mui/icons-material/Edit'
 import DeleteIcon from '@mui/icons-material/Delete'
 import VisibilityIcon from '@mui/icons-material/Visibility'
+import AutorenewIcon from '@mui/icons-material/Autorenew'
 
 const center = { align: 'center' as const, headerAlign: 'center' as const }
 
@@ -43,7 +44,12 @@ export const columnsClases = (
       headerName: 'Nombre',
       flex: 0.25,
       ...center,
-      renderCell: (p) => p.row?.nombre ?? '—',
+      renderCell: (p) => (
+        <Stack direction="row" spacing={1} alignItems="center" justifyContent="center">
+          <span>{p.row?.nombre ?? '—'}</span>
+          
+        </Stack>
+      ),
     },
     {
       field: 'descripcion',

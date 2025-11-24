@@ -10,7 +10,6 @@ import {
 
 const router = express.Router();
 
-// Listar clases con paginación
 router.get('/', handleListClases);
 
 // Listado simple (sin paginación)

@@ -9,7 +9,7 @@ export async function getSesionesByClase(claseId) {
   // 1) Traer sesiones
   const { data: sesiones, error: sesionesError } = await supabase
     .from("clases_sesiones")
-    .select("id, dia_semana, hora_inicio, capacidad, clase_id")
+    .select("id, dia_semana, hora_inicio, capacidad, clase_id, fecha_proxima")
     .eq("clase_id", claseId)
     .is("deleted_at", null)
     .order("dia_semana", { ascending: true })
@@ -24,20 +24,30 @@ export async function getSesionesByClase(claseId) {
       // 2) Traer inscripciones
       const { data: inscripciones, error: insError } = await supabase
         .from("clases_inscripciones")
-        .select("alumno_id")
-        .eq("sesion_id", sesion.id);
+        .select("alumno_id, es_fija")
+        .eq("sesion_id", sesion.id)
+        .eq("estado", "inscripto");
 
       if (insError) throw insError;
+
+      // Verificar si hay inscripciones fijas
+      const tieneFijas = inscripciones?.some(i => i.es_fija === true) || false;
 
       if (!inscripciones || inscripciones.length === 0) {
         return {
           ...sesion,
           capacidad_actual: 0,
-          alumnos_inscritos: []
+          alumnos_inscritos: [],
+          tiene_fijas: false
         };
       }
 
       const alumnoIds = inscripciones.map((i) => Number(i.alumno_id));
+
+      // Crear un mapa de inscripciones para saber cuál es fija
+      const inscripcionesMap = new Map(
+        inscripciones.map((i) => [Number(i.alumno_id), i.es_fija])
+      );
 
       // 3) Traer los alumnos reales
       const { data: alumnosDb, error: alumnosError } = await supabaseAdmin
@@ -54,21 +64,27 @@ export async function getSesionesByClase(claseId) {
         alumnosDb.map((a) => [Number(a.id), a])
       );
 
-      // 5) Construir la lista final alumno por alumno
+      // 5) Construir la lista final alumno por alumno con info de es_fija
       const alumnosFinal = alumnoIds.map((id) => {
+        const esFija = inscripcionesMap.get(id) || false;
         if (alumnosMap.has(id)) {
-          return alumnosMap.get(id);   // alumno real
+          return {
+            ...alumnosMap.get(id),
+            es_fija: esFija
+          };
         }
         return {
           id,
-          nombre: `(ID ${id} — no encontrado)`
+          nombre: `(ID ${id} — no encontrado)`,
+          es_fija: esFija
         };
       });
 
       return {
         ...sesion,
         capacidad_actual: alumnosFinal.length,
-        alumnos_inscritos: alumnosFinal
+        alumnos_inscritos: alumnosFinal,
+        tiene_fijas: tieneFijas
       };
     })
   );

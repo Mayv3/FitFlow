@@ -31,6 +31,7 @@ import PersonAddIcon from '@mui/icons-material/PersonAdd'
 import BadgeIcon from '@mui/icons-material/Badge'
 import EmailIcon from '@mui/icons-material/Email'
 import PersonIcon from '@mui/icons-material/Person'
+import AutorenewIcon from '@mui/icons-material/Autorenew'
 import { getDiaNombre } from '@/const/inputs/sesiones'
 import { useSesionesByClase } from '@/hooks/sesiones/useSesiones'
 import { InscripcionesModal } from './InscripcionesModal'
@@ -45,6 +46,18 @@ const formatHora = (hora: string): string => {
     if (!hora) return ''
     const parts = hora.split(':')
     return `${parts[0]}:${parts[1]}`
+}
+
+// Función para formatear fecha
+const formatFecha = (fecha: string): string => {
+    if (!fecha) return '-'
+    const date = new Date(fecha + 'T00:00:00')
+    return date.toLocaleDateString('es-AR', { 
+        day: '2-digit', 
+        month: '2-digit',
+        year: 'numeric',
+        timeZone: 'America/Argentina/Buenos_Aires'
+    })
 }
 
 interface ClaseDetalleModalProps {
@@ -206,11 +219,16 @@ export function ClaseDetalleModal({ open, onClose, clase, gymId }: ClaseDetalleM
                                         >
                                             <Stack spacing={2}>
                                                 {/* Header del card */}
-                                                <Stack direction="row" justifyContent="space-between" alignItems="center">
-                                                    <Stack direction="row" spacing={1} alignItems="center">
-                                                        <Chip label={getDiaNombre(sesion.dia_semana)} size="small" color="primary" />
-                                                        <Typography variant="body2" fontWeight="medium">
-                                                            {formatHora(sesion.hora_inicio)}
+                                                <Stack direction="row" justifyContent="space-between" alignItems="flex-start">
+                                                    <Stack spacing={0.5} flex={1}>
+                                                        <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap">
+                                                            <Chip label={getDiaNombre(sesion.dia_semana)} size="small" color="primary" />
+                                                            <Typography variant="body2" fontWeight="medium">
+                                                                {formatHora(sesion.hora_inicio)}
+                                                            </Typography>
+                                                        </Stack>
+                                                        <Typography variant="caption" color="text.secondary" sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                                                            📅 {formatFecha((sesion as any).fecha_proxima)}
                                                         </Typography>
                                                     </Stack>
                                                     <IconButton
@@ -282,22 +300,42 @@ export function ClaseDetalleModal({ open, onClose, clase, gymId }: ClaseDetalleM
                                                                                     elevation={0}
                                                                                     sx={{
                                                                                         mb: 1,
-                                                                                        border: '1px solid',
-                                                                                        borderColor: 'divider',
+                                                                                        border: '2px solid',
+                                                                                        borderColor: alumno.es_fija ? '#F59E0B' : 'divider',
                                                                                         borderRadius: 1,
+                                                                                        bgcolor: alumno.es_fija ? '#FEF3C7' : 'transparent',
                                                                                     }}
                                                                                 >
                                                                                     <ListItem sx={{ py: 1 }}>
                                                                                         <ListItemAvatar>
-                                                                                            <Avatar sx={{ bgcolor: 'primary.main', width: 32, height: 32 }}>
-                                                                                                {(alumno.nombre || 'A')[0].toUpperCase()}
+                                                                                            <Avatar sx={{ 
+                                                                                                bgcolor: alumno.es_fija ? '#F59E0B' : 'primary.main', 
+                                                                                                width: 32, 
+                                                                                                height: 32 
+                                                                                            }}>
+                                                                                                {alumno.es_fija ? <AutorenewIcon sx={{ fontSize: 18 }} /> : (alumno.nombre || 'A')[0].toUpperCase()}
                                                                                             </Avatar>
                                                                                         </ListItemAvatar>
                                                                                         <ListItemText
                                                                                             primary={
-                                                                                                <Typography variant="body2" fontWeight="medium">
-                                                                                                    {alumno.nombre || 'Sin nombre'}
-                                                                                                </Typography>
+                                                                                                <Stack direction="row" spacing={1} alignItems="center">
+                                                                                                    <Typography variant="body2" fontWeight="medium">
+                                                                                                        {alumno.nombre || 'Sin nombre'}
+                                                                                                    </Typography>
+                                                                                                    {alumno.es_fija && (
+                                                                                                        <Chip
+                                                                                                            label="Fija"
+                                                                                                            size="small"
+                                                                                                            sx={{
+                                                                                                                bgcolor: '#F59E0B',
+                                                                                                                color: '#fff',
+                                                                                                                fontWeight: 600,
+                                                                                                                fontSize: '0.65rem',
+                                                                                                                height: 18,
+                                                                                                            }}
+                                                                                                        />
+                                                                                                    )}
+                                                                                                </Stack>
                                                                                             }
                                                                                             secondary={
                                                                                                 <Stack spacing={0.3} sx={{ mt: 0.3 }}>
@@ -334,6 +372,7 @@ export function ClaseDetalleModal({ open, onClose, clase, gymId }: ClaseDetalleM
                                         <TableRow>
                                             <TableCell width={50}></TableCell>
                                             <TableCell>Día</TableCell>
+                                            <TableCell>Prox. Fecha</TableCell>
                                             <TableCell>Hora</TableCell>
                                             <TableCell align="center">Capacidad</TableCell>
                                             <TableCell align="center">Inscritos</TableCell>
@@ -379,6 +418,11 @@ export function ClaseDetalleModal({ open, onClose, clase, gymId }: ClaseDetalleM
                                                     <Chip label={getDiaNombre(sesion.dia_semana)} size="small" />
                                                 </TableCell>
                                                 <TableCell>
+                                                    <Typography variant="body2">
+                                                        {formatFecha((sesion as any).fecha_proxima)}
+                                                    </Typography>
+                                                </TableCell>
+                                                <TableCell>
                                                     {formatHora(sesion.hora_inicio)}
                                                 </TableCell>
                                                 <TableCell align="center">{sesion.capacidad}</TableCell>
@@ -411,7 +455,7 @@ export function ClaseDetalleModal({ open, onClose, clase, gymId }: ClaseDetalleM
                                                 </TableCell>
                                             </TableRow>
                                             <TableRow>
-                                                <TableCell colSpan={7} sx={{ py: 0, px: 0 }}>
+                                                <TableCell colSpan={8} sx={{ py: 0, px: 0 }}>
                                                     <Collapse
                                                         in={expandedSesion === sesion.id}
                                                         timeout="auto"
@@ -465,27 +509,47 @@ export function ClaseDetalleModal({ open, onClose, clase, gymId }: ClaseDetalleM
                                                                                     elevation={0}
                                                                                     sx={{
                                                                                         mb: 1,
-                                                                                        border: '1px solid',
-                                                                                        borderColor: 'divider',
-                                                                                        borderRadius: 2,
+                                                                                        border: '2px solid',
+                                                                                        borderColor: alumno.es_fija ? '#F59E0B' : 'divider',
+                                                                                        borderRadius: 1,
+                                                                                        bgcolor: alumno.es_fija ? '#FEF3C7' : 'transparent',
                                                                                         transition: 'all 0.2s',
                                                                                         '&:hover': {
-                                                                                            borderColor: 'primary.main',
+                                                                                            borderColor: alumno.es_fija ? '#F59E0B' : 'primary.main',
                                                                                             boxShadow: 1,
                                                                                         },
                                                                                     }}
                                                                                 >
                                                                                     <ListItem>
                                                                                         <ListItemAvatar>
-                                                                                            <Avatar sx={{ bgcolor: 'primary.main', width: 36, height: 36 }}>
-                                                                                                {(alumno.nombre || 'A')[0].toUpperCase()}
+                                                                                            <Avatar sx={{ 
+                                                                                                bgcolor: alumno.es_fija ? '#F59E0B' : 'primary.main', 
+                                                                                                width: 36, 
+                                                                                                height: 36 
+                                                                                            }}>
+                                                                                                {alumno.es_fija ? <AutorenewIcon sx={{ fontSize: 20 }} /> : (alumno.nombre || 'A')[0].toUpperCase()}
                                                                                             </Avatar>
                                                                                         </ListItemAvatar>
                                                                                         <ListItemText
                                                                                             primary={
-                                                                                                <Typography variant="body2" fontWeight="medium">
-                                                                                                    {alumno.nombre || 'Sin nombre'}
-                                                                                                </Typography>
+                                                                                                <Stack direction="row" spacing={1} alignItems="center">
+                                                                                                    <Typography variant="body2" fontWeight="medium">
+                                                                                                        {alumno.nombre || 'Sin nombre'}
+                                                                                                    </Typography>
+                                                                                                    {alumno.es_fija && (
+                                                                                                        <Chip
+                                                                                                            label="Fija"
+                                                                                                            size="small"
+                                                                                                            sx={{
+                                                                                                                bgcolor: '#F59E0B',
+                                                                                                                color: '#fff',
+                                                                                                                fontWeight: 600,
+                                                                                                                fontSize: '0.7rem',
+                                                                                                                height: 20,
+                                                                                                            }}
+                                                                                                        />
+                                                                                                    )}
+                                                                                                </Stack>
                                                                                             }
                                                                                             secondary={
                                                                                                 <Stack spacing={0.3} sx={{ mt: 0.3 }}>

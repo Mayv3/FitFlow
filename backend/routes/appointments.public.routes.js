@@ -195,15 +195,13 @@ router.post('/session/:session_id/cancel', async (req, res) => {
       return res.status(400).json({ error: 'No puedes cancelar una clase a la que ya asististe' });
     }
 
-    // Cambiar estado a cancelado
-    const { error: updateError } = await supabaseAdmin
+    // Eliminar el registro de inscripción
+    const { error: deleteError } = await supabaseAdmin
       .from('clases_inscripciones')
-      .update({ 
-        estado: 'cancelado',
-      })
+      .delete()
       .eq('id', inscripcion.id);
 
-    if (updateError) throw updateError;
+    if (deleteError) throw deleteError;
 
     res.json({ success: true, message: 'Inscripción cancelada exitosamente' });
   } catch (error) {

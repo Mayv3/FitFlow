@@ -24,8 +24,39 @@ export async function getClasesService({ gymId, page, limit, q = '' }) {
 
   if (error) throw error;
 
+  // Para cada clase, verificar si tiene inscripciones fijas
+  const clasesConFijas = await Promise.all(
+    (data ?? []).map(async (clase) => {
+      // Obtener sesiones de la clase
+      const { data: sesiones } = await supabase
+        .from('clases_sesiones')
+        .select('id')
+        .eq('clase_id', clase.id)
+        .is('deleted_at', null);
+
+      if (!sesiones || sesiones.length === 0) {
+        return { ...clase, tiene_fijas: false };
+      }
+
+      const sesionIds = sesiones.map(s => s.id);
+
+      // Verificar si hay inscripciones fijas en alguna sesión
+      const { data: inscripcionesFijas } = await supabase
+        .from('clases_inscripciones')
+        .select('id')
+        .in('sesion_id', sesionIds)
+        .eq('es_fija', true)
+        .limit(1);
+
+      return {
+        ...clase,
+        tiene_fijas: (inscripcionesFijas?.length ?? 0) > 0
+      };
+    })
+  );
+
   return {
-    items: data ?? [],
+    items: clasesConFijas,
     total: count ?? 0,
     page,
     limit,

@@ -262,7 +262,7 @@ export function ClaseFormModal({
                                 value={descripcion}
                                 onChange={(e) => {
                                     const value = e.target.value
-                                    if (value.length <= 20) {
+                                    if (value.length <= 100) {
                                         setDescripcion(value)
                                     }
                                 }}
@@ -270,8 +270,8 @@ export function ClaseFormModal({
                                 multiline
                                 rows={2}
                                 placeholder="Descripción de la clase"
-                                helperText={`${descripcion.length}/20 caracteres`}
-                                inputProps={{ maxLength: 20 }}
+                                helperText={`${descripcion.length}/100 caracteres`}
+                                inputProps={{ maxLength: 100 }}
                             />
                             <Stack direction="row" spacing={2}>
                                 <TextField

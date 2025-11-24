@@ -20,12 +20,14 @@ import DownloadIcon from '@mui/icons-material/Download'
 import { QRCodeSVG } from 'qrcode.react'
 import { notify } from '@/lib/toast'
 import { slugify } from '@/utils/slugify'
+import { useTheme } from '@mui/material/styles'
 
 export default function PortalPage() {
+    const theme = useTheme()
     const [gymName, setGymName] = useState('')
     const [portalUrl, setPortalUrl] = useState('')
     const [loading, setLoading] = useState(true)
-    const [primaryColor, setPrimaryColor] = useState('#1976d2')
+    const [primaryColor, setPrimaryColor] = useState(theme.palette.primary.main)
     const qrRef = useRef<HTMLDivElement>(null)
 
     useEffect(() => {
@@ -43,9 +45,9 @@ export default function PortalPage() {
                 // Obtener gym_name de las cookies
                 const gymName = getCookie('gym_name')
                 const gymColor = getCookie('gym_primary_color')
-                
+
                 console.log('[loadGymInfo] gym_name desde cookies:', gymName)
-                
+
                 if (!gymName) {
                     console.error('[loadGymInfo] No se pudo obtener el nombre del gimnasio')
                     notify.error('No se encontró información del gimnasio')
@@ -55,11 +57,11 @@ export default function PortalPage() {
 
                 console.log('[loadGymInfo] Gym name final:', gymName)
                 setGymName(gymName)
-                
+
                 if (gymColor) {
                     setPrimaryColor(gymColor)
                 }
-                
+
                 // Generar URL con el slug
                 const slug = slugify(gymName)
                 const url = `${window.location.origin}/gym/${slug}/login`
@@ -226,8 +228,14 @@ export default function PortalPage() {
                                             color="primary"
                                             onClick={handleOpenUrl}
                                             sx={{
+                                                width: 60,
+                                                height: 60,
+                                                borderRadius: '50%',
                                                 border: '1px solid',
                                                 borderColor: 'primary.main',
+                                                display: 'flex',
+                                                alignItems: 'center',
+                                                justifyContent: 'center',
                                             }}
                                         >
                                             <OpenInNewIcon />
@@ -240,7 +248,7 @@ export default function PortalPage() {
                         {/* Info Alert */}
                         <Alert severity="info" sx={{ mt: 2 }}>
                             <Typography variant="body2">
-                                Los alumnos solo necesitan su <strong>DNI</strong> para ingresar. 
+                                Los alumnos solo necesitan su <strong>DNI</strong> para ingresar.
                                 Asegúrate de que estén registrados en el sistema.
                             </Typography>
                         </Alert>
@@ -303,7 +311,7 @@ export default function PortalPage() {
                                     <Typography variant="subtitle1" fontWeight="bold">
                                         ¿Cómo usar el código QR?
                                     </Typography>
-                                    
+
                                     <Box component="ol" sx={{ pl: 2, '& li': { mb: 1 } }}>
                                         <li>
                                             <Typography variant="body2">
@@ -339,7 +347,7 @@ export default function PortalPage() {
 
                                     <Alert severity="success">
                                         <Typography variant="body2">
-                                            💡 <strong>Recomendación:</strong> Imprime el QR en alta calidad 
+                                            💡 <strong>Recomendación:</strong> Imprime el QR en alta calidad
                                             y colócalo en lugares visibles del gimnasio
                                         </Typography>
                                     </Alert>

@@ -488,8 +488,21 @@ export default function GymPanelPage() {
                                                     {servicio.nombre}
                                                 </Typography>
                                                 {servicio.descripcion && (
-                                                    <Typography variant="caption" color="text.secondary">
-                                                        {servicio.descripcion}
+                                                    <Typography 
+                                                        variant="caption" 
+                                                        color="text.secondary"
+                                                        sx={{
+                                                            maxWidth: '250px',
+                                                            overflow: 'hidden',
+                                                            textOverflow: 'ellipsis',
+                                                            whiteSpace: 'nowrap',
+                                                            display: 'block'
+                                                        }}
+                                                    >
+                                                        {servicio.descripcion.length > 20 
+                                                            ? `${servicio.descripcion.substring(0, 20)}...` 
+                                                            : servicio.descripcion
+                                                        }
                                                     </Typography>
                                                 )}
                                             </Box>
@@ -845,12 +858,12 @@ export default function GymPanelPage() {
                                                 {/* Día + Hora */}
                                                 <Stack direction="row" spacing={2} alignItems="flex-start" justifyContent='space-between'>
                                                     <Stack direction='row' alignItems="center" spacing={2}>
-                                                        <Stack>
-                                                            <CalendarTodayIcon sx={{ fontSize: 26, color: gymColor }} />
-                                                        </Stack>
+
                                                         <Stack>
                                                             <Typography
                                                                 variant="h5"
+                                                                color={gymColor}
+                                                                paddingBottom={0.5}
                                                                 fontWeight={700}
                                                                 sx={{ textTransform: 'capitalize', lineHeight: 1.1 }}
                                                             >
@@ -858,15 +871,19 @@ export default function GymPanelPage() {
                                                             </Typography>
 
                                                             <Stack direction="row" spacing={1} alignItems="center">
-                                                                <Typography sx={{fontSize:'18px'}} fontWeight={600}>
+                                                                <Typography sx={{ fontSize: '18px' }} fontWeight={600}>
                                                                     {new Date(sesion.fecha_proxima + 'T00:00:00').toLocaleDateString('es-AR', {
                                                                         day: '2-digit',
                                                                         month: '2-digit',
                                                                         year: 'numeric',
                                                                         timeZone: 'America/Argentina/Buenos_Aires'
-                                                                    })} - {sesion.hora_inicio?.substring(0, 5)} hs
+                                                                    })}
                                                                 </Typography>
+
                                                             </Stack>
+                                                            <Typography sx={{ fontSize: '18px' }} fontWeight={600}>
+                                                                {sesion.hora_inicio?.substring(0, 5)} hs
+                                                            </Typography>
                                                         </Stack>
 
                                                     </Stack>
@@ -874,7 +891,7 @@ export default function GymPanelPage() {
                                                         <Stack direction="row" spacing={1} alignItems="center">
                                                             <GroupIcon sx={{ fontSize: 26, color: gymColor }} />
                                                             <Typography
-                                                                variant="h5"
+                                                                variant="h6"
                                                                 fontWeight={700}
                                                                 color={sesion.cupos_disponibles === 0 ? 'error.main' : gymColor}
                                                             >
@@ -882,9 +899,7 @@ export default function GymPanelPage() {
                                                             </Typography>
                                                         </Stack>
 
-                                                        <Typography variant="body2" color="text.secondary">
-                                                            cupos
-                                                        </Typography>
+                                            
                                                     </Stack>
 
                                                 </Stack>

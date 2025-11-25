@@ -625,6 +625,8 @@ export default function GymPanelPage() {
                         maxHeight: '90vh',
                         overflow: 'auto',
                         position: 'relative',
+                        outline: 'none',
+                        border: 'none',
                     }}
                 >
                     {/* Header del Modal */}
@@ -776,6 +778,8 @@ export default function GymPanelPage() {
                         maxHeight: '90vh',
                         overflow: 'auto',
                         position: 'relative',
+                        outline: 'none',
+                        border: 'none',
                     }}
                 >
                     {/* Header del Modal */}
@@ -1070,6 +1074,8 @@ export default function GymPanelPage() {
                         maxWidth: 450,
                         width: '100%',
                         p: 3,
+                        outline: 'none',
+                        border: 'none',
                     }}
                 >
                     <Stack spacing={3}>

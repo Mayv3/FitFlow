@@ -850,6 +850,16 @@ export default function GymPanelPage() {
                                     const diasSemana = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
                                     const diaNombre = diasSemana[sesion.dia_semana] || `Día ${sesion.dia_semana}`;
 
+                                    // Calcular si faltan 30 minutos o menos (hora Argentina)
+                                    const ahoraArgentina = new Date(new Date().toLocaleString('en-US', { timeZone: 'America/Argentina/Buenos_Aires' }));
+                                    let horaBase = sesion.hora_inicio || '00:00';
+                                    if (/^\d{2}:\d{2}$/.test(horaBase)) horaBase = `${horaBase}:00`;
+                                    // Construimos fecha/hora con offset -03:00 (Argentina)
+                                    const fechaHoraSesionArgentina = new Date(`${sesion.fecha_proxima}T${horaBase}-03:00`);
+                                    const minutosRestantes = (fechaHoraSesionArgentina.getTime() - ahoraArgentina.getTime()) / (1000 * 60);
+                                    const yaNoSePuedeInscribir = minutosRestantes <= 30;
+                                    const botonDeshabilitado = (sesion.cupos_disponibles === 0) || yaNoSePuedeInscribir;
+
                                     return (
                                         <Box
                                             key={`${sesion.id}-${sesion.dia_semana}-${sesion.hora_inicio}-${index}`}
@@ -969,30 +979,31 @@ export default function GymPanelPage() {
                                                 ) : (
                                                     <Box
                                                         onClick={() =>
-                                                            sesion.cupos_disponibles > 0 && handleOpenEnrollModal(sesion.id, diaNombre)
+                                                            !botonDeshabilitado && handleOpenEnrollModal(sesion.id, diaNombre)
                                                         }
                                                         sx={{
                                                             mt: 1,
                                                             py: 1.8,
                                                             px: 2,
-                                                            bgcolor: sesion.cupos_disponibles === 0 ? '#ccc' : gymColor,
+                                                            bgcolor: botonDeshabilitado ? '#ccc' : gymColor,
                                                             color: '#fff',
                                                             borderRadius: 2,
                                                             textAlign: 'center',
-                                                            cursor: sesion.cupos_disponibles === 0 ? 'not-allowed' : 'pointer',
+                                                            cursor: botonDeshabilitado ? 'not-allowed' : 'pointer',
                                                             transition: 'all 0.2s',
+                                                            opacity: botonDeshabilitado ? 0.8 : 1,
                                                             '&:hover': {
-                                                                opacity: sesion.cupos_disponibles === 0 ? 1 : 0.9,
-                                                                transform: sesion.cupos_disponibles === 0 ? 'none' : 'translateY(-2px)',
+                                                                opacity: botonDeshabilitado ? 0.8 : 0.9,
+                                                                transform: botonDeshabilitado ? 'none' : 'translateY(-2px)',
                                                             }
                                                         }}
                                                     >
                                                         <Stack direction="row" spacing={1} justifyContent="center" alignItems="center">
-                                                            {sesion.cupos_disponibles === 0 ? (
+                                                            {botonDeshabilitado ? (
                                                                 <>
                                                                     <CloseIcon sx={{ fontSize: 20 }} />
                                                                     <Typography variant="body1" fontWeight={600}>
-                                                                        Sin cupos
+                                                                        {sesion.cupos_disponibles === 0 ? 'Sin cupos' : 'Cerrada'}
                                                                     </Typography>
                                                                 </>
                                                             ) : (

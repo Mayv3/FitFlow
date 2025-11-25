@@ -268,15 +268,6 @@ export default function GymPanelPage() {
                 <Stack direction="row" spacing={1} alignItems="center">
                     <IconButton
                         size="small"
-                        sx={{
-                            bgcolor: '#f5f5f5',
-                            '&:hover': { bgcolor: '#e0e0e0' }
-                        }}
-                    >
-                        <PersonIcon sx={{ fontSize: 20, color: gymColor }} />
-                    </IconButton>
-                    <IconButton
-                        size="small"
                         onClick={handleLogout}
                         sx={{
                             bgcolor: '#f5f5f5',
@@ -291,19 +282,28 @@ export default function GymPanelPage() {
             <Container maxWidth="sm" sx={{ px: 2, py: 3 }}>
                 <Stack spacing={2.5}>
                     {/* Bienvenida */}
-                    <Typography
-                        variant="h5"
-                        sx={{
-                            fontWeight: 700,
-                            color: gymColor,
-                            fontSize: { xs: '1.5rem', sm: '1.75rem' }
-                        }}
-                    >
-                        {gymName} - ¡Bienvenido,{' '}
-                        <Box component="span" sx={{ display: 'inline' }}>
-                            {datosPersonales?.nombre?.split(' ')[0]}!
-                        </Box>
-                    </Typography>
+                    <Stack spacing={0.5}>
+                        <Typography
+                            variant="h5"
+                            sx={{
+                                fontWeight: 700,
+                                color: gymColor,
+                                fontSize: { xs: '1.75rem', sm: '2rem' },
+                            }}
+                        >
+                            {gymName}
+                        </Typography>
+                        <Typography
+                            variant="h6"
+                            sx={{
+                                fontWeight: 600,
+                                color: 'text.primary',
+                                fontSize: { xs: '1.25rem', sm: '1.5rem' },
+                            }}
+                        >
+                            ¡Bienvenido, {datosPersonales?.nombre?.split(' ')[0]}!
+                        </Typography>
+                    </Stack>
 
                     {/* Card Plan Actual */}
                     {plan && (

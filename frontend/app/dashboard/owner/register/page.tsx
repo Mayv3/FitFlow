@@ -52,7 +52,7 @@ export default function OwnerDashboardPage() {
         <Typography variant="h4" fontWeight={700} color="white" gutterBottom>
           Panel de Administración
         </Typography>
-        <Typography variant="body1" color="grey.400">
+        <Typography variant="body1" color="white">
           Gestiona gimnasios, usuarios, planes y suscripciones desde un solo lugar.
         </Typography>
       </Paper>

@@ -5,7 +5,6 @@ import axios from "axios"
 import Cookies from "js-cookie"
 import {
   Box,
-  Paper,
   Typography,
   TextField,
   Button,
@@ -91,42 +90,57 @@ export function CreateGym() {
   }
 
   return (
-    <Paper sx={{ p: 3 }}>
-      <Typography variant="h5" gutterBottom>Crea tu gimnasio</Typography>
+    <Box>
+      <Typography variant="h5" fontWeight={600} gutterBottom>
+        Crear Nuevo Gimnasio
+      </Typography>
+      <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
+        Configura el nombre, logo y tema visual de tu gimnasio.
+      </Typography>
+
       {error && <Typography color="error" sx={{ mb: 2 }}>{error}</Typography>}
 
-      <TextField
-        label="Nombre del Gimnasio"
-        fullWidth
-        margin="normal"
-        value={gymName}
-        onChange={(e) => setGymName(e.target.value)}
-      />
+      <Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", md: "1fr 1fr" }, gap: 2, mb: 3 }}>
+        <TextField
+          label="Nombre del Gimnasio"
+          fullWidth
+          value={gymName}
+          onChange={(e) => setGymName(e.target.value)}
+          placeholder="Ej: PowerFit Gym"
+        />
+        <TextField
+          label="Logo URL (opcional)"
+          fullWidth
+          helperText="Si lo dejás vacío, se genera automáticamente"
+          value={logoUrl}
+          onChange={(e) => setLogoUrl(e.target.value)}
+        />
+      </Box>
 
-      <TextField
-        label="Logo URL (opcional)"
-        fullWidth
-        margin="normal"
-        helperText="Si lo dejás vacío y está habilitado, se genera con el color primario"
-        value={logoUrl}
-        onChange={(e) => setLogoUrl(e.target.value)}
-      />
+      <Divider sx={{ my: 3 }} />
 
-      <Divider sx={{ my: 2 }} />
+      <Typography variant="subtitle1" fontWeight={600} gutterBottom>
+        Personalización del Tema
+      </Typography>
 
       <GymThemeEditor value={themeSettings ?? undefined} onChange={setThemeSettings} />
 
-      <Box sx={{ mt: 3, textAlign: "right" }}>
-        <Button variant="contained" onClick={handleCreate} disabled={loading}>
-          {loading ? <CircularProgress size={24} /> : "Crear gimnasio"}
+      <Box sx={{ mt: 4, display: "flex", gap: 2, justifyContent: "flex-end", alignItems: "center" }}>
+        {createdGymId && (
+          <Typography color="success.main" sx={{ mr: 2 }}>
+            ✓ Gimnasio creado (ID: {createdGymId})
+          </Typography>
+        )}
+        <Button 
+          variant="contained" 
+          size="large"
+          onClick={handleCreate} 
+          disabled={loading}
+          sx={{ px: 4 }}
+        >
+          {loading ? <CircularProgress size={24} /> : "Crear Gimnasio"}
         </Button>
       </Box>
-
-      {createdGymId && (
-        <Typography sx={{ mt: 2 }} color="success.main">
-          Gimnasio creado con éxito (ID: {createdGymId})
-        </Typography>
-      )}
-    </Paper>
+    </Box>
   )
 }

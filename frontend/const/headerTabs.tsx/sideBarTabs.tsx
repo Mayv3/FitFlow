@@ -40,8 +40,6 @@ export const ownerTabs = [
   { label: "Onboarding", icon: <StorefrontIcon />, route: "/dashboard/owner/onboarding" },
 ]
 
-// To do
-
 export const memberTabs = [
   { label: 'Mi cuenta', icon: <GroupIcon />, route: '/dashboard/member' },
   { label: 'Pagos', icon: <PaidIcon />, route: '/dashboard/member/payments' },

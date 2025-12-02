@@ -21,6 +21,8 @@ import appointmentsPublicRoutes from "./routes/appointments.public.routes.js"
 import usersRoutes from "./routes/users.routes.js"
 import clasesRoutes from "./routes/clases.routes.js"
 import sesionesRoutes from "./routes/sesiones.routes.js"
+import gymPlansRoutes from "./routes/gymPlans.routes.js"
+import suscriptionsRoutes from "./routes/suscriptions.routes.js"
 
 import { enviarEmailsPorVencer } from './emails/mailing.brevo.fitnessflow.js'
 import { verifyToken } from '../backend/middleware/auth.js'
@@ -77,6 +79,8 @@ app.use('/api/public/appointments', appointmentsPublicRoutes);
 app.use("/api/users", usersRoutes)
 app.use('/api/clases', clasesRoutes);
 app.use('/api/sesiones', sesionesRoutes);
+app.use('/api/gym-plans', gymPlansRoutes);
+app.use('/api/suscriptions', suscriptionsRoutes);
 
 app.use('/api/payment-methods', paymentMethodsRoutes);
 app.use('/api/auth', authRoutes);

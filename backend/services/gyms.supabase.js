@@ -19,3 +19,31 @@ export async function listGyms() {
   if (error) throw error
   return data
 }
+
+export async function updateGym(gymId, updates) {
+  const { data, error } = await supabaseAdmin
+    .from('gyms')
+    .update(updates)
+    .eq('id', gymId)
+    .select('id, name, logo_url, settings')
+    .single()
+
+  if (error) throw error
+  return data
+}
+
+export async function listGymSubscriptions(gymId, { onlyActive = false } = {}) {
+  let query = supabaseAdmin
+    .from('suscriptions')
+    .select('id, gym_id, plan_id, is_active, start_at, end_at, created_at, updated_at')
+    .eq('gym_id', gymId)
+
+  if (onlyActive) {
+    query = query.eq('is_active', true)
+  }
+
+  const { data, error } = await query
+
+  if (error) throw error
+  return data
+}

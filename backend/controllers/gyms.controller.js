@@ -1,5 +1,5 @@
 import { supabaseAdmin } from '../db/supabaseClient.js'
-import { createGym, listGyms } from '../services/gyms.supabase.js'
+import { createGym, listGyms, updateGym } from '../services/gyms.supabase.js'
 
 export async function handleCreateGym(req, res) {
   try {
@@ -77,5 +77,22 @@ export const handleUpdateGymSettings = async (req, res) => {
   } catch (err) {
     console.error("Error al actualizar settings:", err)
     res.status(500).json({ error: "No se pudo actualizar el tema del gym" })
+  }
+}
+
+export const handleUpdateGym = async (req, res) => {
+  try {
+    const { id } = req.params
+    const updates = req.body
+
+    if (!id) {
+      return res.status(400).json({ error: 'ID de gimnasio requerido' })
+    }
+
+    const gym = await updateGym(id, updates)
+    res.json(gym)
+  } catch (err) {
+    console.error('Error al actualizar gimnasio:', err)
+    res.status(500).json({ error: err.message })
   }
 }

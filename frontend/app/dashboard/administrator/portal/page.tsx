@@ -169,7 +169,11 @@ export default function PortalPage() {
             <Stack spacing={4}>
                 {/* Header */}
                 <Box>
-                    <Typography variant="h4" fontWeight="bold" gutterBottom>
+                    <Typography 
+                        sx={{ fontSize: { xs: '2rem', sm: '2rem', md: '2.125rem' } }} 
+                        fontWeight="bold" 
+                        gutterBottom
+                    >
                         Portal de Alumnos
                     </Typography>
                     <Typography variant="body1" color="text.secondary">
@@ -200,7 +204,7 @@ export default function PortalPage() {
 
                         {/* URL Display */}
                         <Box>
-                            <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2}>
+                            <Stack spacing={2}>
                                 <TextField
                                     fullWidth
                                     value={portalUrl}
@@ -212,35 +216,29 @@ export default function PortalPage() {
                                         },
                                     }}
                                 />
-                                <Stack direction="row" spacing={1}>
-                                    <Tooltip title="Copiar URL">
-                                        <Button
-                                            variant="contained"
-                                            onClick={handleCopyUrl}
-                                            startIcon={<ContentCopyIcon />}
-                                            sx={{ minWidth: { xs: '100%', sm: 'auto' } }}
-                                        >
-                                            Copiar
-                                        </Button>
-                                    </Tooltip>
-                                    <Tooltip title="Abrir en nueva pestaña">
-                                        <IconButton
-                                            color="primary"
-                                            onClick={handleOpenUrl}
-                                            sx={{
-                                                width: 60,
-                                                height: 60,
-                                                borderRadius: '50%',
-                                                border: '1px solid',
-                                                borderColor: 'primary.main',
-                                                display: 'flex',
-                                                alignItems: 'center',
-                                                justifyContent: 'center',
-                                            }}
-                                        >
-                                            <OpenInNewIcon />
-                                        </IconButton>
-                                    </Tooltip>
+                                <Stack 
+                                    direction={{ xs: 'column', sm: 'row' }} 
+                                    spacing={2}
+                                >
+                                    <Button
+                                        variant="contained"
+                                        onClick={handleCopyUrl}
+                                        startIcon={<ContentCopyIcon />}
+                                        fullWidth
+                                        sx={{ minHeight: 48 }}
+                                    >
+                                        Copiar URL
+                                    </Button>
+                                    <Button
+                                        variant="outlined"
+                                        color="primary"
+                                        onClick={handleOpenUrl}
+                                        startIcon={<OpenInNewIcon />}
+                                        fullWidth
+                                        sx={{ minHeight: 48 }}
+                                    >
+                                        Abrir Portal
+                                    </Button>
                                 </Stack>
                             </Stack>
                         </Box>
@@ -287,19 +285,30 @@ export default function PortalPage() {
                                     display: 'flex',
                                     flexDirection: 'column',
                                     alignItems: 'center',
-                                    p: 3,
+                                    p: { xs: 2, sm: 3 },
                                     bgcolor: '#fff',
                                     borderRadius: 2,
                                     boxShadow: 3,
                                 }}
                             >
-                                <QRCodeSVG
-                                    value={portalUrl}
-                                    size={256}
-                                    level="H"
-                                    includeMargin={true}
-                                    fgColor={primaryColor}
-                                />
+                                <Box sx={{ display: { xs: 'block', sm: 'none' } }}>
+                                    <QRCodeSVG
+                                        value={portalUrl}
+                                        size={180}
+                                        level="H"
+                                        includeMargin={true}
+                                        fgColor={primaryColor}
+                                    />
+                                </Box>
+                                <Box sx={{ display: { xs: 'none', sm: 'block' } }}>
+                                    <QRCodeSVG
+                                        value={portalUrl}
+                                        size={256}
+                                        level="H"
+                                        includeMargin={true}
+                                        fgColor={primaryColor}
+                                    />
+                                </Box>
                                 <Typography variant="caption" color="text.secondary" sx={{ mt: 2, textAlign: 'center' }}>
                                     {gymName}
                                 </Typography>

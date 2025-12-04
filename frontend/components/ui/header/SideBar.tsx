@@ -13,18 +13,43 @@ import {
   Tooltip,
   Typography,
   Divider,
+  Chip,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  Button,
 } from '@mui/material'
 import { useTheme } from '@mui/material/styles'
 import LogoutIcon from '@mui/icons-material/Logout'
 import AccountCircleIcon from '@mui/icons-material/AccountCircle'
+import LockIcon from '@mui/icons-material/Lock'
+import StarIcon from '@mui/icons-material/Star'
 import { useEffect, useState } from 'react'
 import { useLogout } from '@/hooks/logout/useLogout'
 import Cookies from 'js-cookie'
 import { useRouter, usePathname } from 'next/navigation'
-import { ADMINISTRADOR, RECEPCIONISTA, ROLE_ROUTES } from '@/const/roles/roles'
+import { ROLE_ROUTES } from '@/const/roles/roles'
+import { useSubscription } from '@/context/SubscriptionContext'
 
 type TabItem = { label: string; icon: React.ReactNode; route: string }
 type HeaderComponentProps = { tabs: TabItem[] }
+
+const ROUTE_FEATURE_MAP: Record<string, string> = {
+  'stats': 'stats',
+  'clases': 'classes',
+  'services': 'services',
+  'appointments': 'appointments',
+  'portal': 'portal',
+  'settings': 'settings',
+}
+
+function getFeatureFromRoute(route: string): string | null {
+  for (const [key, feature] of Object.entries(ROUTE_FEATURE_MAP)) {
+    if (route.includes(key)) return feature
+  }
+  return null
+}
 
 function readPrimary(): string {
   if (typeof window === 'undefined') return '#0dc985'
@@ -55,15 +80,37 @@ export const SideBar = ({ tabs }: HeaderComponentProps) => {
   const [user_name, setUserName] = useState<string | null>(null)
   const [user_role, setUserRole] = useState<string | null>(null)
 
+  const { planName, hasFeature, isSubscriptionActive } = useSubscription()
+
   const [sidebarBg, setSidebarBg] = useState<string>(() => readPrimary())
+  const [upgradeModalOpen, setUpgradeModalOpen] = useState(false)
+  const [blockedFeatureName, setBlockedFeatureName] = useState<string>('')
+  
   const defaultLogo = '/images/icon.png'
   const isDefaultLogo = !gym_logo_url
 
   const logout = useLogout()
 
-  const handleNav = (route: string, index?: number) => {
+  // Verificar si un tab está habilitado según la suscripción
+  const isTabEnabled = (route: string): boolean => {
+    const feature = getFeatureFromRoute(route)
+    // Si no requiere feature específica, está habilitado
+    if (!feature) return true
+    // Si no tiene suscripción activa, deshabilitar
+    if (!isSubscriptionActive) return false
+    // Verificar si tiene la feature
+    return hasFeature(feature as any)
+  }
+
+  const handleNav = (route: string, index?: number, enabled: boolean = true) => {
+    if (!enabled) return // No navegar si está deshabilitado
     if (typeof index === 'number') setSelectedIndex(index)
     router.push(route)
+  }
+
+  const handleBlockedClick = (tabLabel: string) => {
+    setBlockedFeatureName(tabLabel)
+    setUpgradeModalOpen(true)
   }
 
   const getProfileRoute = () => {
@@ -137,17 +184,18 @@ export const SideBar = ({ tabs }: HeaderComponentProps) => {
       }}
     >
       <Box
-        onClick={() => handleNav('/')}
+        onClick={() => handleNav('/dashboard/administrator/stats')}
         sx={{
           display: 'flex',
           alignItems: 'center',
           gap: 1.25,
-          height: 56,
+          height: 60,
           px: 1,
           mb: 1,
           cursor: 'pointer',
-          borderRadius: 2,
-          bgcolor: 'rgba(255,255,255,0.10)',
+          borderRadius: 3,
+          bgcolor: 'rgba(255,255,255,0.12)',
+
         }}
       >
         <Box
@@ -156,9 +204,9 @@ export const SideBar = ({ tabs }: HeaderComponentProps) => {
           alt={gym_name || 'Gym'}
           onError={(e: any) => { e.currentTarget.src = defaultLogo }}
           sx={{
-            width: isExpanded ? 40 : 32,
-            height: isExpanded ? 40 : 32,
-            borderRadius: '50%',
+            width: isExpanded ? 60 : 50,
+            height: isExpanded ? 60 : 50,
+            borderRadius: '90%',
             objectFit: isDefaultLogo ? 'contain' : 'cover',
             bgcolor: isDefaultLogo ? 'white' : 'transparent',
             p: isDefaultLogo ? 0.5 : 0,
@@ -174,12 +222,36 @@ export const SideBar = ({ tabs }: HeaderComponentProps) => {
             opacity: isExpanded ? 1 : 0,
             width: isExpanded ? 'auto' : 0,
             transition: 'opacity .25s ease, width .25s ease',
+            justifyContent: 'center',
           }}
         >
-          <Typography variant="subtitle1" fontWeight={800} color="white" noWrap>
+          <Typography variant="subtitle1" fontWeight={800} textAlign='center' color="white" noWrap>
             {gym_name || 'Mi Gimnasio'}
           </Typography>
+
+          {planName && (
+            <Chip
+              label={planName}
+              size="small"
+              sx={{
+                height: 15,
+                fontSize: '0.65rem',
+                fontWeight: 600,
+                bgcolor: planName.toLowerCase().includes('enterprise')
+                  ? '#7c3aed'
+                  : planName.toLowerCase().includes('premium')
+                    ? '#f59e0b'
+                    : planName.toLowerCase().includes('max')
+                      ? '#ec4899'
+                      : 'rgba(255,255,255,0.2)',
+                color: 'white',
+                '& .MuiChip-label': { px: 1 },
+              }}
+            />
+          )}
         </Box>
+
+
       </Box>
 
       <Divider sx={{ borderColor: 'rgba(255,255,255,0.18)', mb: 1 }} />
@@ -187,30 +259,39 @@ export const SideBar = ({ tabs }: HeaderComponentProps) => {
       <List sx={{ color: 'white', py: 0, mt: 0 }}>
         {tabs.map((tab, index) => {
           const selected = selectedIndex === index
+          const enabled = isTabEnabled(tab.route)
           const item = (
             <ListItemButton
               key={tab.route}
-              selected={selected}
+              selected={selected && enabled}
               disableRipple
-              onClick={() => handleNav(tab.route, index)}
+              onClick={() => enabled ? handleNav(tab.route, index, enabled) : handleBlockedClick(tab.label)}
               sx={{
                 borderRadius: 2,
                 mb: 1,
                 height: 48,
                 px: 1.45,
-                bgcolor: selected ? '#fff' : 'transparent',
-                '&:hover': { bgcolor: selected ? '#fff' : 'rgba(255,255,255,0.10)' },
+                bgcolor: selected && enabled ? '#fff' : 'transparent',
+                opacity: enabled ? 1 : 0.7,
+                cursor: 'pointer',
+                '&:hover': { 
+                  bgcolor: !enabled 
+                    ? 'rgba(245, 206, 8, 0.1)' 
+                    : selected 
+                      ? '#fff' 
+                      : 'rgba(255,255,255,0.10)' 
+                },
                 '&.Mui-selected': { bgcolor: '#fff !important' },
               }}
             >
               <ListItemIcon
                 sx={{
-                  color: selected ? 'black' : 'white',
+                  color: !enabled ? '#F5CE08' : selected ? 'black' : 'white',
                   minWidth: 0,
                   mr: isExpanded ? 1.5 : 0,
                 }}
               >
-                {tab.icon}
+                {!enabled ? <StarIcon /> : tab.icon}
               </ListItemIcon>
               <Box
                 sx={{
@@ -223,7 +304,10 @@ export const SideBar = ({ tabs }: HeaderComponentProps) => {
               >
                 <ListItemText
                   primary={tab.label}
-                  primaryTypographyProps={{ color: selected ? 'black' : 'white' }}
+                  primaryTypographyProps={{ 
+                    color: !enabled ? '#F5CE08' : selected ? 'black' : 'white',
+                    sx: { textDecoration: !enabled ? 'line-through' : 'none' }
+                  }}
                 />
               </Box>
             </ListItemButton>
@@ -231,7 +315,11 @@ export const SideBar = ({ tabs }: HeaderComponentProps) => {
           return isExpanded ? (
             item
           ) : (
-            <Tooltip key={tab.route} title={tab.label} placement="right">
+            <Tooltip 
+              key={tab.route} 
+              title={!enabled ? `${tab.label} (No disponible en tu plan)` : tab.label} 
+              placement="right"
+            >
               {item}
             </Tooltip>
           )
@@ -306,70 +394,174 @@ export const SideBar = ({ tabs }: HeaderComponentProps) => {
     </Box>
   )
 
-  if (isMobile) {
-    return (
-      <Paper
-        sx={{
-          position: 'fixed',
-          backgroundColor: sidebarBg,
-          bottom: 0,
-          left: 0,
-          right: 0,
-          zIndex: 1000,
-          borderTopLeftRadius: 16,
-          borderTopRightRadius: 16,
-          borderBottomLeftRadius: 0,
-          borderBottomRightRadius: 0,
-        }}
-        elevation={8}
-      >
-        <Box
-          sx={{
-            overflowX: 'auto',
-            overflowY: 'hidden',
-            whiteSpace: 'nowrap',
-            '&::-webkit-scrollbar': { display: 'none' },
-          }}
-        >
-          <BottomNavigation
-            showLabels={false}
-            value={selectedIndex}
+  const upgradeModal = (
+    <Dialog 
+      open={upgradeModalOpen} 
+      onClose={() => setUpgradeModalOpen(false)}
+      maxWidth="sm"
+      fullWidth
+      PaperProps={{
+        sx: {
+          borderRadius: 3,
+          p: 1,
+        }
+      }}
+    >
+      <DialogTitle sx={{ textAlign: 'center', pt: 3 }}>
+        <Box sx={{ display: 'flex', justifyContent: 'center', mb: 2 }}>
+          <Box
             sx={{
-              bgcolor: 'transparent',
-              display: 'inline-flex',
+              width: 64,
+              height: 64,
+              borderRadius: '50%',
+              bgcolor: '#FEF3C7',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
             }}
           >
-            {tabs.map((tab, index) => (
+            <StarIcon sx={{ fontSize: 36, color: '#F59E0B' }} />
+          </Box>
+        </Box>
+        <Typography variant="h5" fontWeight={700}>
+          Funcionalidad Premium
+        </Typography>
+      </DialogTitle>
+      <DialogContent sx={{ textAlign: 'center', pb: 2 }}>
+        <Typography variant="body1" color="text.secondary" sx={{ mb: 2 }}>
+          La funcionalidad <strong>"{blockedFeatureName}"</strong> está disponible a partir del <strong>Plan Premium</strong>.
+        </Typography>
+        <Typography variant="body2" color="text.secondary">
+          Actualizá tu plan para desbloquear esta y más funcionalidades avanzadas para tu gimnasio.
+        </Typography>
+        <Box 
+          sx={{ 
+            mt: 3, 
+            p: 2, 
+            bgcolor: 'grey.100', 
+            borderRadius: 2,
+            border: '1px dashed',
+            borderColor: 'grey.300'
+          }}
+        >
+          <Typography variant="body2" fontWeight={600} gutterBottom>
+            📧 Contactanos para upgradear
+          </Typography>
+          <Typography variant="body2" color="primary" fontWeight={500}>
+            contactofitnessflow@gmail.com
+          </Typography>
+        </Box>
+      </DialogContent>
+      <DialogActions sx={{ justifyContent: 'center', pb: 3, gap: 2 }}>
+        <Button 
+          variant="outlined" 
+          onClick={() => setUpgradeModalOpen(false)}
+          sx={{ px: 4 }}
+        >
+          Cerrar
+        </Button>
+        <Button 
+          variant="contained" 
+          onClick={() => {
+            window.open('mailto:contactofitnessflow@gmail.com?subject=Upgrade de Plan - ' + gym_name, '_blank')
+            setUpgradeModalOpen(false)
+          }}
+          sx={{ 
+            px: 4,
+            bgcolor: '#F59E0B',
+            '&:hover': { bgcolor: '#D97706' }
+          }}
+        >
+          Contactar
+        </Button>
+      </DialogActions>
+    </Dialog>
+  )
+
+  if (isMobile) {
+    return (
+      <>
+        <Paper
+          sx={{
+            position: 'fixed',
+            backgroundColor: sidebarBg,
+            bottom: 0,
+            left: 0,
+            right: 0,
+            zIndex: 1000,
+            borderTopLeftRadius: 16,
+            borderTopRightRadius: 16,
+            borderBottomLeftRadius: 0,
+            borderBottomRightRadius: 0,
+          }}
+          elevation={8}
+        >
+          <Box
+            sx={{
+              overflowX: 'auto',
+              overflowY: 'hidden',
+              whiteSpace: 'nowrap',
+              '&::-webkit-scrollbar': { display: 'none' },
+            }}
+          >
+            <BottomNavigation
+              showLabels={false}
+              value={selectedIndex}
+              sx={{
+                bgcolor: 'transparent',
+                display: 'inline-flex',
+              }}
+            >
+              {tabs.map((tab, index) => {
+                const enabled = isTabEnabled(tab.route)
+                return (
+                  <BottomNavigationAction
+                    key={tab.route}
+                    value={index}
+                    icon={!enabled ? <LockIcon /> : tab.icon}
+                    disableRipple
+                    onMouseDown={() => enabled ? handleNav(tab.route, index, enabled) : handleBlockedClick(tab.label)}
+                    onClick={() => enabled ? handleNav(tab.route, index, enabled) : handleBlockedClick(tab.label)}
+                    sx={{
+                      color: !enabled 
+                        ? '#F5CE08' 
+                        : selectedIndex === index 
+                          ? 'black' 
+                          : 'white',
+                      opacity: enabled ? 1 : 0.7,
+                      cursor: 'pointer',
+                      '&.Mui-selected': { 
+                        color: 'black', 
+                        bgcolor: enabled ? 'white !important' : 'transparent' 
+                      },
+                    }}
+                  />
+                )
+              })}
               <BottomNavigationAction
-                key={tab.route}
-                value={index}
-                icon={tab.icon}
-                disableRipple
-                onMouseDown={() => handleNav(tab.route, index)}
-                onClick={() => handleNav(tab.route, index)}
+                value={21}
+                icon={<LogoutIcon />}
+                onClick={() => {
+                  setSelectedIndex(21)
+                  logout()
+                }}
                 sx={{
-                  color: selectedIndex === index ? 'black' : 'white',
+                  color: 'white',
                   '&.Mui-selected': { color: 'black', bgcolor: 'white !important' },
                 }}
               />
-            ))}
-            <BottomNavigationAction
-              value={21}
-              icon={<LogoutIcon />}
-              onClick={() => {
-                setSelectedIndex(21)
-                logout()
-              }}
-              sx={{
-                color: 'white',
-                '&.Mui-selected': { color: 'black', bgcolor: 'white !important' },
-              }}
-            />
-          </BottomNavigation>
-        </Box>
-      </Paper>
+            </BottomNavigation>
+          </Box>
+        </Paper>
+        {upgradeModal}
+      </>
     )
   }
 
-  return desktopSidebar
+  return (
+    <>
+      {desktopSidebar}
+      {upgradeModal}
+    </>
+  )
 }

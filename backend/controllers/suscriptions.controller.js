@@ -52,6 +52,43 @@ export const handleGetActiveSuscriptionByGymId = async (req, res) => {
   }
 }
 
+export const handleGetGymPlan = async (req, res) => {
+  try {
+    const { gymId } = req.params
+    const suscription = await getActiveSuscriptionByGymId(gymId)
+    
+    if (!suscription) {
+      return res.status(404).json({ 
+        error: 'El gimnasio no tiene una suscripción activa',
+        hasSubscription: false,
+        plan: null
+      })
+    }
+
+    res.json({
+      hasSubscription: true,
+      isActive: suscription.is_active,
+      plan: suscription.gym_plans,
+      subscription: {
+        id: suscription.id,
+        start_at: suscription.start_at,
+        end_at: suscription.end_at,
+        is_active: suscription.is_active
+      }
+    })
+  } catch (err) {
+    // Si el error es porque no encontró registro, devolver respuesta limpia
+    if (err.code === 'PGRST116') {
+      return res.json({ 
+        hasSubscription: false,
+        plan: null
+      })
+    }
+    console.error('Error al verificar plan del gimnasio:', err)
+    res.status(500).json({ error: err.message })
+  }
+}
+
 export const handleCreateSuscription = async (req, res) => {
   try {
     const suscription = await createSuscription(req.body)

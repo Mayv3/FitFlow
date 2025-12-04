@@ -1,6 +1,7 @@
 import type { Metadata } from 'next'
 import './globals.css'
 import { UserProvider } from "@/context/UserContext";
+import { SubscriptionProvider } from "@/context/SubscriptionContext";
 import 'react-toastify/dist/ReactToastify.css'
 import { ToastProvider } from '@/components/ui/toast/ToastProvider'
 import { ThemeProvider } from '../themeProvider/ThemeProvider'
@@ -48,8 +49,10 @@ export default function RootLayout({
           <ReactQueryProvider>
             <ThemeProvider>
               <UserProvider>
-                {children}
-                <ToastProvider />
+                <SubscriptionProvider>
+                  {children}
+                  <ToastProvider />
+                </SubscriptionProvider>
               </UserProvider>
             </ThemeProvider>
           </ReactQueryProvider>

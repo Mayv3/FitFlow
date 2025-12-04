@@ -2,9 +2,8 @@
 import { createContext, useContext, useEffect, useState, ReactNode } from "react";
 import Cookies from "js-cookie";
 import UserData from "@/models/User/User";
-import { usePathname, useRouter } from "next/navigation"; // <<--- 1. IMPORTAR useRouter
+import { usePathname, useRouter } from "next/navigation";
 
-// --- Imports de Material-UI ---
 import Box from "@mui/material/Box";
 import Typography from "@mui/material/Typography";
 import Button from "@mui/material/Button";

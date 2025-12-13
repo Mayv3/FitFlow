@@ -1,7 +1,7 @@
 'use client'
 import { useQuery, useMutation, useQueryClient, keepPreviousData } from '@tanstack/react-query'
-import axios from 'axios'
 import { Plan } from '@/models/Plan/Plan'
+import { api } from '@/lib/api'
 
 const planesKey = (gymId: string) => ['planes-precios', gymId] as const
 
@@ -17,9 +17,9 @@ export const usePlanesPrecios = (
     staleTime: 1000 * 60 * 5,
     placeholderData: keepPreviousData,
     queryFn: async (): Promise<{ items: Plan[]; total: number }> => {
-      const { data } = await axios.get(
-        `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/planes`,
-        { params: { gymId, page, pageSize, q } }
+      const { data } = await api.get(
+        `/api/planes`,
+        { params: { page, pageSize, q } }
       )
       return data
     },
@@ -49,14 +49,13 @@ export const usePlanesPrecios = (
   }
 }
 
-
 export const useAddPlan = (gymId: string) => {
   const qc = useQueryClient()
   return useMutation({
     mutationFn: async (values: any) => {
-      const { data } = await axios.post(
-        `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/planes`,
-        { ...values, gym_id: gymId }
+      const { data } = await api.post(
+        `/api/planes`,
+        values
       )
       return data as Plan
     },
@@ -70,8 +69,8 @@ export const useEditPlan = (gymId: string) => {
   const qc = useQueryClient()
   return useMutation({
     mutationFn: async ({ id, values }: { id: number; values: any }) => {
-      const { data } = await axios.put(
-        `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/planes/${id}`,
+      const { data } = await api.put(
+        `/api/planes/${id}`,
         values
       )
       return data as Plan
@@ -86,7 +85,7 @@ export const useDeletePlan = (gymId: string) => {
   const qc = useQueryClient()
   return useMutation({
     mutationFn: async (id: number) => {
-      await axios.delete(`${process.env.NEXT_PUBLIC_BACKEND_URL}/api/planes/${id}`)
+      await api.delete(`/api/planes/${id}`)
       return id
     },
     onSuccess: () => {

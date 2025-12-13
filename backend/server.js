@@ -67,14 +67,18 @@ app.use((req, res, next) => {
 
 app.use('/api/alumnos', verifyToken, supaPerRequest, alumnosRoutes);
 app.use('/api/pagos', verifyToken, supaPerRequest, pagosRoutes);
+app.use('/api/planes', verifyToken, supaPerRequest, planesRoutes);
+
+app.use('/api/turnos', appointmentsRoutes);
+
+app.use('/api/stats', verifyToken, supaPerRequest, statsRoutes);
+
 app.use('/api/roles', rolesRoutes);
 app.use('/api/asistencias', asistenciasRoutes);
 app.use('/api/gyms', gymsRoutes)
-app.use('/api/test', testRoutes);
-app.use('/api/stats', verifyToken, supaPerRequest, statsRoutes);
-app.use('/api/planes', planesRoutes);
+
 app.use('/api/servicios', servicesRoutes);
-app.use('/api/turnos', appointmentsRoutes);
+
 app.use('/api/public/appointments', appointmentsPublicRoutes);
 app.use("/api/users", usersRoutes)
 app.use('/api/clases', clasesRoutes);
@@ -86,6 +90,7 @@ app.use('/api/payment-methods', paymentMethodsRoutes);
 app.use('/api/auth', authRoutes);
 
 app.get('/ping', (req, res) => res.sendStatus(200));
+app.use('/api/test', testRoutes);
 
 app.get("/api/emails", async (req, res) => {
   try {

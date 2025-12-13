@@ -29,6 +29,7 @@
     --ring: 24 100% 50%;
     /* Naranja */
     --radius: 0.5rem;
+    --spacing-8: 2rem;
   }
 
   .dark {

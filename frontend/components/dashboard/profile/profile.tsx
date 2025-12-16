@@ -161,6 +161,10 @@ export function ProfileSection() {
           Cambiar contraseña
         </Typography>
 
+        <Typography variant="body2" sx={{mb:2}} gutterBottom>
+          La nueva contraseña debe tener al menos 6 caracteres.
+        </Typography>
+
         <Stack spacing={2} alignItems="center">
           <TextField
             label="Contraseña actual"

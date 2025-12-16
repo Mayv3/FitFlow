@@ -6,6 +6,7 @@ import dayGridPlugin from '@fullcalendar/daygrid'
 import interactionPlugin from '@fullcalendar/interaction'
 import esLocale from '@fullcalendar/core/locales/es'
 import Image from 'next/image'
+import Cookies from 'js-cookie'
 
 import {
   Box,
@@ -270,6 +271,40 @@ export default function Appointments() {
             })
             setSelectedId(null)
             setOpen(true)
+          }}
+          eventDrop={async (info) => {
+            const event = info.event
+            const token = Cookies.get('token')
+
+            try {
+              const inicio = event.start
+              if (!inicio) return
+
+              const fin = new Date(inicio.getTime() + 60 * 60 * 1000)
+
+              const res = await fetch(
+                `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/turnos/${event.id}`,
+                {
+                  method: 'PUT',
+                  headers: {
+                    'Content-Type': 'application/json',
+                    Authorization: `Bearer ${token}`,
+                  },
+                  body: JSON.stringify({
+                    inicio_at: inicio.toISOString(),
+                    fin_at: fin.toISOString(),
+                  }),
+                }
+              )
+
+              if (!res.ok) {
+                throw new Error('Error al actualizar turno')
+              }
+
+            } catch (error) {
+              console.error(error)
+              info.revert() // 👈 vuelve a la fecha original si falla
+            }
           }}
         />
       </Box>

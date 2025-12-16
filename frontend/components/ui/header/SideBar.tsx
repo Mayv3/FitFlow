@@ -190,12 +190,13 @@ export const SideBar = ({ tabs }: HeaderComponentProps) => {
           alignItems: 'center',
           gap: 1.25,
           height: 60,
+          width: '100%',
+          py: 1,
           px: 1,
           mb: 1,
           cursor: 'pointer',
           borderRadius: 3,
           bgcolor: 'rgba(255,255,255,0.12)',
-
         }}
       >
         <Box
@@ -204,8 +205,8 @@ export const SideBar = ({ tabs }: HeaderComponentProps) => {
           alt={gym_name || 'Gym'}
           onError={(e: any) => { e.currentTarget.src = defaultLogo }}
           sx={{
-            width: isExpanded ? 60 : 50,
-            height: isExpanded ? 60 : 50,
+            width: isExpanded ? 50 : 30,
+            height: isExpanded ? 50 : 30,
             borderRadius: '90%',
             objectFit: isDefaultLogo ? 'contain' : 'cover',
             bgcolor: isDefaultLogo ? 'white' : 'transparent',

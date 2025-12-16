@@ -16,17 +16,11 @@ import {
 } from '@mui/material'
 import LogoutIcon from '@mui/icons-material/Logout'
 import PersonIcon from '@mui/icons-material/Person'
-import EmailIcon from '@mui/icons-material/Email'
-import PhoneIcon from '@mui/icons-material/Phone'
-import CakeIcon from '@mui/icons-material/Cake'
-import WcIcon from '@mui/icons-material/Wc'
 import FitnessCenterIcon from '@mui/icons-material/FitnessCenter'
 import ReceiptIcon from '@mui/icons-material/Receipt'
 import CloseIcon from '@mui/icons-material/Close'
 import CalendarTodayIcon from '@mui/icons-material/CalendarToday'
-import AttachMoneyIcon from '@mui/icons-material/AttachMoney'
 import ClassIcon from '@mui/icons-material/Class'
-import AccessTimeIcon from '@mui/icons-material/AccessTime'
 import GroupIcon from '@mui/icons-material/Group'
 import AddIcon from '@mui/icons-material/Add'
 import CheckCircleIcon from '@mui/icons-material/CheckCircle'
@@ -83,7 +77,7 @@ export default function GymPanelPage() {
                         `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/gyms/${gymId}?include_settings=true`
                     )
                     setGymName(gymResponse.data.name || 'GymSpace')
-                    
+
                     // Obtener color del gimnasio desde settings
                     const primaryColor = gymResponse.data?.settings?.colors?.primary || '#2196F3'
                     setGymColor(primaryColor)
@@ -228,6 +222,17 @@ export default function GymPanelPage() {
     const clases = alumno?.clases
     const pagos = alumno?.pagos || []
     const totales = alumno?.totales
+
+    const planActivo =
+        membresia?.estado === 'activo' &&
+        typeof membresia?.dias_restantes === 'number' &&
+        membresia.dias_restantes > 0
+
+    const tieneClasesDisponibles =
+        typeof clases?.clases_disponibles === 'number' &&
+        clases.clases_disponibles > 0
+
+    const puedeInscribirse = planActivo && tieneClasesDisponibles
 
     return (
         <Box
@@ -453,7 +458,32 @@ export default function GymPanelPage() {
                     )}
 
                     {/* Clases Disponibles */}
-                    {servicios && servicios.length > 0 && (
+
+                    {!puedeInscribirse && (
+                        <Box
+                            sx={{
+                                bgcolor: '#fff',
+                                borderRadius: 3,
+                                p: 2.5,
+                                border: '1px solid #e0e0e0',
+                                textAlign: 'center',
+                            }}
+                        >
+                            <Typography variant="body1" fontWeight={600} mb={1}>
+                                No podés inscribirte a clases
+                            </Typography>
+
+                            <Typography variant="body2" color="text.secondary">
+                                {!planActivo
+                                    ? 'Tu plan se encuentra vencido. Regularizalo para volver a inscribirte.'
+                                    : 'No tenés clases disponibles en tu plan actual.'
+                                }
+                            </Typography>
+                        </Box>
+                    )}
+
+
+                    {puedeInscribirse && servicios && servicios.length > 0 && (
                         <Box
                             sx={{
                                 bgcolor: '#fff',
@@ -491,8 +521,8 @@ export default function GymPanelPage() {
                                                     {servicio.nombre}
                                                 </Typography>
                                                 {servicio.descripcion && (
-                                                    <Typography 
-                                                        variant="caption" 
+                                                    <Typography
+                                                        variant="caption"
                                                         color="text.secondary"
                                                         sx={{
                                                             maxWidth: '250px',
@@ -502,8 +532,8 @@ export default function GymPanelPage() {
                                                             display: 'block'
                                                         }}
                                                     >
-                                                        {servicio.descripcion.length > 20 
-                                                            ? `${servicio.descripcion.substring(0, 20)}...` 
+                                                        {servicio.descripcion.length > 20
+                                                            ? `${servicio.descripcion.substring(0, 20)}...`
                                                             : servicio.descripcion
                                                         }
                                                     </Typography>
@@ -916,7 +946,7 @@ export default function GymPanelPage() {
                                                             </Typography>
                                                         </Stack>
 
-                                            
+
                                                     </Stack>
 
                                                 </Stack>

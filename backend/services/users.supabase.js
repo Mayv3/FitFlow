@@ -29,35 +29,46 @@ export async function listUsers(gymId) {
 
 export async function changePasswordService(email, currentPassword, newPassword) {
   try {
-    const { data: loginData, error: loginError } = await supabase.auth.signInWithPassword({
-      email,
-      password: currentPassword,
-    })
+    // 1. Verificar contraseña actual (login controlado)
+    const { data: loginData, error: loginError } =
+      await supabase.auth.signInWithPassword({
+        email,
+        password: currentPassword,
+      })
 
-    if (loginError || !loginData.session) {
-      return { success: false, error: "Contraseña actual incorrecta", status: 401 }
+    if (loginError || !loginData.user) {
+      return {
+        success: false,
+        status: 401,
+        error: "Contraseña actual incorrecta",
+      }
     }
 
-    const supabaseWithSession = supabase
-    supabaseWithSession.auth.setSession({
-      access_token: loginData.session.access_token,
-      refresh_token: loginData.session.refresh_token,
-    })
+    const userId = loginData.user.id
 
-    const { error: updateError } = await supabaseWithSession.auth.updateUser({
-      password: newPassword,
-    })
+    // 2. Cambiar contraseña con ADMIN (sin sesión)
+    const { error: updateError } =
+      await supabaseAdmin.auth.admin.updateUserById(userId, {
+        password: newPassword,
+      })
 
     if (updateError) {
-      return { success: false, error: "No se pudo actualizar la contraseña", status: 500 }
+      console.error(updateError)
+      return {
+        success: false,
+        status: 500,
+        error: "No se pudo actualizar la contraseña",
+      }
     }
-
-    await supabaseWithSession.auth.signOut()
 
     return { success: true, status: 200 }
   } catch (err) {
     console.error("Service error:", err)
-    return { success: false, error: "Error en el servicio", status: 500 }
+    return {
+      success: false,
+      status: 500,
+      error: "Error en el servicio",
+    }
   }
 }
 

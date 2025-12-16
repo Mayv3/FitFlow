@@ -12,6 +12,7 @@ export async function handleListUsers(req, res) {
 }
 
 export const handleChangePassword = async (req, res) => {
+
   try {
     const { email, currentPassword, newPassword } = req.body
 
@@ -24,6 +25,8 @@ export const handleChangePassword = async (req, res) => {
     if (!result.success) {
       return res.status(result.status).json({ error: result.error })
     }
+
+
 
     return res.json({ success: true })
   } catch (err) {

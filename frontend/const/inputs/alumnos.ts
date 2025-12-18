@@ -64,7 +64,7 @@ export const getInputFieldsAlumnos: Field[] = [
     label: 'Clases pagadas (obligatorio)',
     name: 'clases_pagadas',
     type: 'string',
-    required: true,
+    required: false,
     minLength: 1,
     maxLength: 2,
     placeholder: 'Ej: 12',

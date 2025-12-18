@@ -42,23 +42,23 @@ export const FormModal = <T extends Record<string, any>>({
   const metodoSeleccionado = values['metodo_pago'];
 
   const visibleFields = fields.filter(field => {
-  const isPagoForm = fields.some(f => f.name === 'origen_pago');
+    const isPagoForm = fields.some(f => f.name === 'origen_pago');
 
-  if (isPagoForm) {
-    if (!origenPago && (field.name === 'plan_id' || field.name === 'servicio_id')) return false;
-    if (origenPago === 'plan' && field.name === 'servicio_id') return false;
-    if (origenPago === 'servicio' && field.name === 'plan_id') return false;
-    if (['monto_efectivo', 'monto_mp', 'monto_tarjeta'].includes(field.name)) {
-      if (metodoSeleccionado === 'Efectivo') return field.name === 'monto_efectivo';
-      if (metodoSeleccionado === 'Mercado Pago') return field.name === 'monto_mp';
-      if (metodoSeleccionado === 'Tarjeta') return field.name === 'monto_tarjeta';
-      if (metodoSeleccionado === 'Mixto') return true;
-      return false;
+    if (isPagoForm) {
+      if (!origenPago && (field.name === 'plan_id' || field.name === 'servicio_id')) return false;
+      if (origenPago === 'plan' && field.name === 'servicio_id') return false;
+      if (origenPago === 'servicio' && field.name === 'plan_id') return false;
+      if (['monto_efectivo', 'monto_mp', 'monto_tarjeta'].includes(field.name)) {
+        if (metodoSeleccionado === 'Efectivo') return field.name === 'monto_efectivo';
+        if (metodoSeleccionado === 'Mercado Pago') return field.name === 'monto_mp';
+        if (metodoSeleccionado === 'Tarjeta') return field.name === 'monto_tarjeta';
+        if (metodoSeleccionado === 'Mixto') return true;
+        return false;
+      }
     }
-  }
 
-  return true;
-});
+    return true;
+  });
 
 
   const showError = (msg: string) => notify.error(msg);
@@ -141,24 +141,35 @@ export const FormModal = <T extends Record<string, any>>({
       const next = { ...prev, [name]: newVal };
 
       if (name === 'plan_id') {
-        const selectedPlan = fields
-          .find(f => f.name === 'plan_id')
-          ?.options?.find(opt => opt.value === newVal);
+        const planField = fields.find(f => f.name === 'plan_id');
+        const selectedPlan = planField?.options?.find(opt => opt.value === newVal) as any;
 
-        const precioPlan = (selectedPlan && 'precio' in selectedPlan) ? (selectedPlan as any).precio : 0;
+        const mutableNext = { ...next } as Record<string, any>;
+
+        if (selectedPlan) {
+          mutableNext['clases_pagadas'] = String(selectedPlan.numero_clases ?? 0);
+          mutableNext['clases_realizadas'] = 0;
+        } else {
+          mutableNext['clases_pagadas'] = 0;
+          mutableNext['clases_realizadas'] = 0;
+        }
+
+
+        console.log('selectedPlan', selectedPlan)
+        const precioPlan = selectedPlan?.precio ?? 0;
 
         if (precioPlan > 0) {
-          const mutableNext = next as Record<string, any>;
           if (metodoSeleccionado === 'Efectivo') mutableNext['monto_efectivo'] = String(precioPlan);
           else if (metodoSeleccionado === 'Mercado Pago') mutableNext['monto_mp'] = String(precioPlan);
           else if (metodoSeleccionado === 'Tarjeta') mutableNext['monto_tarjeta'] = String(precioPlan);
           else if (metodoSeleccionado === 'Mixto') {
-            // Por defecto repartir el monto a cero, el usuario puede modificarlo
             mutableNext['monto_efectivo'] = '';
             mutableNext['monto_mp'] = '';
             mutableNext['monto_tarjeta'] = '';
           }
         }
+
+        return mutableNext as T;
       }
 
       if (name === 'servicio_id') {

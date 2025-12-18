@@ -70,29 +70,47 @@ export default function MembersList() {
   const fields = useMemo(() => {
     const base = getInputFieldsAlumnos.map(f => ({ ...f }));
     const planField = base.find(f => f.name === 'plan_id');
+
     if (planField) {
       planField.type = 'select';
       planField.options = [
         { value: null, label: 'No tiene plan' },
         ...planOptions
       ];
+
       if (plansLoading) {
         planField.disabled = true;
         planField.placeholder = 'Cargando planes...';
       }
+
       const clasesField = base.find(f => f.name === 'clases_pagadas');
+
       if (clasesField) {
         planField.onChange = (newPlanId: string | number | null, next) => {
           if (!newPlanId) {
-            return { ...next, plan_id: null, clases_pagadas: null };
+            return {
+              ...next,
+              plan_id: null,
+              clases_pagadas: null,
+              clases_realizadas: 0,
+            };
           }
-          const opt = byId[String(newPlanId)];
-          return { ...next, clases_pagadas: opt?.numero_clases ?? null };
+
+          const plan = byId[String(newPlanId)];
+
+          return {
+            ...next,
+            plan_id: newPlanId,
+            clases_pagadas: plan?.numero_clases ?? null,
+            clases_realizadas: 0,
+          };
         };
       }
     }
+
     return base;
   }, [planOptions, byId, plansLoading]);
+
 
   const toNumOrNull = (v: any) =>
     v === '' || v === undefined || v === null ? null : Number(v);

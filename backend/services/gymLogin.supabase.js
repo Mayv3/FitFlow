@@ -34,7 +34,6 @@ export const loginByDniAndGym = async (dni, gymId) => {
 export const getAlumnoCompleteInfo = async (dni, gymId) => {
     console.log(`[getAlumnoCompleteInfo] Obteniendo info completa del alumno con DNI ${dni} en gym ${gymId}`);
 
-    // Obtener datos del alumno
     const { data: alumno, error: alumnoError } = await supabaseAdmin
         .from('alumnos')
         .select(`
@@ -60,7 +59,6 @@ export const getAlumnoCompleteInfo = async (dni, gymId) => {
     if (alumnoError) throw alumnoError;
     if (!alumno) throw new Error('Alumno no encontrado en este gimnasio');
 
-    // Obtener información del plan si existe
     let planInfo = null;
     if (alumno.plan_id) {
         const { data: plan, error: planError } = await supabaseAdmin
@@ -75,7 +73,6 @@ export const getAlumnoCompleteInfo = async (dni, gymId) => {
         }
     }
 
-    // Obtener historial de pagos
     const { data: pagos, error: pagosError } = await supabaseAdmin
         .from('pagos')
         .select('id, monto_total, fecha_de_pago, fecha_de_venc, tipo, responsable')
@@ -88,7 +85,6 @@ export const getAlumnoCompleteInfo = async (dni, gymId) => {
         console.error('Error obteniendo pagos:', pagosError);
     }
 
-    // Calcular días restantes
     let diasRestantes = null;
     let estadoMembresia = 'inactivo';
 
@@ -102,17 +98,14 @@ export const getAlumnoCompleteInfo = async (dni, gymId) => {
         estadoMembresia = diffDays > 0 ? 'activo' : 'vencido';
     }
 
-    // Calcular clases disponibles
     const clasesDisponibles = alumno.clases_pagadas
         ? alumno.clases_pagadas - (alumno.clases_realizadas || 0)
         : null;
 
-    // Calcular porcentaje de uso de clases
     const porcentajeClasesUsadas = alumno.clases_pagadas && alumno.clases_pagadas > 0
         ? Math.round((alumno.clases_realizadas || 0) / alumno.clases_pagadas * 100)
         : 0;
 
-    // Calcular porcentaje de tiempo usado del plan
     let porcentajeTiempoUsado = 0;
     if (alumno.fecha_inicio && alumno.fecha_de_vencimiento) {
         const fechaInicio = new Date(alumno.fecha_inicio);
@@ -128,8 +121,24 @@ export const getAlumnoCompleteInfo = async (dni, gymId) => {
         );
     }
 
+    const { data: planes, error: planesError } = await supabaseAdmin
+        .from('planes_precios')
+        .select(`
+    id,
+    nombre,
+    precio,
+    numero_clases,
+    color
+  `)
+        .eq('gym_id', gymId)
+        .is('deleted_at', null)
+        .order('precio', { ascending: true });
+
+    if (planesError) {
+        console.error('Error obteniendo planes:', planesError);
+    }
+
     return {
-        // Datos personales
         datosPersonales: {
             id: alumno.id,
             nombre: alumno.nombre,
@@ -140,7 +149,6 @@ export const getAlumnoCompleteInfo = async (dni, gymId) => {
             sexo: alumno.sexo,
         },
 
-        // Información del plan
         plan: planInfo ? {
             id: planInfo.id,
             nombre: planInfo.nombre,
@@ -148,7 +156,6 @@ export const getAlumnoCompleteInfo = async (dni, gymId) => {
             duracion_dias: planInfo.duracion_dias,
         } : null,
 
-        // Estado de la membresía
         membresia: {
             fecha_inicio: alumno.fecha_inicio,
             fecha_vencimiento: alumno.fecha_de_vencimiento,
@@ -157,7 +164,6 @@ export const getAlumnoCompleteInfo = async (dni, gymId) => {
             porcentaje_tiempo_usado: porcentajeTiempoUsado,
         },
 
-        // Clases
         clases: {
             clases_pagadas: alumno.clases_pagadas,
             clases_realizadas: alumno.clases_realizadas || 0,
@@ -165,10 +171,9 @@ export const getAlumnoCompleteInfo = async (dni, gymId) => {
             porcentaje_uso: porcentajeClasesUsadas,
         },
 
-        // Historial de pagos
         pagos: pagos || [],
+        planes_disponibles: planes || [],
 
-        // Totales
         totales: {
             total_pagado: pagos ? pagos
                 .filter(p => p.estado === 'pagado')
@@ -177,3 +182,5 @@ export const getAlumnoCompleteInfo = async (dni, gymId) => {
         }
     };
 };
+
+

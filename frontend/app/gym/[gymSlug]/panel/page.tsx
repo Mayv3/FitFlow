@@ -6,7 +6,6 @@ import {
     Container,
     Typography,
     Stack,
-    Avatar,
     IconButton,
     CircularProgress,
     LinearProgress,
@@ -49,6 +48,9 @@ export default function GymPanelPage() {
     const [selectedSesionName, setSelectedSesionName] = useState<string>('')
     const [enrollingSession, setEnrollingSession] = useState<number | null>(null)
     const [cancelingSession, setCancelingSession] = useState<number | null>(null)
+    const planes = alumno?.planes_disponibles || []
+    const [planesModalOpen, setPlanesModalOpen] = useState(false)
+    const [loadingPlanes, setLoadingPlanes] = useState(false)
 
     useEffect(() => {
         const loadData = async () => {
@@ -65,24 +67,20 @@ export default function GymPanelPage() {
             try {
                 const alumnoBasic = JSON.parse(storedAlumno)
 
-                // Obtener info completa del alumno desde el nuevo endpoint
                 const alumnoResponse = await axios.get(
                     `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/auth/gym-alumno/${gymId}/${alumnoBasic.dni}`
                 )
                 setAlumno(alumnoResponse.data)
 
-                // Obtener info del gimnasio
                 if (gymId) {
                     const gymResponse = await axios.get(
                         `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/gyms/${gymId}?include_settings=true`
                     )
-                    setGymName(gymResponse.data.name || 'GymSpace')
+                    setGymName(gymResponse.data.name || 'Sin Data')
 
-                    // Obtener color del gimnasio desde settings
                     const primaryColor = gymResponse.data?.settings?.colors?.primary || '#2196F3'
                     setGymColor(primaryColor)
 
-                    // Obtener servicios/clases del gimnasio
                     const serviciosResponse = await axios.get(
                         `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/public/appointments/gym/${gymId}/services`
                     )
@@ -168,7 +166,6 @@ export default function GymPanelPage() {
                 { alumno_id: datosPersonales.id }
             )
             notify.success('Inscripción cancelada')
-            // Recargar sesiones con barra de progreso
             await reloadSesiones()
         } catch (error: any) {
             notify.error(error.response?.data?.error || 'Error al cancelar')
@@ -215,7 +212,6 @@ export default function GymPanelPage() {
         return null
     }
 
-    // Obtener datos del nuevo formato
     const datosPersonales = alumno?.datosPersonales
     const plan = alumno?.plan
     const membresia = alumno?.membresia
@@ -241,7 +237,6 @@ export default function GymPanelPage() {
                 bgcolor: '#f5f5f5',
             }}
         >
-            {/* Header con logo y avatar */}
             <Box
                 sx={{
                     bgcolor: '#fff',
@@ -286,8 +281,7 @@ export default function GymPanelPage() {
 
             <Container maxWidth="sm" sx={{ px: 2, py: 3 }}>
                 <Stack spacing={2.5}>
-                    {/* Bienvenida */}
-                    <Stack spacing={0.5}>
+                    <Stack spacing={0.5} justifyContent='center'>
                         <Typography
                             variant="h5"
                             sx={{
@@ -310,7 +304,6 @@ export default function GymPanelPage() {
                         </Typography>
                     </Stack>
 
-                    {/* Card Plan Actual */}
                     {plan && (
                         <Box
                             sx={{
@@ -343,7 +336,39 @@ export default function GymPanelPage() {
                         </Box>
                     )}
 
-                    {/* Card Estado de Membresía */}
+                    <Box
+                        sx={{
+                            bgcolor: '#fff',
+                            borderRadius: 3,
+                            p: 2.5,
+                            border: '1px solid #e0e0e0',
+                            cursor: 'pointer',
+                            transition: 'all 0.2s',
+                            '&:hover': {
+                                bgcolor: '#f9f9f9',
+                                transform: 'translateY(-2px)',
+                            }
+                        }}
+                        onClick={() => {
+                            setPlanesModalOpen(true)
+                        }}
+                    >
+                        <Stack direction="row" spacing={1.5} alignItems="center">
+                            <FitnessCenterIcon sx={{ color: gymColor }} />
+                            <Box flex={1}>
+                                <Typography variant="body1" fontWeight={600}>
+                                    Planes disponibles
+                                </Typography>
+                                <Typography variant="caption" color="text.secondary">
+                                    Ver todos los planes del gimnasio
+                                </Typography>
+                            </Box>
+                            <Typography variant="caption" color="text.secondary">
+                                Ver →
+                            </Typography>
+                        </Stack>
+                    </Box>
+
                     {membresia && membresia.dias_restantes !== null && (
                         <Box
                             sx={{
@@ -400,7 +425,6 @@ export default function GymPanelPage() {
                         </Box>
                     )}
 
-                    {/* Card Clases Restantes */}
                     {clases && clases.clases_disponibles !== null && (
                         <Box
                             sx={{
@@ -456,8 +480,6 @@ export default function GymPanelPage() {
                             </Stack>
                         </Box>
                     )}
-
-                    {/* Clases Disponibles */}
 
                     {!puedeInscribirse && (
                         <Box
@@ -549,7 +571,6 @@ export default function GymPanelPage() {
                         </Box>
                     )}
 
-                    {/* Historial de Pagos */}
                     {pagos && pagos.length > 0 && (
                         <Box
                             sx={{
@@ -635,7 +656,131 @@ export default function GymPanelPage() {
                 </Stack>
             </Container>
 
-            {/* Modal de Detalles del Pago */}
+            <Modal
+                open={planesModalOpen}
+                onClose={() => setPlanesModalOpen(false)}
+                sx={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    p: 2,
+                }}
+            >
+                <Box
+                    sx={{
+                        bgcolor: '#fff',
+                        borderRadius: 4,
+                        maxWidth: 520,
+                        width: '100%',
+                        maxHeight: '90vh',
+                        overflow: 'hidden',
+                        outline: 'none',
+                    }}
+                >
+                    {/* Header */}
+                    <Box
+                        sx={{
+                            p: 3,
+                            borderBottom: '1px solid #eee',
+                            background: `linear-gradient(135deg, ${gymColor}15, ${gymColor}05)`,
+                        }}
+                    >
+                        <Stack direction="row" justifyContent="space-between" alignItems="center">
+                            <Stack direction="row" spacing={1.5} alignItems="center">
+                                <FitnessCenterIcon sx={{ color: gymColor }} />
+                                <Typography variant="h6" fontWeight={700}>
+                                    Planes disponibles
+                                </Typography>
+                            </Stack>
+                            <IconButton size="small" onClick={() => setPlanesModalOpen(false)}>
+                                <CloseIcon />
+                            </IconButton>
+                        </Stack>
+
+                        <Typography variant="body2" color="text.secondary" mt={0.5}>
+                            Elegí el plan que mejor se adapte a tu entrenamiento
+                        </Typography>
+                    </Box>
+
+                    {/* Content */}
+                    <Box
+                        sx={{
+                            p: 3,
+                            maxHeight: '70vh',
+                            overflowY: 'auto',
+                            '&::-webkit-scrollbar': { width: 6 },
+                            '&::-webkit-scrollbar-thumb': {
+                                bgcolor: '#ccc',
+                            },
+                        }}
+                    >
+                        {loadingPlanes ? (
+                            <Box sx={{ display: 'flex', justifyContent: 'center', py: 6 }}>
+                                <CircularProgress sx={{ color: gymColor }} />
+                            </Box>
+                        ) : planes.length === 0 ? (
+                            <Typography variant="body2" color="text.secondary" textAlign="center">
+                                No hay planes disponibles
+                            </Typography>
+                        ) : (
+                            <Stack spacing={2}>
+                                {planes.map((planItem: any) => (
+                                    <Box
+                                        key={planItem.id}
+                                        sx={{
+                                            p: 2.5,
+                                            borderRadius: 1,
+                                            border: '1px solid #e0e0e0',
+                                            borderLeft: `6px solid ${planItem.color || gymColor}`,
+                                            borderRight: `6px solid ${planItem.color || gymColor}`,
+                                            bgcolor: '#fafafa',
+                                            transition: 'all 0.2s',
+                                            '&:hover': {
+                                                transform: 'translateY(-2px)',
+                                                boxShadow: '0 6px 18px rgba(0,0,0,0.08)',
+                                            },
+                                            textAlign: 'center',
+                                        }}
+                                    >
+                                        <Stack spacing={1.5}>
+                                            <Typography
+                                                variant="h6"
+                                                fontWeight={700}
+                                                sx={{ color: planItem.color || gymColor }}
+                                            >
+                                                {planItem.nombre}
+                                            </Typography>
+
+                                            <Typography
+                                                variant="h5"
+                                                fontWeight={800}
+                                                sx={{ lineHeight: 1.1 }}
+                                            >
+                                                ${planItem.precio?.toLocaleString()}
+                                            </Typography>
+
+                                            <Stack direction="row" spacing={1} alignItems='center' justifyContent='center'>
+                                                <Chip
+
+                                                    label={`${planItem.numero_clases} clases`}
+                                                    size="small"
+                                                    sx={{
+                                                        bgcolor: `${planItem.color || gymColor}20`,
+                                                        color: planItem.color || gymColor,
+                                                        fontWeight: 600,
+                                                    }}
+                                                />
+                                            </Stack>
+                                        </Stack>
+                                    </Box>
+                                ))}
+                            </Stack>
+                        )}
+                    </Box>
+                </Box>
+            </Modal>
+
+
             <Modal
                 open={modalOpen}
                 onClose={() => setModalOpen(false)}
@@ -1056,7 +1201,6 @@ export default function GymPanelPage() {
                         )}
                     </Box>
 
-                    {/* Barra de carga en la parte inferior */}
                     {reloadingSesiones && (
                         <Box
                             sx={{
@@ -1097,7 +1241,6 @@ export default function GymPanelPage() {
                 </Box>
             </Modal>
 
-            {/* Modal de confirmación de inscripción */}
             <Modal
                 open={enrollModalOpen}
                 onClose={() => setEnrollModalOpen(false)}

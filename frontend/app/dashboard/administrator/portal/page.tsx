@@ -9,8 +9,6 @@ import {
     Button,
     TextField,
     Alert,
-    IconButton,
-    Tooltip,
     Divider,
 } from '@mui/material'
 import ContentCopyIcon from '@mui/icons-material/ContentCopy'
@@ -31,18 +29,14 @@ export default function PortalPage() {
     const qrRef = useRef<HTMLDivElement>(null)
 
     useEffect(() => {
-        // Obtener información del gym de las cookies
         const loadGymInfo = () => {
             try {
-                // Función para obtener una cookie por nombre
                 const getCookie = (name: string) => {
                     const value = `; ${document.cookie}`
                     const parts = value.split(`; ${name}=`)
                     if (parts.length === 2) return parts.pop()?.split(';').shift()
                     return null
                 }
-
-                // Obtener gym_name de las cookies
                 const gymName = getCookie('gym_name')
                 const gymColor = getCookie('gym_primary_color')
 
@@ -62,7 +56,6 @@ export default function PortalPage() {
                     setPrimaryColor(gymColor)
                 }
 
-                // Generar URL con el slug
                 const slug = slugify(gymName)
                 const url = `${window.location.origin}/gym/${slug}/login`
                 console.log('[loadGymInfo] Portal URL:', url)
@@ -93,40 +86,33 @@ export default function PortalPage() {
         const svg = qrRef.current.querySelector('svg')
         if (!svg) return
 
-        // Crear un canvas
         const canvas = document.createElement('canvas')
         const ctx = canvas.getContext('2d')
         if (!ctx) return
 
-        // Configurar el tamaño del canvas
-        const size = 1024 // Tamaño grande para mejor calidad
+        const size = 1024
         canvas.width = size
-        canvas.height = size + 150 // Espacio extra para el texto
+        canvas.height = size + 150 
 
-        // Fondo blanco
         ctx.fillStyle = '#FFFFFF'
         ctx.fillRect(0, 0, canvas.width, canvas.height)
 
-        // Convertir SVG a imagen
         const svgData = new XMLSerializer().serializeToString(svg)
         const svgBlob = new Blob([svgData], { type: 'image/svg+xml;charset=utf-8' })
         const url = URL.createObjectURL(svgBlob)
         const img = new Image()
 
         img.onload = () => {
-            // Dibujar QR centrado
             const qrSize = size * 0.8
             const qrX = (size - qrSize) / 2
             const qrY = 50
             ctx.drawImage(img, qrX, qrY, qrSize, qrSize)
 
-            // Agregar texto del gimnasio
             ctx.fillStyle = primaryColor
             ctx.font = 'bold 48px Arial'
             ctx.textAlign = 'center'
             ctx.fillText(gymName, size / 2, size + 100)
 
-            // Descargar
             canvas.toBlob((blob) => {
                 if (!blob) return
                 const url = URL.createObjectURL(blob)
@@ -167,7 +153,6 @@ export default function PortalPage() {
     return (
         <Container maxWidth="lg">
             <Stack spacing={4}>
-                {/* Header */}
                 <Box>
                     <Typography 
                         sx={{ fontSize: { xs: '2rem', sm: '2rem', md: '2.125rem' } }} 
@@ -181,7 +166,6 @@ export default function PortalPage() {
                     </Typography>
                 </Box>
 
-                {/* URL Card */}
                 <Paper
                     elevation={3}
                     sx={{
@@ -202,7 +186,6 @@ export default function PortalPage() {
 
                         <Divider />
 
-                        {/* URL Display */}
                         <Box>
                             <Stack spacing={2}>
                                 <TextField
@@ -243,7 +226,6 @@ export default function PortalPage() {
                             </Stack>
                         </Box>
 
-                        {/* Info Alert */}
                         <Alert severity="info" sx={{ mt: 2 }}>
                             <Typography variant="body2">
                                 Los alumnos solo necesitan su <strong>DNI</strong> para ingresar.
@@ -253,7 +235,6 @@ export default function PortalPage() {
                     </Stack>
                 </Paper>
 
-                {/* Código QR */}
                 <Paper
                     elevation={3}
                     sx={{
@@ -278,7 +259,6 @@ export default function PortalPage() {
                         <Divider />
 
                         <Stack direction={{ xs: 'column', md: 'row' }} spacing={4} alignItems="center">
-                            {/* QR Code */}
                             <Box
                                 ref={qrRef}
                                 sx={{
@@ -314,7 +294,6 @@ export default function PortalPage() {
                                 </Typography>
                             </Box>
 
-                            {/* Instrucciones */}
                             <Box flex={1}>
                                 <Stack spacing={2}>
                                     <Typography variant="subtitle1" fontWeight="bold">

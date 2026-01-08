@@ -57,7 +57,7 @@ export const getInputFieldsAlumnos: Field[] = [
     name: 'sexo',
     type: 'select',
     options: [{ label: 'Femenino', value: 'F', }, { label: 'Masculino', value: "M" }],
-    required: false,
+    required: true,
     placeholder: 'Selecciona el sexo',
   },
   {

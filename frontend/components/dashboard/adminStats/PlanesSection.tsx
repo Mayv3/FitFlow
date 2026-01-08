@@ -79,7 +79,14 @@ export function PlanesSection() {
 
   if (!data) return null;
 
-  const top5 = (data.top5 ?? []).slice(0, 5);
+  const top5 = [...(data.top5 ?? [])]
+    .sort(
+      (a: any, b: any) =>
+        Number(b.facturacion_mes_actual ?? 0) -
+        Number(a.facturacion_mes_actual ?? 0)
+    )
+    .slice(0, 5);
+    
   while (top5.length < 5) {
     top5.push({
       plan_id: `empty-${top5.length}`,

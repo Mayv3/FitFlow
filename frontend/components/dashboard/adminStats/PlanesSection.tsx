@@ -86,7 +86,7 @@ export function PlanesSection() {
         Number(a.facturacion_mes_actual ?? 0)
     )
     .slice(0, 5);
-    
+
   while (top5.length < 5) {
     top5.push({
       plan_id: `empty-${top5.length}`,
@@ -120,8 +120,6 @@ export function PlanesSection() {
     ['#FF0202', '#FFBCBC'],
     ['#00C853', '#B2FF59'],
   ];
-
-  const rankIcons = ['🥇', '🥈', '🥉', '⭐', '⭐'];
 
   return (
     <Box
@@ -163,7 +161,7 @@ export function PlanesSection() {
                   fontWeight={600}
                   sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}
                 >
-                  {rankIcons[i]} {p.plan_nombre}
+                  {p.plan_nombre}
                 </Typography>
                 <Box textAlign="right">
                   <Typography variant="caption" color="text.secondary">

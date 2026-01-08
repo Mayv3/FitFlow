@@ -86,7 +86,7 @@ const LoginPage = () => {
       })
 
       if (profile.role_id === ADMINISTRADOR) {
-        router.push("/dashboard/administrator/stats")
+        router.push("/dashboard/administrator/members")
       } else if (profile.role_id === RECEPCIONISTA) {
         router.push("/dashboard/receptionist/members")
       } else if (profile.role_id === SOCIO) {

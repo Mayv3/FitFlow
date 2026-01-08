@@ -118,10 +118,9 @@ export default function MembersList() {
   const normalizeMemberValues = (values: Partial<Member>) => ({
     ...values,
     plan_id: values.plan_id === '' || values.plan_id == null ? null : Number(values.plan_id),
-
     clases_pagadas: toNumOrNull(values.clases_pagadas),
     clases_realizadas: toNumOrNull(values.clases_realizadas),
-
+    origen: values.origen ?? null, 
     fecha_vencimiento: (values as any).fecha_vencimiento || null,
     fecha_nacimiento: values.fecha_nacimiento || null,
     fecha_inicio: values.fecha_inicio || null,
@@ -239,6 +238,7 @@ export default function MembersList() {
   };
 
   const triggerEdit = (member: Member) => {
+    console.log(member)
     setEditingMember(member);
     setOpenEdit(true);
   };

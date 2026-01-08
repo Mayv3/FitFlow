@@ -24,7 +24,6 @@ router.get('/gym/:gym_id/services', async (req, res) => {
   }
 });
 
-// Obtener sesiones de un servicio (público)
 router.get('/service/:service_id/sessions', async (req, res) => {
   try {
     const { service_id } = req.params;

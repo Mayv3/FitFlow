@@ -31,7 +31,7 @@ import Cookies from 'js-cookie'
 import { useRouter, usePathname } from 'next/navigation'
 import { ROLE_ROUTES } from '@/const/roles/roles'
 import { useSubscription } from '@/context/SubscriptionContext'
-
+import { SidebarSkeleton } from './SideBarSkeleton'
 type TabItem = { label: string; icon: React.ReactNode; route: string }
 type HeaderComponentProps = { tabs: TabItem[] }
 
@@ -80,27 +80,25 @@ export const SideBar = ({ tabs }: HeaderComponentProps) => {
   const [user_name, setUserName] = useState<string | null>(null)
   const [user_role, setUserRole] = useState<string | null>(null)
 
-  const { planName, hasFeature, isSubscriptionActive } = useSubscription()
+  const { planName, hasFeature, isSubscriptionActive, isSubscriptionLoading,
+  } = useSubscription()
 
-  const [sidebarBg, setSidebarBg] = useState<string>(() => readPrimary())
+  const [sidebarBg, setSidebarBg] = useState<string>(theme.palette.primary.main)
   const [upgradeModalOpen, setUpgradeModalOpen] = useState(false)
   const [blockedFeatureName, setBlockedFeatureName] = useState<string>('')
-  
+
   const defaultLogo = '/images/icon.png'
   const isDefaultLogo = !gym_logo_url
 
   const logout = useLogout()
 
-  // Verificar si un tab está habilitado según la suscripción
   const isTabEnabled = (route: string): boolean => {
     const feature = getFeatureFromRoute(route)
-    // Si no requiere feature específica, está habilitado
     if (!feature) return true
-    // Si no tiene suscripción activa, deshabilitar
     if (!isSubscriptionActive) return false
-    // Verificar si tiene la feature
-    return hasFeature(feature as any)
+    return hasFeature(feature as any) === true
   }
+
 
   const handleNav = (route: string, index?: number, enabled: boolean = true) => {
     if (!enabled) return // No navegar si está deshabilitado
@@ -123,6 +121,7 @@ export const SideBar = ({ tabs }: HeaderComponentProps) => {
     setUserRole(Cookies.get('rol') ?? null)
     try {
       setGymLogoUrl(localStorage.getItem('gym_logo_url') || null)
+      setSidebarBg(readPrimary())
     } catch { }
     setSidebarBg(readPrimary())
   }, [])
@@ -161,7 +160,9 @@ export const SideBar = ({ tabs }: HeaderComponentProps) => {
     setMounted(true)
   }, [])
 
-  if (!mounted) return null
+  if (!mounted || isSubscriptionLoading) {
+    return <SidebarSkeleton />
+  }
 
   const desktopSidebar = (
     <Box
@@ -275,12 +276,12 @@ export const SideBar = ({ tabs }: HeaderComponentProps) => {
                 bgcolor: selected && enabled ? '#fff' : 'transparent',
                 opacity: enabled ? 1 : 0.7,
                 cursor: 'pointer',
-                '&:hover': { 
-                  bgcolor: !enabled 
-                    ? 'rgba(245, 206, 8, 0.1)' 
-                    : selected 
-                      ? '#fff' 
-                      : 'rgba(255,255,255,0.10)' 
+                '&:hover': {
+                  bgcolor: !enabled
+                    ? 'rgba(245, 206, 8, 0.1)'
+                    : selected
+                      ? '#fff'
+                      : 'rgba(255,255,255,0.10)'
                 },
                 '&.Mui-selected': { bgcolor: '#fff !important' },
               }}
@@ -305,7 +306,7 @@ export const SideBar = ({ tabs }: HeaderComponentProps) => {
               >
                 <ListItemText
                   primary={tab.label}
-                  primaryTypographyProps={{ 
+                  primaryTypographyProps={{
                     color: !enabled ? '#F5CE08' : selected ? 'black' : 'white',
                     sx: { textDecoration: !enabled ? 'line-through' : 'none' }
                   }}
@@ -316,9 +317,9 @@ export const SideBar = ({ tabs }: HeaderComponentProps) => {
           return isExpanded ? (
             item
           ) : (
-            <Tooltip 
-              key={tab.route} 
-              title={!enabled ? `${tab.label} (No disponible en tu plan)` : tab.label} 
+            <Tooltip
+              key={tab.route}
+              title={!enabled ? `${tab.label} (No disponible en tu plan)` : tab.label}
               placement="right"
             >
               {item}
@@ -396,8 +397,8 @@ export const SideBar = ({ tabs }: HeaderComponentProps) => {
   )
 
   const upgradeModal = (
-    <Dialog 
-      open={upgradeModalOpen} 
+    <Dialog
+      open={upgradeModalOpen}
       onClose={() => setUpgradeModalOpen(false)}
       maxWidth="sm"
       fullWidth
@@ -435,11 +436,11 @@ export const SideBar = ({ tabs }: HeaderComponentProps) => {
         <Typography variant="body2" color="text.secondary">
           Actualizá tu plan para desbloquear esta y más funcionalidades avanzadas para tu gimnasio.
         </Typography>
-        <Box 
-          sx={{ 
-            mt: 3, 
-            p: 2, 
-            bgcolor: 'grey.100', 
+        <Box
+          sx={{
+            mt: 3,
+            p: 2,
+            bgcolor: 'grey.100',
             borderRadius: 2,
             border: '1px dashed',
             borderColor: 'grey.300'
@@ -454,20 +455,20 @@ export const SideBar = ({ tabs }: HeaderComponentProps) => {
         </Box>
       </DialogContent>
       <DialogActions sx={{ justifyContent: 'center', pb: 3, gap: 2 }}>
-        <Button 
-          variant="outlined" 
+        <Button
+          variant="outlined"
           onClick={() => setUpgradeModalOpen(false)}
           sx={{ px: 4 }}
         >
           Cerrar
         </Button>
-        <Button 
-          variant="contained" 
+        <Button
+          variant="contained"
           onClick={() => {
             window.open('mailto:contactofitnessflow@gmail.com?subject=Upgrade de Plan - ' + gym_name, '_blank')
             setUpgradeModalOpen(false)
           }}
-          sx={{ 
+          sx={{
             px: 4,
             bgcolor: '#F59E0B',
             '&:hover': { bgcolor: '#D97706' }
@@ -524,16 +525,16 @@ export const SideBar = ({ tabs }: HeaderComponentProps) => {
                     onMouseDown={() => enabled ? handleNav(tab.route, index, enabled) : handleBlockedClick(tab.label)}
                     onClick={() => enabled ? handleNav(tab.route, index, enabled) : handleBlockedClick(tab.label)}
                     sx={{
-                      color: !enabled 
-                        ? '#F5CE08' 
-                        : selectedIndex === index 
-                          ? 'black' 
+                      color: !enabled
+                        ? '#F5CE08'
+                        : selectedIndex === index
+                          ? 'black'
                           : 'white',
                       opacity: enabled ? 1 : 0.7,
                       cursor: 'pointer',
-                      '&.Mui-selected': { 
-                        color: 'black', 
-                        bgcolor: enabled ? 'white !important' : 'transparent' 
+                      '&.Mui-selected': {
+                        color: 'black',
+                        bgcolor: enabled ? 'white !important' : 'transparent'
                       },
                     }}
                   />

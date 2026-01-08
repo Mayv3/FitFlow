@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import {
   Card, CardContent, Box, Typography, ToggleButtonGroup, ToggleButton, Chip,
   useMediaQuery, Skeleton, Tooltip as MuiTooltip,

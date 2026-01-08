@@ -7,6 +7,7 @@ import { FacturacionSection } from './FacturacionSection';
 import { CustomBreadcrumbs } from '@/components/ui/breadcrums/CustomBreadcrumbs';
 import { DemografiaSection } from './DemografiaSection';
 import { PlanesSection } from './PlanesSection';
+import { AsistenciasSection } from './AsistenciasSection';
 
 export default function Overview() {
   return (
@@ -21,7 +22,7 @@ export default function Overview() {
       <FacturacionSection />
       <DemografiaSection />
       <PlanesSection/>
-
+      <AsistenciasSection/>
     </Container>
 
   );

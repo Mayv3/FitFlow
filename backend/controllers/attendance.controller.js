@@ -4,6 +4,7 @@ import {
   getAsistenciaById,
   deleteAsistencia
 } from '../services/asistencias.supabase.js'
+import { supabaseAdmin } from '../db/supabaseClient.js'
 
 export const listAsistencias = async (req, res) => {
   try {
@@ -50,3 +51,53 @@ export const removeAsistencia = async (req, res) => {
     res.status(400).json({ error: error.message })
   }
 }
+
+export const getAsistenciasHoyByGym = async (req, res) => {
+  const { gym_id } = req.params;
+
+  try {
+    const { data, error } = await supabaseAdmin
+      .from('asistencias')
+      .select('id', { count: 'exact', head: true })
+      .eq('gym_id', gym_id)
+      .eq('fecha', new Date().toISOString().slice(0, 10));
+
+    if (error) throw error;
+
+    res.json({
+      gym_id,
+      fecha: new Date().toISOString().slice(0, 10),
+      total: data?.length ?? 0,
+    });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+};
+
+export const getAsistenciasHoyByHora = async (req, res) => {
+  const { gym_id } = req.params;
+  const hoy = new Date().toISOString().slice(0, 10);
+
+  try {
+    const { data, error } = await supabaseAdmin.rpc(
+      'asistencias_hoy_por_hora',
+      { gym_id_param: gym_id, fecha_param: hoy }
+    );
+
+    if (error) throw error;
+
+    const total = data?.reduce(
+      (acc, item) => acc + (item.total || 0),
+      0
+    ) ?? 0;
+
+    res.json({
+      gym_id,
+      fecha: hoy,
+      items: data,
+      total,
+    });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+};

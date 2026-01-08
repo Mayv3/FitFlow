@@ -3,7 +3,7 @@ import {
   listAsistencias,
   addAsistencia,
   getAsistencia,
-  removeAsistencia
+  removeAsistencia,
 } from '../controllers/attendance.controller.js'
 import { verifyToken } from '../middleware/auth.js'
 import {supaPerRequest} from '../middleware/supaPerRequest.js'
@@ -15,5 +15,6 @@ router.get('/', listAsistencias)
 router.post('/', addAsistencia)
 router.get('/:id', getAsistencia)
 router.delete('/:id', removeAsistencia)
+
 
 export default router

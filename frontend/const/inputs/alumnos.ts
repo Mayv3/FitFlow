@@ -61,6 +61,19 @@ export const getInputFieldsAlumnos: Field[] = [
     placeholder: 'Selecciona el sexo',
   },
   {
+    label: '¿Cómo nos conoció? (obligatorio)',
+    name: 'origen',
+    type: 'select',
+    required: true,
+    placeholder: 'Selecciona el origen',
+    options: [
+      { label: 'Instagram', value: 'instagram' },
+      { label: 'Facebook', value: 'facebook' },
+      { label: 'Recomendación', value: 'recomendacion' },
+      { label: 'Otro', value: 'otro' },
+    ],
+  },
+  {
     label: 'Clases pagadas (obligatorio)',
     name: 'clases_pagadas',
     type: 'string',
@@ -117,4 +130,6 @@ export const layoutAlumnos = {
   sexo: { rowStart: 4, colStart: 9, colSpan: 4 },
   fecha_inicio: { rowStart: 5, colStart: 1, colSpan: 6 },
   fecha_de_vencimiento: { rowStart: 5, colStart: 7, colSpan: 6 },
+  origen: { rowStart: 6, colStart: 1, colSpan: 12 },
+
 };

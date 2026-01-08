@@ -1,5 +1,5 @@
 import * as React from 'react';
-import { Chip, Tooltip } from '@mui/material';
+import { Chip, Tooltip, Box } from '@mui/material';
 import { alpha } from '@mui/material/styles';
 import CheckCircleRounded from '@mui/icons-material/CheckCircleRounded';
 import AccessTimeRounded from '@mui/icons-material/AccessTimeRounded';
@@ -19,10 +19,10 @@ export function StateCheap({
 }) {
   const icon =
     code === 'active' ? <CheckCircleRounded /> :
-      code === 'expiring' ? <AccessTimeRounded /> :
-        code === 'expired' ? <ErrorOutlineRounded /> :
-          code === 'limit' ? undefined :
-            <RemoveCircleOutlineRounded />;
+    code === 'expiring' ? <AccessTimeRounded /> :
+    code === 'expired' ? <ErrorOutlineRounded /> :
+    code === 'limit' ? undefined :
+    <RemoveCircleOutlineRounded />;
 
   const sx = (theme: any) => {
     const soft = (color: string) => ({
@@ -39,7 +39,7 @@ export function StateCheap({
       none: {
         bgcolor: alpha(theme.palette.text.primary, 0.06),
         color: alpha(theme.palette.text.primary, 0.7),
-        border: `1px solid ${alpha(theme.palette.text.primary, 0.12)}`
+        border: `1px solid ${alpha(theme.palette.text.primary, 0.12)}`,
       },
     } as const;
 
@@ -54,13 +54,15 @@ export function StateCheap({
 
   const hint =
     code === 'active' && daysDiff != null ? `Vence en ${daysDiff} día(s)` :
-      code === 'expiring' && daysDiff != null ? `Vence en ${daysDiff} día(s)` :
-        code === 'expired' && daysDiff != null ? `Venció hace ${Math.abs(daysDiff)} día(s)` :
-          label;
+    code === 'expiring' && daysDiff != null ? `Vence en ${daysDiff} día(s)` :
+    code === 'expired' && daysDiff != null ? `Venció hace ${Math.abs(daysDiff)} día(s)` :
+    label;
 
   return (
     <Tooltip title={hint}>
-      <Chip size="small" icon={icon} label={label} sx={sx} />
+      <Box component="span" sx={{ display: 'inline-flex' }}>
+        <Chip size="small" icon={icon} label={label} sx={sx} />
+      </Box>
     </Tooltip>
   );
 }

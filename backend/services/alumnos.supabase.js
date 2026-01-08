@@ -159,7 +159,7 @@ export async function getAlumnosService({ page, limit, q = '' }, supaClient) {
     .select(`
       id, dni, nombre, email, telefono,
       fecha_nacimiento, fecha_inicio, fecha_de_vencimiento,
-      clases_pagadas, clases_realizadas, sexo,
+      clases_pagadas, clases_realizadas, sexo, origen,
       gym_id, plan_id,
       plan:planes_precios ( id, nombre )
     `, { count: 'exact' })

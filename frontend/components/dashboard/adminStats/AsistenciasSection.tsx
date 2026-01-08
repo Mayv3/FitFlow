@@ -17,8 +17,13 @@ export function AsistenciasSection() {
         gap={2}
         mt="14px"
       >
+
         <AsistenciasHoyListaCard />
         <AsistenciasHoyPorHoraCard />
+
+        {/*
+
+        */}
       </Box>
     </Box>
   );

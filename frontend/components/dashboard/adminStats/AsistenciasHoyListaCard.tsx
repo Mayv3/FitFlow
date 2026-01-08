@@ -32,9 +32,8 @@ export function AsistenciasHoyListaCard() {
                 }
                 return acc;
             }, [])
-            .sort((a: any, b: any) => {
-                return b.hora.localeCompare(a.hora);
-            })
+            ?.sort((a: any, b: any) => b.hora.localeCompare(a.hora))
+        ?? [];
 
     const totalAsistencias = alumnosHoy.length;
 

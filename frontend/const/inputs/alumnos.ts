@@ -67,10 +67,9 @@ export const getInputFieldsAlumnos: Field[] = [
     required: true,
     placeholder: 'Selecciona el origen',
     options: [
-      { label: 'Instagram', value: 'instagram' },
-      { label: 'Facebook', value: 'facebook' },
-      { label: 'Recomendación', value: 'recomendacion' },
-      { label: 'Otro', value: 'otro' },
+      { label: 'Red Social / Publicidad', value: 'Red-Social/Publicidad' },
+      { label: 'Cercania / Vecindad', value: 'Cercania/Vecindad' },
+      { label: 'Recomendación / Familiar / Conocido', value: 'Recomendacion' },
     ],
   },
   {

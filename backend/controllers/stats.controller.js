@@ -1,3 +1,4 @@
+import { supabaseAdmin } from '../db/supabaseClient.js';
 import { getPaymentsStatsService } from '../services/paymentsStats.supabase.js';
 import { getDashboardData, getDemografiaStatsService, getGymStatsService, getPlanesStatsService } from '../services/stats.supabase.js';
 
@@ -115,3 +116,38 @@ export async function getPlanesStatsController(req, res) {
     return res.status(500).json({ error: "Error interno del servidor" });
   }
 }
+
+export const getAlumnosPorOrigenController = async (req, res) => {
+  const { gym_id } = req.params;
+  const { year, month } = req.query;
+
+  if (!year || !month) {
+    return res.status(400).json({
+      error: 'Parámetros requeridos: year y month'
+    });
+  }
+
+  try {
+    const { data, error } = await supabaseAdmin.rpc(
+      'alumnos_por_origen_por_mes',
+      {
+        gym_id_param: gym_id,
+        year_param: Number(year),
+        month_param: Number(month),
+      }
+    );
+
+    if (error) throw error;
+
+    res.json({
+      gym_id,
+      year: Number(year),
+      month: Number(month),
+      items: data ?? [],
+    });
+  } catch (err) {
+    res.status(500).json({
+      error: err.message,
+    });
+  }
+};

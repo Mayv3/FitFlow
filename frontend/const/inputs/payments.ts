@@ -114,7 +114,6 @@ export const getInputFieldsPagos = ({
             label: 'Hora (obligatorio)',
             name: 'hora',
             type: 'time',
-            defaultValue: horaActualArgentina,
         },
         {
             label: 'Responsable',

@@ -33,7 +33,7 @@ import {
 import CloseIcon from '@mui/icons-material/Close';
 
 import { useUser } from '@/context/UserContext';
-import { useAsistenciasHoyPorHora } from '@/hooks/assists/useAsistenciasHoy';
+import { useAsistencias } from '@/hooks/assists/useAsistenciasHoy';
 import { useState } from 'react';
 
 const COLOR_MAIN = '#ff7a18';
@@ -43,11 +43,15 @@ const horaToMinutos = (hora: string) => {
   return h * 60 + m;
 };
 
+type Props = {
+  fecha: string | null;
+};
 
-export function AsistenciasHoyPorHoraCard() {
+
+export function AsistenciasHoyPorHoraCard({ fecha }: Props) {
   const { user } = useUser();
   const gymId = user?.gym_id ?? '';
-  const { data, isLoading } = useAsistenciasHoyPorHora(gymId);
+  const { data, isLoading } = useAsistencias(gymId, { fecha });
   const t = useTheme();
   const isMobile = useMediaQuery(t.breakpoints.down('sm'));
   const [open, setOpen] = useState(false);
@@ -97,8 +101,8 @@ export function AsistenciasHoyPorHoraCard() {
   } as const;
 
   const asistencias =
-    data?.items?.map((d: any) => ({
-      hora: `${d.hora}:00`,
+    data?.porHora?.map((d: any) => ({
+      hora: `${String(d.hora).padStart(2, '0')}:00`,
       cantidad: d.total,
     })) ?? [];
 
@@ -139,7 +143,6 @@ export function AsistenciasHoyPorHoraCard() {
             width: '100%',
             height: 260,
             cursor: 'pointer',
-
             '& svg': {
               cursor: 'pointer',
             },
@@ -152,7 +155,7 @@ export function AsistenciasHoyPorHoraCard() {
                   if (!e || !e.activeLabel) return;
 
                   const hora = parseInt(e.activeLabel);
-                  const detalle = data?.items?.find(
+                  const detalle = data?.porHora?.find(
                     (i: any) => i.hora === hora
                   );
 
@@ -161,11 +164,11 @@ export function AsistenciasHoyPorHoraCard() {
                   setHoraSeleccionada(`${hora}:00`);
                   setTotalHora(detalle.total);
                   setAlumnosHora(
-                    [...detalle.alumnos].sort(
+                    [...(detalle.alumnos ?? [])].sort(
                       (a: any, b: any) =>
                         horaToMinutos(b.hora) - horaToMinutos(a.hora)
                     )
-                  )
+                  );
                   setOpen(true);
                 }}
               >

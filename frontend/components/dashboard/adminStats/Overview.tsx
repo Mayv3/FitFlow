@@ -8,6 +8,7 @@ import { CustomBreadcrumbs } from '@/components/ui/breadcrums/CustomBreadcrumbs'
 import { DemografiaSection } from './DemografiaSection';
 import { PlanesSection } from './PlanesSection';
 import { AsistenciasSection } from './AsistenciasSection';
+import { AlumnosPorOrigenSection } from './AlumnosPorOrigenSection';
 
 export default function Overview() {
   return (
@@ -21,6 +22,7 @@ export default function Overview() {
       <KpisRow />
       <FacturacionSection />
       <DemografiaSection />
+      <AlumnosPorOrigenSection/>
       <PlanesSection/>
       <AsistenciasSection/>
     </Container>

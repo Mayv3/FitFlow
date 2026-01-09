@@ -37,3 +37,9 @@ export const estadoVencimiento = (
   if (diff <= diasAviso) return { label: `Por vencer`, code: 'expiring', daysDiff: diff };
   return { label: 'Activo', code: 'active', daysDiff: diff };
 };
+
+export const horaActualArgentinaFunction = (): string => {
+  return moment()
+    .tz('America/Argentina/Buenos_Aires')
+    .format('HH:mm');
+};

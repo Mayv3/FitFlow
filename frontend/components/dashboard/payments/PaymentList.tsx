@@ -26,7 +26,7 @@ import {
 import { GenericModal } from '@/components/ui/modals/GenericModal';
 import { notify } from '@/lib/toast';
 import { PaymentStats } from './stats/PaymentStats';
-import { fechaHoyArgentinaSinFormato } from '@/utils/date/dateUtils';
+import { fechaHoyArgentinaSinFormato, horaActualArgentina, horaActualArgentinaFunction } from '@/utils/date/dateUtils';
 import moment from 'moment';
 import { usePaymentsStats } from '@/hooks/stats/usePaymentsStats';
 
@@ -234,8 +234,6 @@ export default function PaymentList() {
         }
     };
 
-
-
     const handleDelete = (id: number) => {
         setDeletingId(id);
         setOpenDelete(true);
@@ -365,7 +363,9 @@ export default function PaymentList() {
                     open={openAdd}
                     title="Añadir un pago"
                     fields={fields}
-                    initialValues={null}
+                    initialValues={{
+                        hora: horaActualArgentinaFunction(),
+                    }}
                     onClose={() => setOpenAdd(false)}
                     onSubmit={handleAddPayment}
                     confirmText="Guardar"

@@ -5,13 +5,12 @@ function getTokenFromCookie(): string | null {
 
   return document.cookie
     .split('; ')
-    .find((row) => row.startsWith('token='))
-    ?.split('=')[1] ?? null;
+    .find((row) => row.startsWith('token='))?.split('=')[1] ?? null;
 }
 
 async function fetchWithAuth(url: string) {
   const token = getTokenFromCookie();
-  if (!token) return null;
+  if (!token) throw new Error('No auth token');
 
   const res = await fetch(url, {
     headers: {
@@ -27,34 +26,35 @@ async function fetchWithAuth(url: string) {
   return res.json();
 }
 
-export function useAsistenciasHoy(gymId?: string) {
-  return useQuery({
-    queryKey: ['asistencias', 'hoy', gymId],
-    queryFn: () =>
-      gymId
-        ? fetchWithAuth(
-            `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/stats/dashboard/gyms/${gymId}/asistencias/hoy`
-          )
-        : null,
-    enabled: !!gymId,
-    staleTime: 60_000,
-    refetchInterval: 60_000,
-    refetchOnWindowFocus: false,
-  });
-}
+type Params = {
+  fecha?: string | null;
+};
 
-export function useAsistenciasHoyPorHora(gymId?: string) {
+export function useAsistencias(gymId?: string, params?: Params) {
+  const fecha = params?.fecha;
+  const qs = fecha ? `?fecha=${fecha}` : '';
+
   return useQuery({
-    queryKey: ['asistencias', 'hoy', 'por-hora', gymId],
-    queryFn: () =>
-      gymId
-        ? fetchWithAuth(
-            `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/stats/dashboard/gyms/${gymId}/asistencias/hoy/por-hora`
-          )
-        : null,
+    queryKey: ['asistencias', gymId, fecha],
+    queryFn: async () => {
+      if (!gymId) return null;
+
+      const baseUrl = `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/stats/dashboard/gyms/${gymId}`;
+
+      const [resTotal, resPorHora] = await Promise.all([
+        fetchWithAuth(`${baseUrl}/asistencias${qs}`),
+        fetchWithAuth(`${baseUrl}/asistencias/por-hora${qs}`),
+      ]);
+
+      return {
+        gym_id: gymId,
+        fecha: resTotal.fecha,
+        total: resTotal.total,
+        porHora: resPorHora.items,
+      };
+    },
     enabled: !!gymId,
     staleTime: 60_000,
-    refetchInterval: 60_000,
     refetchOnWindowFocus: false,
   });
 }

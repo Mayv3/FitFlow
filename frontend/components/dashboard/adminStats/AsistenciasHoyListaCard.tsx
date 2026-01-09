@@ -8,23 +8,26 @@ import {
     CircularProgress,
 } from '@mui/material';
 import { useTheme, alpha } from '@mui/material/styles';
-
+import { DatePicker } from '@mui/x-date-pickers/DatePicker';
+import dayjs, { Dayjs } from 'dayjs';
 import { useUser } from '@/context/UserContext';
-import { useAsistenciasHoyPorHora } from '@/hooks/assists/useAsistenciasHoy';
-
+import { useAsistencias } from '@/hooks/assists/useAsistenciasHoy';
+import moment, { Moment } from 'moment';
 const COLOR_MAIN = '#ff7a18';
 
-export function AsistenciasHoyListaCard() {
+type Props = {
+    fecha: string | null;
+    onFechaChange: (fecha: string | null) => void;
+};
+
+export function AsistenciasHoyListaCard({ fecha, onFechaChange }: Props) {
     const { user } = useUser();
     const gymId = user?.gym_id ?? '';
-    const { data, isLoading } = useAsistenciasHoyPorHora(gymId);
+    const { data, isLoading } = useAsistencias(gymId, { fecha });
     const t = useTheme();
-    const horaToMinutos = (hora: string) => {
-        const [h, m] = hora.split(':').map(Number);
-        return h * 60 + m;
-    };
+
     const alumnosHoy =
-        data?.items
+        data?.porHora
             ?.flatMap((item: any) => item.alumnos ?? [])
             ?.reduce((acc: any[], alumno: any) => {
                 if (!acc.find(a => a.alumno_id === alumno.alumno_id)) {
@@ -35,20 +38,44 @@ export function AsistenciasHoyListaCard() {
             ?.sort((a: any, b: any) => b.hora.localeCompare(a.hora))
         ?? [];
 
-    const totalAsistencias = alumnosHoy.length;
-
     return (
         <Card
             sx={{
                 borderRadius: 2,
-                border: `1px solid ${alpha(t.palette.text.primary, 0.06)}`,
                 height: '100%',
+
             }}
         >
             <CardContent>
-                <Typography variant="subtitle1" fontWeight={600} mb={1}>
-                    Alumnos que asistieron hoy
-                </Typography>
+                <Box
+                    display="flex"
+                    alignItems={{ xs: 'flex-start', sm: 'center' }}
+                    justifyContent="space-between"
+                    p={1}
+                    mb={1}
+                >
+                    <Typography variant="subtitle2" color="text.secondary">
+                        Alumnos que asistieron
+                    </Typography>
+
+                    <DatePicker
+                        label="Fecha"
+                        value={fecha ? moment(fecha) : moment()}
+                        onChange={(newValue: Moment | null) =>
+                            onFechaChange(newValue ? newValue.format('YYYY-MM-DD') : null)
+                        }
+                        maxDate={moment()}
+                        slotProps={{
+                            textField: {
+                                size: 'small',
+                                sx: {
+                                    width: 160,
+                                },
+                            },
+                        }}
+                    />
+
+                </Box>
 
                 {isLoading ? (
                     <Box
@@ -63,32 +90,24 @@ export function AsistenciasHoyListaCard() {
                     </Box>
                 ) : alumnosHoy.length === 0 ? (
                     <Typography variant="body2" color="text.secondary">
-                        No hubo asistencias registradas hoy.
+                        No hubo asistencias registradas para esta fecha.
                     </Typography>
                 ) : (
                     <Box
                         sx={{
                             display: 'grid',
-                            gridTemplateColumns: '1fr',
-                            gap: 1,
+                            gap: 2,
                             mt: 1,
                             maxHeight: 250,
                             overflowY: 'auto',
-                            pr: 0.5,
-                            scrollbarWidth: 'none',
+                            scrollbarWidth: 'none',          // Firefox
                             '&::-webkit-scrollbar': {
-                                width: 6,
+                                display: 'none',               // Chrome / Safari
                             },
-                            '&::-webkit-scrollbar-thumb': {
-                                backgroundColor: alpha(t.palette.primary.main, 0.25),
-                                borderRadius: 8,
-                            },
-                            '&::-webkit-scrollbar-track': {
-                                background: 'transparent',
-                            },
+                            cursor: 'pointer',
                         }}
                     >
-                        {alumnosHoy.map((a: any, idx: number) => (
+                        {alumnosHoy.map((a: any) => (
                             <Box
                                 key={a.alumno_id}
                                 sx={{
@@ -99,28 +118,22 @@ export function AsistenciasHoyListaCard() {
                                     borderRadius: 2,
                                     px: 2,
                                     py: 1.5,
-                                    gap: 1,
                                 }}
                             >
-                                <Box display="flex" alignItems="center" minWidth={0}>
-
-
-                                    <Typography fontWeight={500} noWrap>
-                                        {a.nombre}
-                                    </Typography>
-                                </Box>
+                                <Typography fontWeight={500} noWrap>
+                                    {a.nombre}
+                                </Typography>
 
                                 <Typography
                                     variant="body2"
                                     color="text.secondary"
-                                    sx={{ fontWeight: 600, whiteSpace: 'nowrap' }}
+                                    sx={{ fontWeight: 600 }}
                                 >
                                     {a.hora} hs
                                 </Typography>
                             </Box>
                         ))}
                     </Box>
-
                 )}
             </CardContent>
         </Card>

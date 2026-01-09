@@ -52,48 +52,57 @@ export const removeAsistencia = async (req, res) => {
   }
 }
 
-export const getAsistenciasHoyByGym = async (req, res) => {
+export const getAsistenciasByGym = async (req, res) => {
   const { gym_id } = req.params;
+  const { fecha } = req.query;
+
+  // si no viene fecha → hoy
+  const fechaFiltro =
+    fecha ?? new Date().toISOString().slice(0, 10);
 
   try {
-    const { data, error } = await supabaseAdmin
+    const { data, error, count } = await supabaseAdmin
       .from('asistencias')
       .select('id', { count: 'exact', head: true })
       .eq('gym_id', gym_id)
-      .eq('fecha', new Date().toISOString().slice(0, 10));
+      .eq('fecha', fechaFiltro);
 
     if (error) throw error;
 
     res.json({
       gym_id,
-      fecha: new Date().toISOString().slice(0, 10),
-      total: data?.length ?? 0,
+      fecha: fechaFiltro,
+      total: count ?? 0,
     });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
 };
 
-export const getAsistenciasHoyByHora = async (req, res) => {
+export const getAsistenciasByHora = async (req, res) => {
   const { gym_id } = req.params;
-  const hoy = new Date().toISOString().slice(0, 10);
+  const { fecha } = req.query;
+
+  const fechaFiltro =
+    fecha ?? new Date().toISOString().slice(0, 10);
 
   try {
     const { data, error } = await supabaseAdmin.rpc(
       'asistencias_hoy_por_hora',
-      { gym_id_param: gym_id, fecha_param: hoy }
+      {
+        gym_id_param: gym_id,
+        fecha_param: fechaFiltro,
+      }
     );
 
     if (error) throw error;
 
-    const total = data?.reduce(
-      (acc, item) => acc + (item.total || 0),
-      0
-    ) ?? 0;
+    const total =
+      data?.reduce((acc, item) => acc + (item.total || 0), 0) ?? 0;
 
     res.json({
       gym_id,
-      fecha: hoy,
+      fecha: fechaFiltro,
       items: data,
       total,
     });
@@ -101,3 +110,5 @@ export const getAsistenciasHoyByHora = async (req, res) => {
     res.status(500).json({ error: err.message });
   }
 };
+
+

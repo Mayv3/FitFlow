@@ -103,8 +103,8 @@ export const ColorPickerPopover = ({
                     paper: {
                         sx: {
                             width,
-                            maxHeight: 340,   // 🔥 altura máxima del popover
-                            overflow: "hidden", // evita que se rompa el layout
+                            maxHeight: 340,
+                            overflowX: "hidden", // ✅ nunca scroll X
                         },
                     },
                 }}
@@ -114,11 +114,12 @@ export const ColorPickerPopover = ({
                 <Box
                     sx={{
                         display: "grid",
-                        gridTemplateColumns: "repeat(5, 1fr)",
+                        gridTemplateColumns: "repeat(4, minmax(0, 1fr))", // ✅ 4 colores por fila
                         gap: 1,
                         p: 1,
-                        maxHeight: 340,       // mismo alto que el paper
-                        overflowY: "auto",   // 🔥 scroll vertical
+                        maxHeight: 340,
+                        overflowY: "auto",
+                        overflowX: "hidden", // ✅ nunca scroll X
                     }}
                 >
                     {presetColors.map((c) => (
@@ -130,13 +131,15 @@ export const ColorPickerPopover = ({
                                 setAnchorEl(null)
                             }}
                             sx={{
-                                width: 50,
-                                height: 50,
+                                width: "100%",
+                                aspectRatio: "1 / 1",
                                 borderRadius: "50%",
                                 backgroundColor: c,
                                 border: value === c ? "2px solid black" : "1px solid transparent",
                                 cursor: "pointer",
                                 justifySelf: "center",
+                                maxWidth: 56,
+                                minWidth: 36,
                                 "&:hover": { opacity: 0.85 },
                             }}
                         />

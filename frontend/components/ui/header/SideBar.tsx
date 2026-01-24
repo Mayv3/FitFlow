@@ -277,7 +277,7 @@ export const SideBar = ({ tabs }: HeaderComponentProps) => {
               sx={{
                 borderRadius: 2,
                 mb: 1,
-                height: 48,
+                height: 40,
                 px: 1.45,
                 bgcolor: selected && enabled ? '#fff' : 'transparent',
                 opacity: enabled ? 1 : 0.7,

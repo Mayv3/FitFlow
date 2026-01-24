@@ -16,6 +16,8 @@ import {
   useMediaQuery,
   Tooltip,
   Checkbox,
+  Snackbar,
+  Alert,
 } from '@mui/material'
 import { useTheme } from '@mui/material/styles'
 import { FormModal } from '@/components/ui/modals/FormModal'
@@ -84,6 +86,11 @@ export default function Appointments() {
   const calendarRef = useRef<FullCalendar | null>(null)
   const [openDelete, setOpenDelete] = useState(false)
   const [addToCalendar, setAddToCalendar] = useState(false)
+  const [toast, setToast] = useState<{ open: boolean; message: string; severity: 'success' | 'error' | 'info' }>({
+    open: false,
+    message: '',
+    severity: 'info'
+  })
 
   const theme = useTheme()
   const isMobile = useMediaQuery(theme.breakpoints.down('md'))
@@ -240,10 +247,57 @@ export default function Appointments() {
           maxWidth: { xs: '100%' },
           height: { xs: '70vh', md: '84vh' },
           mx: 'auto',
-          backgroundColor: '#fff',
+          backgroundColor: theme.palette.background.paper,
           borderRadius: 2,
           p: { xs: 1.5, md: 2 },
           boxShadow: 2,
+          '& .fc': {
+            backgroundColor: theme.palette.background.paper,
+            color: theme.palette.text.primary,
+          },
+          '& .fc-toolbar-title': {
+            color: theme.palette.text.primary,
+          },
+          '& .fc-button': {
+            backgroundColor: theme.palette.primary.main,
+            borderColor: theme.palette.primary.main,
+            color: '#fff',
+            '&:hover': {
+              backgroundColor: theme.palette.primary.dark,
+            },
+          },
+          '& .fc-button-active': {
+            backgroundColor: theme.palette.primary.dark,
+          },
+          '& .fc-col-header-cell': {
+            backgroundColor: theme.palette.mode === 'dark' ? '#2a2a2a' : '#f5f5f5',
+            color: theme.palette.text.primary,
+          },
+          '& .fc-daygrid-day': {
+            backgroundColor: theme.palette.background.default,
+            color: theme.palette.text.primary,
+          },
+          '& .fc-daygrid-day-number': {
+            color: theme.palette.text.primary,
+          },
+          '& .fc-daygrid-day.fc-day-today': {
+            backgroundColor: theme.palette.mode === 'dark' ? '#1a3a2a' : '#e8f5e9',
+          },
+          '& .fc-event': {
+            borderColor: theme.palette.primary.main,
+            backgroundColor: theme.palette.primary.main,
+          },
+          '& .fc-daygrid-event': {
+            backgroundColor: theme.palette.primary.main,
+            borderColor: theme.palette.primary.main,
+            color: '#fff',
+          },
+          '& .fc-scrollgrid': {
+            borderColor: theme.palette.divider,
+          },
+          '& .fc-scrollgrid td, & .fc-scrollgrid th': {
+            borderColor: theme.palette.divider,
+          },
         }}
       >
         <FullCalendar
@@ -276,6 +330,9 @@ export default function Appointments() {
             const event = info.event
             const token = Cookies.get('token')
 
+            // Mostrar toast de carga
+            setToast({ open: true, message: 'Actualizando turno...', severity: 'info' })
+
             try {
               const inicio = event.start
               if (!inicio) return
@@ -301,9 +358,14 @@ export default function Appointments() {
                 throw new Error('Error al actualizar turno')
               }
 
+              // Mostrar toast de éxito
+              setToast({ open: true, message: 'Turno actualizado correctamente', severity: 'success' })
+
             } catch (error) {
               console.error(error)
               info.revert() // 👈 vuelve a la fecha original si falla
+              // Mostrar toast de error
+              setToast({ open: true, message: 'Error al actualizar el turno', severity: 'error' })
             }
           }}
         />
@@ -402,6 +464,30 @@ export default function Appointments() {
         confirmText="Eliminar"
         cancelText="Cancelar"
       />
+
+      <Snackbar
+        open={toast.open}
+        autoHideDuration={3000}
+        onClose={() => setToast({ ...toast, open: false })}
+        anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
+      >
+        <Alert 
+          onClose={() => setToast({ ...toast, open: false })} 
+          severity={toast.severity}
+          variant="filled"
+          sx={{ 
+            width: '100%',
+            '& .MuiAlert-message': {
+              color: '#fff',
+            },
+            '& .MuiAlert-icon': {
+              color: '#fff',
+            },
+          }}
+        >
+          {toast.message}
+        </Alert>
+      </Snackbar>
 
       <ReactQueryDevtools initialIsOpen={false} />
     </Box>

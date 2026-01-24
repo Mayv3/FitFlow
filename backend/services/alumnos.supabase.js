@@ -31,7 +31,7 @@ export async function getAlumnoByDNI(dni, supaClient) {
 
 export async function getAlumnoById(id) {
   console.log(`[getAlumnoById] Buscando alumno con id: ${id}`);
-  
+
   const { data, error } = await supabase
     .from('alumnos')
     .select('id, nombre, dni, email')
@@ -45,7 +45,7 @@ export async function getAlumnoById(id) {
     console.error(`[getAlumnoById] Error obteniendo alumno:`, error);
     throw error;
   }
-  
+
   return data;
 }
 
@@ -176,7 +176,7 @@ export async function getAlumnosService({ page, limit, q = '' }, supaClient) {
   }
 
   const { data, count, error } = await query
-    .order('id', { ascending: false })
+    .order('nombre', { ascending: true })
     .range(offset, offset + limit - 1);
 
 

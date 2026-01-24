@@ -39,15 +39,23 @@ export const FormModal = <T extends Record<string, any>>({
   const firstInputRef = React.useRef<HTMLInputElement | null>(null)
 
   const origenPago = values['origen_pago'];
-  const metodoSeleccionado = values['metodo_pago'];
+  const metodoSeleccionadoRaw = values['metodo_pago'];
+  const metodoSeleccionado = (() => {
+    if (metodoSeleccionadoRaw === 1 || metodoSeleccionadoRaw === '1' || metodoSeleccionadoRaw === 'Efectivo') return 'Efectivo';
+    if (metodoSeleccionadoRaw === 2 || metodoSeleccionadoRaw === '2' || metodoSeleccionadoRaw === 'Tarjeta') return 'Tarjeta';
+    if (metodoSeleccionadoRaw === 3 || metodoSeleccionadoRaw === '3' || metodoSeleccionadoRaw === 'Mercado Pago') return 'Mercado Pago';
+    if (metodoSeleccionadoRaw === 4 || metodoSeleccionadoRaw === '4' || metodoSeleccionadoRaw === 'Mixto') return 'Mixto';
+    return '';
+  })();
 
   const visibleFields = fields.filter(field => {
     const isPagoForm = fields.some(f => f.name === 'origen_pago');
 
     if (isPagoForm) {
-      if (!origenPago && (field.name === 'plan_id' || field.name === 'servicio_id')) return false;
-      if (origenPago === 'plan' && field.name === 'servicio_id') return false;
-      if (origenPago === 'servicio' && field.name === 'plan_id') return false;
+      if (!origenPago && (field.name === 'plan_id' || field.name === 'servicio_id' || field.name === 'producto_id')) return false;
+      if (origenPago === 'plan' && (field.name === 'servicio_id' || field.name === 'producto_id')) return false;
+      if (origenPago === 'servicio' && (field.name === 'plan_id' || field.name === 'producto_id')) return false;
+      if (origenPago === 'producto' && (field.name === 'plan_id' || field.name === 'servicio_id')) return false;
       if (['monto_efectivo', 'monto_mp', 'monto_tarjeta'].includes(field.name)) {
         if (metodoSeleccionado === 'Efectivo') return field.name === 'monto_efectivo';
         if (metodoSeleccionado === 'Mercado Pago') return field.name === 'monto_mp';
@@ -198,6 +206,32 @@ export const FormModal = <T extends Record<string, any>>({
         }
       }
 
+      if (name === 'producto_id') {
+        const selectedProduct = fields
+          .find(f => f.name === 'producto_id')
+          ?.options?.find(opt => opt.value === newVal);
+
+        let precioProducto = 0;
+        if (selectedProduct?.label) {
+          const match = selectedProduct.label.match(/\(\$\s?([\d.,]+)\)/);
+          if (match) {
+            precioProducto = Number(match[1].replace(/\./g, '').replace(',', '.'));
+          }
+        }
+
+        if (precioProducto > 0) {
+          const mutableNext = next as Record<string, any>;
+          if (metodoSeleccionado === 'Efectivo') mutableNext['monto_efectivo'] = String(precioProducto);
+          else if (metodoSeleccionado === 'Mercado Pago') mutableNext['monto_mp'] = String(precioProducto);
+          else if (metodoSeleccionado === 'Tarjeta') mutableNext['monto_tarjeta'] = String(precioProducto);
+          else if (metodoSeleccionado === 'Mixto') {
+            mutableNext['monto_efectivo'] = '';
+            mutableNext['monto_mp'] = '';
+            mutableNext['monto_tarjeta'] = '';
+          }
+        }
+      }
+
       if (name === 'metodo_pago') {
         const mutableNext = { ...next } as Record<string, any>;
 
@@ -206,19 +240,28 @@ export const FormModal = <T extends Record<string, any>>({
           Number(mutableNext['monto_mp'] || 0) +
           Number(mutableNext['monto_tarjeta'] || 0);
 
-        if (newVal === 'Efectivo') {
+        // Normalizar valor a string para comparación (1=Efectivo, 2=Tarjeta, 3=MP, 4=Mixto)
+        const metodoStr = (() => {
+          if (newVal === 1 || newVal === '1') return 'Efectivo';
+          if (newVal === 2 || newVal === '2') return 'Tarjeta';
+          if (newVal === 3 || newVal === '3') return 'Mercado Pago';
+          if (newVal === 4 || newVal === '4') return 'Mixto';
+          return newVal;
+        })();
+
+        if (metodoStr === 'Efectivo') {
           mutableNext['monto_efectivo'] = total ? String(total) : '';
           mutableNext['monto_mp'] = '';
           mutableNext['monto_tarjeta'] = '';
-        } else if (newVal === 'Mercado Pago') {
+        } else if (metodoStr === 'Mercado Pago') {
           mutableNext['monto_mp'] = total ? String(total) : '';
           mutableNext['monto_efectivo'] = '';
           mutableNext['monto_tarjeta'] = '';
-        } else if (newVal === 'Tarjeta') {
+        } else if (metodoStr === 'Tarjeta') {
           mutableNext['monto_tarjeta'] = total ? String(total) : '';
           mutableNext['monto_efectivo'] = '';
           mutableNext['monto_mp'] = '';
-        } else if (newVal === 'Mixto') {
+        } else if (metodoStr === 'Mixto') {
           mutableNext['monto_efectivo'] = '';
           mutableNext['monto_mp'] = '';
           mutableNext['monto_tarjeta'] = '';
@@ -336,7 +379,10 @@ export const FormModal = <T extends Record<string, any>>({
     const t = setTimeout(() => {
       if (firstInputRef.current) {
         firstInputRef.current.focus()
-        firstInputRef.current.select()
+        // Solo llamar select() si el elemento tiene este método (inputs de texto)
+        if (typeof firstInputRef.current.select === 'function') {
+          firstInputRef.current.select()
+        }
       }
     }, 150)
     return () => clearTimeout(t)
@@ -362,7 +408,13 @@ export const FormModal = <T extends Record<string, any>>({
       }}
     >
       <FormEnterToTab onSubmit={handleSubmit}>
-        <DialogTitle sx={{ px: { xs: 2, sm: 3 }, py: { xs: 1.5, sm: 2 } }}>{title}</DialogTitle>
+        <DialogTitle sx={{ 
+          px: { xs: 2, sm: 3 }, 
+          py: { xs: 1.5, sm: 2 },
+          bgcolor: theme.palette.background.paper,
+          color: theme.palette.text.primary,
+          borderBottom: `1px solid ${theme.palette.divider}`,
+        }}>{title}</DialogTitle>
 
         <DialogContent
           dividers
@@ -371,6 +423,8 @@ export const FormModal = <T extends Record<string, any>>({
             py: { xs: 2, sm: 3 },
             maxHeight: { xs: '68vh', sm: '72vh' },
             overflowY: 'auto',
+            bgcolor: theme.palette.background.paper,
+            color: theme.palette.text.primary,
           }}
         >
           <Box
@@ -587,7 +641,11 @@ export const FormModal = <T extends Record<string, any>>({
                   >
                     {field.type === 'select' &&
                       options.map(opt => (
-                        <MenuItem key={String(opt.value)} value={opt.value ?? ''}>
+                        <MenuItem 
+                          key={String(opt.value)} 
+                          value={opt.value ?? ''} 
+                          disabled={(opt as any).disabled ?? false}
+                        >
                           {opt.label}
                         </MenuItem>
                       ))}
@@ -617,8 +675,8 @@ export const FormModal = <T extends Record<string, any>>({
             px: { xs: 2, sm: 3 },
             py: { xs: 1.5, sm: 2 },
             gap: 1.5,
-            bgcolor: 'background.paper',
-            borderTop: theme => `1px solid ${theme.palette.divider}`,
+            bgcolor: theme.palette.background.paper,
+            borderTop: `1px solid ${theme.palette.divider}`,
             flexDirection: { xs: 'column-reverse', sm: 'row' },
             '& > :is(button, .MuiBox-root)': {
               width: { xs: '100%', sm: 'auto' },

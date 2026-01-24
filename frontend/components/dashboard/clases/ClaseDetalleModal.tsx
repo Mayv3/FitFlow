@@ -298,15 +298,15 @@ export function ClaseDetalleModal({ open, onClose, clase, gymId }: ClaseDetalleM
                                                                                     sx={{
                                                                                         mb: 1,
                                                                                         border: '2px solid',
-                                                                                        borderColor: alumno.es_fija ? '#F59E0B' : 'divider',
+                                                                                        borderColor: alumno.es_fija ? (theme) => theme.palette.mode === 'dark' ? '#424242' : 'primary.main' : 'divider',
                                                                                         borderRadius: 1,
-                                                                                        bgcolor: alumno.es_fija ? '#FEF3C7' : 'transparent',
+                                                                                        
                                                                                     }}
                                                                                 >
                                                                                     <ListItem sx={{ py: 1 }}>
                                                                                         <ListItemAvatar>
                                                                                             <Avatar sx={{ 
-                                                                                                bgcolor: alumno.es_fija ? '#F59E0B' : 'primary.main', 
+                                                                                                bgcolor: alumno.es_fija ? (theme) => theme.palette.mode === 'dark' ? '#424242' : 'primary.main' : 'primary.main', 
                                                                                                 width: 32, 
                                                                                                 height: 32 
                                                                                             }}>
@@ -315,7 +315,7 @@ export function ClaseDetalleModal({ open, onClose, clase, gymId }: ClaseDetalleM
                                                                                         </ListItemAvatar>
                                                                                         <ListItemText
                                                                                             primary={
-                                                                                                <Stack direction="row" spacing={1} alignItems="center">
+                                                                                                <Stack direction="row" spacing={1} alignIptems="center">
                                                                                                     <Typography variant="body2" fontWeight="medium">
                                                                                                         {alumno.nombre || 'Sin nombre'}
                                                                                                     </Typography>
@@ -324,7 +324,7 @@ export function ClaseDetalleModal({ open, onClose, clase, gymId }: ClaseDetalleM
                                                                                                             label="Fija"
                                                                                                             size="small"
                                                                                                             sx={{
-                                                                                                                bgcolor: '#F59E0B',
+                                                                                                                bgcolor: (theme) => theme.palette.mode === 'dark' ? '#424242' : 'primary.main',
                                                                                                                 color: '#fff',
                                                                                                                 fontWeight: 600,
                                                                                                                 fontSize: '0.65rem',
@@ -507,12 +507,12 @@ export function ClaseDetalleModal({ open, onClose, clase, gymId }: ClaseDetalleM
                                                                                     sx={{
                                                                                         mb: 1,
                                                                                         border: '2px solid',
-                                                                                        borderColor: alumno.es_fija ? '#F59E0B' : 'divider',
+                                                                                        borderColor: alumno.es_fija ? (theme) => theme.palette.mode === 'dark' ? '#424242' : 'primary.main' : 'divider',
                                                                                         borderRadius: 1,
-                                                                                        bgcolor: alumno.es_fija ? '#FEF3C7' : 'transparent',
+                                                                                        bgcolor: alumno.es_fija ? (theme) => theme.palette.mode === 'dark' ? '#303030' : 'transparent' : 'transparent',
                                                                                         transition: 'all 0.2s',
                                                                                         '&:hover': {
-                                                                                            borderColor: alumno.es_fija ? '#F59E0B' : 'primary.main',
+                                                                                            borderColor: alumno.es_fija ? (theme) => theme.palette.mode === 'dark' ? '#FFD700' : 'primary.main' : 'primary.main',
                                                                                             boxShadow: 1,
                                                                                         },
                                                                                     }}
@@ -520,7 +520,8 @@ export function ClaseDetalleModal({ open, onClose, clase, gymId }: ClaseDetalleM
                                                                                     <ListItem>
                                                                                         <ListItemAvatar>
                                                                                             <Avatar sx={{ 
-                                                                                                bgcolor: alumno.es_fija ? '#F59E0B' : 'primary.main', 
+                                                                                                color: '#fff',
+                                                                                                bgcolor: alumno.es_fija ? (theme) => theme.palette.mode === 'dark' ? '#424242' : '#FFD700' : 'primary.main', 
                                                                                                 width: 36, 
                                                                                                 height: 36 
                                                                                             }}>
@@ -538,7 +539,7 @@ export function ClaseDetalleModal({ open, onClose, clase, gymId }: ClaseDetalleM
                                                                                                             label="Fija"
                                                                                                             size="small"
                                                                                                             sx={{
-                                                                                                                bgcolor: '#F59E0B',
+                                                                                                                bgcolor: (theme) => theme.palette.mode === 'dark' ? '#424242' : 'primary.main',
                                                                                                                 color: '#fff',
                                                                                                                 fontWeight: 600,
                                                                                                                 fontSize: '0.7rem',

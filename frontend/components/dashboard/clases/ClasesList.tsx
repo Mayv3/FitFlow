@@ -21,6 +21,7 @@ import { ClaseFormModal } from './ClaseFormModal'
 import { ClaseDetalleModal } from './ClaseDetalleModal'
 import axios from 'axios'
 import { useQueryClient } from '@tanstack/react-query'
+import tableSize from '@/const/tables/tableSize'
 
 export default function ClasesList() {
     const { user, loading: userLoading } = useUser()
@@ -39,7 +40,7 @@ export default function ClasesList() {
     const [claseDetalle, setClaseDetalle] = useState<any | null>(null)
 
     const [page, setPage] = useState(1)
-    const pageSize = 20
+
     const [q, setQ] = useState('')
 
     const {
@@ -47,7 +48,7 @@ export default function ClasesList() {
         total,
         isLoading,
         isFetching,
-    } = useClases(gymId, page, pageSize, q)
+    } = useClases(gymId, page, tableSize, q)
 
     const addClase = useAddClase(gymId)
     const editClase = useEditClase(gymId)
@@ -284,7 +285,7 @@ export default function ClasesList() {
                 paginationMode="server"
                 rowCount={total}
                 page={page - 1}
-                pageSize={pageSize}
+                pageSize={tableSize}
                 onPaginationModelChange={({ page: newPage }) => setPage(newPage + 1)}
                 loading={isFetching}
             />

@@ -1,8 +1,39 @@
 import { useState } from 'react';
-import { Box, Card, CardContent, Stack, Typography, IconButton, CircularProgress, Divider } from '@mui/material';
+import { Box, Card, CardContent, Stack, Typography, IconButton, CircularProgress, Divider, useTheme } from '@mui/material';
 import { DataGrid, GridColDef, GridPaginationModel } from '@mui/x-data-grid';
 import ChevronLeftIcon from '@mui/icons-material/ChevronLeft';
 import ChevronRightIcon from '@mui/icons-material/ChevronRight';
+import { esES } from '@mui/x-data-grid/locales';
+
+const localeTextES = {
+  noRowsLabel: 'Sin registros',
+  noResultsOverlayLabel: 'Sin resultados encontrados.',
+  errorOverlayDefaultLabel: 'Ocurrió un error.',
+  toolbarDensity: 'Densidad',
+  toolbarDensityLabel: 'Densidad',
+  toolbarDensityCompact: 'Compacta',
+  toolbarDensityStandard: 'Estándar',
+  toolbarDensityComfortable: 'Cómoda',
+  toolbarColumns: 'Columnas',
+  toolbarColumnsLabel: 'Seleccionar columnas',
+  toolbarFilters: 'Filtros',
+  toolbarFiltersLabel: 'Ver filtros',
+  toolbarFiltersTooltipHide: 'Ocultar filtros',
+  toolbarFiltersTooltipShow: 'Mostrar filtros',
+  toolbarQuickFilterPlaceholder: 'Buscar…',
+  toolbarQuickFilterLabel: 'Buscar',
+  toolbarQuickFilterDeleteIconLabel: 'Limpiar',
+  footerRowSelected: (count: number) =>
+    count !== 1 ? `${count.toLocaleString()} filas seleccionadas` : `${count} fila seleccionada`,
+  footerTotalRows: 'Filas Totales:',
+  footerTotalVisibleRows: (visibleCount: number, totalCount: number) =>
+    `${visibleCount.toLocaleString()} de ${totalCount.toLocaleString()}`,
+  MuiTablePagination: {
+    labelRowsPerPage: 'Filas por página:',
+    labelDisplayedRows: ({ from, to, count }: any) =>
+      `${from === 0 ? 0 : from}–${to} de ${count !== -1 ? count : `más de ${to}`}`,
+  },
+};
 
 type GenericDataGridProps<T extends { id: string | number }> = {
   title?: string;
@@ -28,16 +59,17 @@ export function GenericDataGrid<T extends { id: string | number }>({
   loading = false,
   height = 600,
 }: GenericDataGridProps<T>) {
+  const theme = useTheme();
   const [mobilePage, setMobilePage] = useState(0);
   const mobilePageSize = 10;
 
   // Para vista móvil - calcular paginación
   const startIndex = mobilePage * mobilePageSize;
   const endIndex = startIndex + mobilePageSize;
-  const paginatedRows = paginationMode === 'client' 
+  const paginatedRows = paginationMode === 'client'
     ? rows.slice(startIndex, endIndex)
     : rows;
-  
+
   const totalPages = paginationMode === 'client'
     ? Math.ceil(rows.length / mobilePageSize)
     : Math.ceil((rowCount || 0) / pageSize);
@@ -56,16 +88,19 @@ export function GenericDataGrid<T extends { id: string | number }>({
         <Box sx={{ minWidth: '1400px', height: '100%' }}>
           <DataGrid
             sx={{
-              backgroundColor: 'white',
+              backgroundColor: theme.palette.background.paper,
               height: '100%',
               minHeight: 400,
-              '& .MuiDataGrid-main': { backgroundColor: 'white' },
-              '& .MuiDataGrid-columnHeaders': { backgroundColor: 'white' },
-              '& .MuiDataGrid-columnHeader': { backgroundColor: 'white' },
-              '& .MuiDataGrid-columnHeadersInner': { backgroundColor: 'white' },
-              '& .MuiDataGrid-virtualScroller': { backgroundColor: 'white' },
-              '& .MuiDataGrid-footerContainer': { backgroundColor: 'white' },
+              '& .MuiDataGrid-main': { backgroundColor: theme.palette.background.paper },
+              '& .MuiDataGrid-columnHeaders': { backgroundColor: theme.palette.background.paper },
+              '& .MuiDataGrid-columnHeader': { backgroundColor: theme.palette.background.paper },
+              '& .MuiDataGrid-columnHeadersInner': { backgroundColor: theme.palette.background.paper },
+              '& .MuiDataGrid-virtualScroller': { backgroundColor: theme.palette.background.paper },
+              '& .MuiDataGrid-footerContainer': { backgroundColor: theme.palette.background.paper },
+              '& .MuiDataGrid-cell': { color: theme.palette.text.primary },
+              '& .MuiDataGrid-columnHeaderTitle': { color: theme.palette.text.primary, fontWeight: 600 },
             }}
+            localeText={esES.components.MuiDataGrid.defaultProps.localeText}
             autoHeight={false}
             checkboxSelection={false}
             hideFooterSelectedRowCount
@@ -83,10 +118,10 @@ export function GenericDataGrid<T extends { id: string | number }>({
             {...(paginationMode === 'client' && {
               initialState: {
                 sorting: { sortModel: [{ field: 'nombre', sort: 'asc' }] },
-                pagination: { paginationModel: { page: 0, pageSize: 20 } },
+                pagination: { paginationModel: { page: 0, pageSize: 10 } },
               },
             })}
-            pageSizeOptions={[20]}
+            pageSizeOptions={[10]}
           />
         </Box>
       </Box>
@@ -106,8 +141,8 @@ export function GenericDataGrid<T extends { id: string | number }>({
             {paginatedRows.map((row: any) => (
               <Card key={row.id} variant="outlined" sx={{ borderRadius: 2 }}>
                 <CardContent>
-                  <Box sx={{ 
-                    display: 'grid', 
+                  <Box sx={{
+                    display: 'grid',
                     gridTemplateColumns: 'repeat(2, 1fr)',
                     gap: 2,
                     mb: 2,
@@ -118,7 +153,7 @@ export function GenericDataGrid<T extends { id: string | number }>({
                       .filter(col => col.field !== 'acciones' && col.field !== 'id')
                       .map((col) => {
                         const value = row[col.field];
-                        const cellContent = col.renderCell 
+                        const cellContent = col.renderCell
                           ? col.renderCell({ row, value, field: col.field } as any)
                           : value;
 
@@ -146,60 +181,60 @@ export function GenericDataGrid<T extends { id: string | number }>({
                         );
                       })}
                   </Box>
-                    
+
                   {/* Acciones al final */}
                   {columns.find(col => col.field === 'acciones') && (
                     <>
                       <Divider sx={{ mb: 2 }} />
-                        <Box sx={{
-                          '& > div': {
-                            display: 'flex',
-                            gap: 1,
-                            width: '100%',
-                          },
-                          '& button, & a': {
-                            flex: 1,
-                            minHeight: 44,
-                            borderRadius: 1,
-                            fontWeight: 600,
-                          },
-                          '& button.MuiIconButton-colorPrimary': {
-                            bgcolor: 'primary.main',
-                            color: 'white',
-                            '&:hover': {
-                              bgcolor: 'primary.dark',
-                            }
-                          },
-                          '& button.MuiIconButton-colorError': {
-                            bgcolor: 'error.main',
-                            color: 'white',
-                            '&:hover': {
-                              bgcolor: 'error.dark',
-                            }
-                          },
-                          '& button.MuiIconButton-colorSuccess': {
-                            bgcolor: 'success.main',
-                            color: 'white',
-                            '&:hover': {
-                              bgcolor: 'success.dark',
-                            }
-                          },
-                          '& button.MuiIconButton-colorInfo': {
-                            bgcolor: 'info.main',
-                            color: 'white',
-                            '&:hover': {
-                              bgcolor: 'info.dark',
-                            }
-                          },
-                          '& button.MuiIconButton-colorWarning': {
-                            bgcolor: 'warning.main',
-                            color: 'white',
-                            '&:hover': {
-                              bgcolor: 'warning.dark',
-                            }
+                      <Box sx={{
+                        '& > div': {
+                          display: 'flex',
+                          gap: 1,
+                          width: '100%',
+                        },
+                        '& button, & a': {
+                          flex: 1,
+                          minHeight: 44,
+                          borderRadius: 1,
+                          fontWeight: 600,
+                        },
+                        '& button.MuiIconButton-colorPrimary': {
+                          bgcolor: 'primary.main',
+                          color: 'white',
+                          '&:hover': {
+                            bgcolor: 'primary.dark',
                           }
-                        }}>
-                          {columns.find(col => col.field === 'acciones')?.renderCell?.({ row, value: null, field: 'acciones' } as any)}
+                        },
+                        '& button.MuiIconButton-colorError': {
+                          bgcolor: 'error.main',
+                          color: 'white',
+                          '&:hover': {
+                            bgcolor: 'error.dark',
+                          }
+                        },
+                        '& button.MuiIconButton-colorSuccess': {
+                          bgcolor: 'success.main',
+                          color: 'white',
+                          '&:hover': {
+                            bgcolor: 'success.dark',
+                          }
+                        },
+                        '& button.MuiIconButton-colorInfo': {
+                          bgcolor: 'info.main',
+                          color: 'white',
+                          '&:hover': {
+                            bgcolor: 'info.dark',
+                          }
+                        },
+                        '& button.MuiIconButton-colorWarning': {
+                          bgcolor: 'warning.main',
+                          color: 'white',
+                          '&:hover': {
+                            bgcolor: 'warning.dark',
+                          }
+                        }
+                      }}>
+                        {columns.find(col => col.field === 'acciones')?.renderCell?.({ row, value: null, field: 'acciones' } as any)}
                       </Box>
                     </>
                   )}
@@ -236,7 +271,7 @@ export function GenericDataGrid<T extends { id: string | number }>({
                   Anterior
                 </Typography>
               </Box>
-              
+
               <Box
                 sx={{
                   flex: 1,
@@ -256,7 +291,7 @@ export function GenericDataGrid<T extends { id: string | number }>({
                   {mobilePage + 1} / {totalPages}
                 </Typography>
               </Box>
-              
+
               <Box
                 onClick={() => mobilePage < totalPages - 1 && handleMobilePageChange(mobilePage + 1)}
                 sx={{

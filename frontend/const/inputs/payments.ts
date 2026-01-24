@@ -5,10 +5,12 @@ import Cookies from "js-cookie";
 export const getInputFieldsPagos = ({
     planOptions,
     serviceOptions,
+    productOptions,
     searchFromCache
 }: {
     planOptions: { label: string; value: number }[];
     serviceOptions: { label: string; value: number }[];
+    productOptions: { label: string; value: string }[];
     searchFromCache: (gymId: string, q: string) => { label: string; value: any }[];
 }): Field[] => [
         {
@@ -28,6 +30,7 @@ export const getInputFieldsPagos = ({
             options: [
                 { label: 'Plan', value: 'plan' },
                 { label: 'Servicio', value: 'servicio' },
+                { label: 'Producto', value: 'producto' },
             ],
         },
         {
@@ -48,6 +51,14 @@ export const getInputFieldsPagos = ({
             placeholder: 'Selecciona un servicio',
         },
         {
+            label: 'Producto',
+            name: 'producto_id',
+            type: 'select',
+            options: productOptions,
+            required: false,
+            placeholder: 'Selecciona un producto',
+        },
+        {
             label: 'Tipo (obligatorio)',
             name: 'tipo',
             type: 'select',
@@ -56,7 +67,8 @@ export const getInputFieldsPagos = ({
                 { label: 'Mensualidad', value: 'Mensualidad' },
                 { label: 'Inscripción', value: 'Inscripcion' },
                 { label: 'Clase suelta', value: 'Clase_suelta' },
-                { label: 'Otro', value: 'otro' },
+                { label: 'Producto', value: 'Producto' },
+                { label: 'Otro', value: 'Otro' },
             ],
         },
         {
@@ -65,10 +77,10 @@ export const getInputFieldsPagos = ({
             type: 'select',
             required: true,
             options: [
-                { label: 'Efectivo', value: 'Efectivo' },
-                { label: 'Mercado Pago', value: 'Mercado Pago' },
-                { label: 'Tarjeta', value: 'Tarjeta' },
-                { label: 'Mixto', value: 'Mixto' },
+                { label: 'Efectivo', value: 1 },
+                { label: 'Tarjeta', value: 2 },
+                { label: 'Mercado Pago', value: 3 },
+                { label: 'Mixto', value: 4 },
             ],
             placeholder: 'Selecciona un método de pago',
         },
@@ -132,6 +144,7 @@ export const layoutPayments = {
     tipo: { rowStart: 2, colStart: 7, colSpan: 6 },
     plan_id: { rowStart: 3, colStart: 1, colSpan: 12 },
     servicio_id: { rowStart: 3, colStart: 1, colSpan: 12 },
+    producto_id: { rowStart: 3, colStart: 1, colSpan: 12 },
     monto_efectivo: { rowStart: 4, colStart: 1, colSpan: 4 },
     monto_mp: { rowStart: 4, colStart: 5, colSpan: 4 },
     monto_tarjeta: { rowStart: 4, colStart: 9, colSpan: 4 },

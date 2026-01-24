@@ -6,6 +6,8 @@ import {
   useMediaQuery, Skeleton, Tooltip as MuiTooltip,
 } from '@mui/material';
 import { alpha, useTheme } from '@mui/material/styles';
+import { GlowingEffect } from '@/components/ui/glowing-effect';
+import { useGymThemeSettings } from '@/hooks/useGymThemeSettings';
 import {
   ResponsiveContainer, PieChart, Pie, Cell, Tooltip as ReTooltip,
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip,
@@ -48,6 +50,7 @@ const formatWeek = (fecha: string) => {
 export function FacturacionSection() {
   const t = useTheme();
   const isMobile = useMediaQuery(t.breakpoints.down('sm'));
+  const { borderRadius } = useGymThemeSettings();
 
   const [range, setRange] = useState<Rango>('12m');
   const { data } = useKpis();
@@ -120,205 +123,225 @@ export function FacturacionSection() {
   const barSize = isMobile ? Math.max(10, barSizeBase - 6) : barSizeBase;
 
   const cardSx = {
-    borderRadius: 2,
+    borderRadius: 1.5,
     border: `1px solid ${alpha(t.palette.text.primary, 0.06)}`,
-    bgcolor: t.palette.background.paper,
+    bgcolor: t.palette.mode === 'dark' ? '#0a0a0a' : t.palette.background.paper,
     height: '100%',
     boxShadow: '0 2px 6px rgba(0,0,0,0.04)',
   } as const;
 
   return (
     <Box display="grid" gridTemplateColumns={{ xs: '1fr', md: '2fr 3fr' }} gap={1.5} alignItems="stretch" mb={1.5}>
-      <Card sx={cardSx}>
-        <CardContent>
-          <Box display="flex" alignItems="center" gap={1} mb={1}>
-            <Typography variant="subtitle2" color="text.secondary">
-              Alumnos (estado y movimiento)
-            </Typography>
-            <InfoTooltip
-              title="Este gráfico muestra la distribución de alumnos activos, inactivos, altas y bajas en el período actual."
-              placement="right"
-            />
-          </Box>
-
-          <Box sx={{ height: CHART_HEIGHT }}>
-            <ResponsiveContainer>
-              <PieChart margin={{ top: 0, right: 0, bottom: 0, left: 0 }}>
-                <defs>
-                  {[
-                    ['#FFA45B', '#FF6CA3'],
-                    ['#1DC8FF', '#1674FF'],
-                    ['#6B00FF', '#FF30C8'],
-                    ['#FF0202FF', '#FFBCBCFF'],
-                  ].map(([c1, c2], i) => (
-                    <linearGradient key={i} id={`donut-grad-${i}`} x1="0" y1="0" x2="1" y2="1">
-                      <stop offset="0%" stopColor={c1} />
-                      <stop offset="100%" stopColor={c2} />
-                    </linearGradient>
-                  ))}
-                </defs>
-
-                <Pie
-                  data={donutData}
-                  dataKey="value"
-                  nameKey="label"
-                  innerRadius="62%"
-                  outerRadius="90%"
-                  startAngle={90}
-                  endAngle={-270}
-                  stroke="transparent"
-                >
-                  {donutData.map((d, i) => (
-                    <Cell key={d.key} fill={`url(#donut-grad-${i})`} />
-                  ))}
-                </Pie>
-
-                <ReTooltip
-                  content={
-                    <RoundedTooltip
-                      formatter={(entry) =>
-                        `${entry.payload.tooltip || entry.payload.label}: ${entry.value.toLocaleString("es-AR")}`
-                      }
-                    />
-                  }
-                />
-
-              </PieChart>
-            </ResponsiveContainer>
-          </Box>
-
-          <Box
-            display="flex"
-            gap={2}
-            flexWrap="wrap"
-            justifyContent="center"
-          >
-            {donutData.map((d, i) => {
-              const grads = [
-                'linear-gradient(135deg, #FFA45B, #FF6CA3)',
-                'linear-gradient(135deg, #1DC8FF, #1674FF)',
-                'linear-gradient(135deg, #6B00FF, #FF30C8)',
-                'linear-gradient(135deg, #FF0202FF, #FFBCBCFF)',
-              ];
-              return (
-                <MuiTooltip key={d.key} title={donutExplanations[d.key]} arrow>
-                  <Box
-                    component="span"
-                    display="inline-flex"
-                    alignItems="center"
-                    justifyContent="center"
-                    gap={1}
-                    sx={{
-                      cursor: 'help',
-                      minWidth: { xs: '45%', sm: 'auto' },
-                      maxWidth: { xs: '45%', sm: 'none' },
-                      flexDirection: { xs: 'column', sm: 'row' },
-                      textAlign: { xs: 'center', sm: 'left' },
-                    }}
-                  >
-                    <Box
-                      sx={{
-                        width: 20,
-                        height: 20,
-                        borderRadius: '50%',
-                        background: grads[i],
-                        flexShrink: 0,
-                      }}
-                    />
-                    <Box>
-                      <Typography variant="body2" color="text.secondary">
-                        {d.label}
-                      </Typography>
-                      <Typography variant="body2" fontWeight={700} display="block">
-                        {(d.value ?? 0).toLocaleString('es-AR')}
-                      </Typography>
-                    </Box>
-                  </Box>
-                </MuiTooltip>
-              );
-            })}
-          </Box>
-
-        </CardContent>
-      </Card>
-
-      <Card sx={cardSx}>
-        <CardContent>
-          <Box
-            display="flex"
-            justifyContent={{ xs: 'center', sm: 'space-between' }}
-            alignItems={{ xs: 'stretch', sm: 'center' }}
-            flexDirection={{ xs: 'column', sm: 'row' }}
-            gap={{ xs: 1, sm: 0 }}
-          >
-            <Typography variant="subtitle2" color="text.secondary">Facturación</Typography>
-            <Box>
-              <ToggleButtonGroup
-                fullWidth={isMobile}
-                size="small"
-                value={range}
-                exclusive
-                onChange={(_, v) => v && setRange(v)}
-              >
-                <ToggleButton value="12m"><Chip label="12 meses" size="small" /></ToggleButton>
-                <ToggleButton value="7w">Por semana</ToggleButton>
-                <ToggleButton value="30d">Por día</ToggleButton>
-                <ToggleButton value="24h">24 horas</ToggleButton>
-              </ToggleButtonGroup>
+      <Box sx={{ position: 'relative', borderRadius }}>
+        <GlowingEffect
+          spread={40}
+          glow={true}
+          disabled={false}
+          proximity={64}
+          inactiveZone={0.01}
+          borderWidth={3}
+        />
+        <Card sx={{ ...cardSx, position: 'relative' }}>
+          <CardContent>
+            <Box display="flex" alignItems="center" gap={1} mb={1}>
+              <Typography variant="subtitle2" color="text.secondary">
+                Alumnos (estado y movimiento)
+              </Typography>
+              <InfoTooltip
+                title="Este gráfico muestra la distribución de alumnos activos, inactivos, altas y bajas en el período actual."
+                placement="right"
+              />
             </Box>
-          </Box>
 
-          <Box sx={{ height: CHART_HEIGHT }}>
-            <ResponsiveContainer>
-              <BarChart
-                data={barData}
-                barCategoryGap={8}
-                barGap={4}
-                margin={{ top: 0, right: 8, bottom: 0, left: isMobile ? 8 : 48 }}
-              >
-                <defs>
-                  <linearGradient id="revenueGrad" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0%" stopColor="#FF6A00" />
-                    <stop offset="100%" stopColor="#FF2D55" />
-                  </linearGradient>
-                </defs>
+            <Box sx={{ height: CHART_HEIGHT }}>
+              <ResponsiveContainer>
+                <PieChart margin={{ top: 0, right: 0, bottom: 0, left: 0 }}>
+                  <defs>
+                    {[
+                      ['#FFA45B', '#FF6CA3'],
+                      ['#1DC8FF', '#1674FF'],
+                      ['#6B00FF', '#FF30C8'],
+                      ['#FF0202FF', '#FFBCBCFF'],
+                    ].map(([c1, c2], i) => (
+                      <linearGradient key={i} id={`donut-grad-${i}`} x1="0" y1="0" x2="1" y2="1">
+                        <stop offset="0%" stopColor={c1} />
+                        <stop offset="100%" stopColor={c2} />
+                      </linearGradient>
+                    ))}
+                  </defs>
 
-                <CartesianGrid vertical={false} stroke={alpha(t.palette.text.primary, 0.08)} />
+                  <Pie
+                    data={donutData}
+                    dataKey="value"
+                    nameKey="label"
+                    innerRadius="62%"
+                    outerRadius="90%"
+                    startAngle={90}
+                    endAngle={-270}
+                    stroke="transparent"
+                  >
+                    {donutData.map((d, i) => (
+                      <Cell key={d.key} fill={`url(#donut-grad-${i})`} />
+                    ))}
+                  </Pie>
 
-                <XAxis dataKey="m" tickLine={false} axisLine={false} tickMargin={8}
-                  tick={{ fontSize: isMobile ? 10 : 12 }} />
-
-                {isMobile ? (
-                  <YAxis hide domain={[0, 'auto']} />
-                ) : (
-                  <YAxis
-                    tickLine={false}
-                    axisLine={false}
-                    width={80}
-                    tickMargin={8}
-                    tickFormatter={(v) => fmtARS(v as number, data.currency)}
-                    domain={[0, 'auto']}
+                  <ReTooltip
+                    content={
+                      <RoundedTooltip
+                        formatter={(entry) =>
+                          `${entry.payload.tooltip || entry.payload.label}: ${entry.value.toLocaleString("es-AR")}`
+                        }
+                      />
+                    }
                   />
-                )}
 
-                <Tooltip
-                  cursor={{ fill: alpha(t.palette.primary.main, 0.06) }}
-                  content={
-                    <RoundedTooltip
-                      formatter={(entry) =>
-                        `${entry.name}: ${fmtARS(entry.value, data.currency)}`
-                      }
+                </PieChart>
+              </ResponsiveContainer>
+            </Box>
+
+            <Box
+              display="flex"
+              gap={2}
+              flexWrap="wrap"
+              justifyContent="center"
+            >
+              {donutData.map((d, i) => {
+                const grads = [
+                  'linear-gradient(135deg, #FFA45B, #FF6CA3)',
+                  'linear-gradient(135deg, #1DC8FF, #1674FF)',
+                  'linear-gradient(135deg, #6B00FF, #FF30C8)',
+                  'linear-gradient(135deg, #FF0202FF, #FFBCBCFF)',
+                ];
+                return (
+                  <MuiTooltip key={d.key} title={donutExplanations[d.key]} arrow>
+                    <Box
+                      component="span"
+                      display="inline-flex"
+                      alignItems="center"
+                      justifyContent="center"
+                      gap={1}
+                      sx={{
+                        cursor: 'help',
+                        minWidth: { xs: '45%', sm: 'auto' },
+                        maxWidth: { xs: '45%', sm: 'none' },
+                        flexDirection: { xs: 'column', sm: 'row' },
+                        textAlign: { xs: 'center', sm: 'left' },
+                      }}
+                    >
+                      <Box
+                        sx={{
+                          width: 20,
+                          height: 20,
+                          borderRadius: '50%',
+                          background: grads[i],
+                          flexShrink: 0,
+                        }}
+                      />
+                      <Box>
+                        <Typography variant="body2" color="text.secondary">
+                          {d.label}
+                        </Typography>
+                        <Typography variant="body2" fontWeight={700} display="block">
+                          {(d.value ?? 0).toLocaleString('es-AR')}
+                        </Typography>
+                      </Box>
+                    </Box>
+                  </MuiTooltip>
+                );
+              })}
+            </Box>
+
+          </CardContent>
+        </Card>
+      </Box>
+
+      <Box sx={{ position: 'relative', borderRadius }}>
+        <GlowingEffect
+          spread={40}
+          glow={true}
+          disabled={false}
+          proximity={64}
+          inactiveZone={0.01}
+          borderWidth={3}
+        />
+        <Card sx={{ ...cardSx, position: 'relative' }}>
+          <CardContent>
+            <Box
+              display="flex"
+              justifyContent={{ xs: 'center', sm: 'space-between' }}
+              alignItems={{ xs: 'stretch', sm: 'center' }}
+              flexDirection={{ xs: 'column', sm: 'row' }}
+              gap={{ xs: 1, sm: 0 }}
+            >
+              <Typography variant="subtitle2" color="text.secondary">Facturación</Typography>
+              <Box>
+                <ToggleButtonGroup
+                  fullWidth={isMobile}
+                  size="small"
+                  value={range}
+                  exclusive
+                  onChange={(_, v) => v && setRange(v)}
+                >
+                  <ToggleButton value="12m"><Chip label="12 meses" size="small" /></ToggleButton>
+                  <ToggleButton value="7w">Por semana</ToggleButton>
+                  <ToggleButton value="30d">Por día</ToggleButton>
+                  <ToggleButton value="24h">24 horas</ToggleButton>
+                </ToggleButtonGroup>
+              </Box>
+            </Box>
+
+            <Box sx={{ height: CHART_HEIGHT }}>
+              <ResponsiveContainer>
+                <BarChart
+                  data={barData}
+                  barCategoryGap={8}
+                  barGap={4}
+                  margin={{ top: 0, right: 8, bottom: 0, left: isMobile ? 8 : 48 }}
+                >
+                  <defs>
+                    <linearGradient id="revenueGrad" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="0%" stopColor="#FF6A00" />
+                      <stop offset="100%" stopColor="#FF2D55" />
+                    </linearGradient>
+                  </defs>
+
+                  <CartesianGrid vertical={false} stroke={alpha(t.palette.text.primary, 0.08)} />
+
+                  <XAxis dataKey="m" tickLine={false} axisLine={false} tickMargin={8}
+                    tick={{ fontSize: isMobile ? 10 : 12 }} />
+
+                  {isMobile ? (
+                    <YAxis hide domain={[0, 'auto']} />
+                  ) : (
+                    <YAxis
+                      tickLine={false}
+                      axisLine={false}
+                      width={80}
+                      tickMargin={8}
+                      tickFormatter={(v) => fmtARS(v as number, data.currency)}
+                      domain={[0, 'auto']}
                     />
-                  }
-                />
+                  )}
 
-                <Bar dataKey="facturacion" fill="url(#revenueGrad)" radius={[8, 8, 0, 0]} barSize={barSize} />
+                  <Tooltip
+                    cursor={{ fill: alpha(t.palette.primary.main, 0.06) }}
+                    content={
+                      <RoundedTooltip
+                        formatter={(entry) =>
+                          `${entry.name}: ${fmtARS(entry.value, data.currency)}`
+                        }
+                      />
+                    }
+                  />
 
-              </BarChart>
-            </ResponsiveContainer>
-          </Box>
-        </CardContent>
-      </Card>
+                  <Bar dataKey="facturacion" fill="url(#revenueGrad)" radius={[8, 8, 0, 0]} barSize={barSize} />
+
+                </BarChart>
+              </ResponsiveContainer>
+            </Box>
+          </CardContent>
+        </Card>
+      </Box>
     </Box>
   );
 }

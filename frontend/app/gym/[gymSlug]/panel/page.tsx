@@ -12,6 +12,7 @@ import {
     Chip,
     Modal,
     Divider,
+    useTheme,
 } from '@mui/material'
 import LogoutIcon from '@mui/icons-material/Logout'
 import PersonIcon from '@mui/icons-material/Person'
@@ -23,13 +24,20 @@ import ClassIcon from '@mui/icons-material/Class'
 import GroupIcon from '@mui/icons-material/Group'
 import AddIcon from '@mui/icons-material/Add'
 import CheckCircleIcon from '@mui/icons-material/CheckCircle'
+import Brightness4Icon from '@mui/icons-material/Brightness4'
+import Brightness7Icon from '@mui/icons-material/Brightness7'
+import AutorenewIcon from '@mui/icons-material/Autorenew'
+import AccessTimeIcon from '@mui/icons-material/AccessTime'
 import { notify } from '@/lib/toast'
 import axios from 'axios'
+import { useDarkMode } from '@/context/DarkModeContext'
 
 export default function GymPanelPage() {
     const params = useParams()
     const router = useRouter()
     const gymSlug = params.gymSlug as string
+    const theme = useTheme()
+    const { isDarkMode, toggleDarkMode } = useDarkMode()
 
     const [alumno, setAlumno] = useState<any>(null)
     const [gymName, setGymName] = useState<string>('')
@@ -71,6 +79,9 @@ export default function GymPanelPage() {
                     `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/auth/gym-alumno/${gymId}/${alumnoBasic.dni}`
                 )
                 setAlumno(alumnoResponse.data)
+                
+                console.log('[Panel] Datos del alumno:', alumnoResponse.data)
+                console.log('[Panel] Clases inscritas:', alumnoResponse.data?.clases_inscritas)
 
                 if (gymId) {
                     const gymResponse = await axios.get(
@@ -149,6 +160,17 @@ export default function GymPanelPage() {
             setEnrollModalOpen(false)
             // Recargar sesiones con barra de progreso
             await reloadSesiones()
+            
+            // Recargar datos del alumno para actualizar clases inscritas
+            const gymId = localStorage.getItem('gym_id')
+            const storedAlumno = localStorage.getItem('gym_alumno')
+            if (gymId && storedAlumno) {
+                const alumnoBasic = JSON.parse(storedAlumno)
+                const alumnoResponse = await axios.get(
+                    `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/auth/gym-alumno/${gymId}/${alumnoBasic.dni}`
+                )
+                setAlumno(alumnoResponse.data)
+            }
         } catch (error: any) {
             notify.error(error.response?.data?.error || 'Error en la inscripción')
         } finally {
@@ -167,6 +189,17 @@ export default function GymPanelPage() {
             )
             notify.success('Inscripción cancelada')
             await reloadSesiones()
+            
+            // Recargar datos del alumno para actualizar clases inscritas
+            const gymId = localStorage.getItem('gym_id')
+            const storedAlumno = localStorage.getItem('gym_alumno')
+            if (gymId && storedAlumno) {
+                const alumnoBasic = JSON.parse(storedAlumno)
+                const alumnoResponse = await axios.get(
+                    `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/auth/gym-alumno/${gymId}/${alumnoBasic.dni}`
+                )
+                setAlumno(alumnoResponse.data)
+            }
         } catch (error: any) {
             notify.error(error.response?.data?.error || 'Error al cancelar')
         } finally {
@@ -218,6 +251,10 @@ export default function GymPanelPage() {
     const clases = alumno?.clases
     const pagos = alumno?.pagos || []
     const totales = alumno?.totales
+    const clasesInscritas = (alumno?.clases_inscritas || []).sort((a: any, b: any) => {
+        if (!a.proxima_fecha || !b.proxima_fecha) return 0
+        return new Date(a.proxima_fecha).getTime() - new Date(b.proxima_fecha).getTime()
+    })
 
     const planActivo =
         membresia?.estado === 'activo' &&
@@ -234,17 +271,17 @@ export default function GymPanelPage() {
         <Box
             sx={{
                 minHeight: '100vh',
-                bgcolor: '#f5f5f5',
+                bgcolor: theme.palette.background.default,
             }}
         >
             <Box
                 sx={{
-                    bgcolor: '#fff',
+                    bgcolor: theme.palette.background.paper,
                     p: 2,
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'space-between',
-                    borderBottom: '1px solid #e0e0e0',
+                    borderBottom: `1px solid ${theme.palette.divider}`,
                 }}
             >
                 <Stack direction="row" alignItems="center" spacing={1.5}>
@@ -268,10 +305,20 @@ export default function GymPanelPage() {
                 <Stack direction="row" spacing={1} alignItems="center">
                     <IconButton
                         size="small"
+                        onClick={toggleDarkMode}
+                        sx={{
+                            bgcolor: theme.palette.action.hover,
+                            '&:hover': { bgcolor: theme.palette.action.selected }
+                        }}
+                    >
+                        {isDarkMode ? <Brightness7Icon sx={{ fontSize: 20 }} /> : <Brightness4Icon sx={{ fontSize: 20 }} />}
+                    </IconButton>
+                    <IconButton
+                        size="small"
                         onClick={handleLogout}
                         sx={{
-                            bgcolor: '#f5f5f5',
-                            '&:hover': { bgcolor: '#e0e0e0' }
+                            bgcolor: theme.palette.action.hover,
+                            '&:hover': { bgcolor: theme.palette.action.selected }
                         }}
                     >
                         <LogoutIcon sx={{ fontSize: 20 }} />
@@ -307,10 +354,10 @@ export default function GymPanelPage() {
                     {plan && (
                         <Box
                             sx={{
-                                bgcolor: '#fff',
+                                bgcolor: theme.palette.background.paper,
                                 borderRadius: 3,
                                 p: 2.5,
-                                border: '1px solid #e0e0e0',
+                                border: `1px solid ${theme.palette.divider}`,
                             }}
                         >
                             <Stack direction="row" justifyContent="space-between" alignItems="flex-start" mb={1.5}>
@@ -338,14 +385,14 @@ export default function GymPanelPage() {
 
                     <Box
                         sx={{
-                            bgcolor: '#fff',
+                            bgcolor: theme.palette.background.paper,
                             borderRadius: 3,
                             p: 2.5,
-                            border: '1px solid #e0e0e0',
+                            border: `1px solid ${theme.palette.divider}`,
                             cursor: 'pointer',
                             transition: 'all 0.2s',
                             '&:hover': {
-                                bgcolor: '#f9f9f9',
+                                bgcolor: theme.palette.action.hover,
                                 transform: 'translateY(-2px)',
                             }
                         }}
@@ -372,10 +419,10 @@ export default function GymPanelPage() {
                     {membresia && membresia.dias_restantes !== null && (
                         <Box
                             sx={{
-                                bgcolor: '#fff',
+                                bgcolor: theme.palette.background.paper,
                                 borderRadius: 3,
                                 p: 2.5,
-                                border: '1px solid #e0e0e0',
+                                border: `1px solid ${theme.palette.divider}`,
                             }}
                         >
                             <Typography variant="body2" color="text.secondary" fontWeight={500} mb={1.5}>
@@ -402,7 +449,7 @@ export default function GymPanelPage() {
                                     sx={{
                                         height: 8,
                                         borderRadius: 4,
-                                        bgcolor: '#e0e0e0',
+                                        bgcolor: theme.palette.action.disabledBackground,
                                         '& .MuiLinearProgress-bar': {
                                             bgcolor: gymColor,
                                             borderRadius: 4,
@@ -428,10 +475,10 @@ export default function GymPanelPage() {
                     {clases && clases.clases_disponibles !== null && (
                         <Box
                             sx={{
-                                bgcolor: '#fff',
+                                bgcolor: theme.palette.background.paper,
                                 borderRadius: 3,
                                 p: 2.5,
-                                border: '1px solid #e0e0e0',
+                                border: `1px solid ${theme.palette.divider}`,
                             }}
                         >
                             <Typography variant="body2" color="text.secondary" fontWeight={500} mb={1.5}>
@@ -458,7 +505,7 @@ export default function GymPanelPage() {
                                     sx={{
                                         height: 8,
                                         borderRadius: 4,
-                                        bgcolor: '#e0e0e0',
+                                        bgcolor: theme.palette.action.disabledBackground,
                                         '& .MuiLinearProgress-bar': {
                                             bgcolor: gymColor,
                                             borderRadius: 4,
@@ -484,10 +531,10 @@ export default function GymPanelPage() {
                     {!puedeInscribirse && (
                         <Box
                             sx={{
-                                bgcolor: '#fff',
+                                bgcolor: theme.palette.background.paper,
                                 borderRadius: 3,
                                 p: 2.5,
-                                border: '1px solid #e0e0e0',
+                                border: `1px solid ${theme.palette.divider}`,
                                 textAlign: 'center',
                             }}
                         >
@@ -504,14 +551,116 @@ export default function GymPanelPage() {
                         </Box>
                     )}
 
+                    {/* Sección de Mis Clases - ahora siempre visible para debug */}
+                    <Box
+                        sx={{
+                            bgcolor: theme.palette.background.paper,
+                            borderRadius: 3,
+                            p: 2.5,
+                            border: `1px solid ${theme.palette.divider}`,
+                        }}
+                    >
+                        <Stack direction="row" spacing={1.5} alignItems="center" mb={2}>
+                            <GroupIcon sx={{ fontSize: 20, color: gymColor }} />
+                            <Typography variant="body2" color="text.secondary" fontWeight={500}>
+                                Mis Clases ({clasesInscritas?.length || 0})
+                            </Typography>
+                        </Stack>
+                        {!clasesInscritas || clasesInscritas.length === 0 ? (
+                            <Typography variant="body2" color="text.secondary" sx={{ textAlign: 'center', py: 2 }}>
+                                No estás inscrito en ninguna clase todavía
+                            </Typography>
+                        ) : (
+                            <Stack spacing={1.5}>
+                                {clasesInscritas.map((inscripcion: any) => {
+                                    const diasSemana = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
+                                    
+                                    let fechaFormateada = 'Sin fecha';
+                                    if (inscripcion.proxima_fecha) {
+                                        const fecha = new Date(inscripcion.proxima_fecha + 'T12:00:00');
+                                        const diaNombre = diasSemana[fecha.getDay()];
+                                        const dia = fecha.getDate().toString().padStart(2, '0');
+                                        const mes = (fecha.getMonth() + 1).toString().padStart(2, '0');
+                                        const año = fecha.getFullYear();
+                                        fechaFormateada = `${diaNombre} ${dia}/${mes}/${año}`;
+                                    }
+                                    
+                                    return (
+                                        <Box
+                                            key={inscripcion.id}
+                                            sx={{
+                                                p: 2,
+                                                bgcolor: theme.palette.action.hover,
+                                                borderRadius: 2,
+                                                border: `2px solid ${inscripcion.es_fija ? (theme.palette.mode === 'dark' ? '#424242' : gymColor) : 'transparent'}`,
+                                            }}
+                                        >
+                                            <Stack spacing={1}>
+                                                <Stack direction="row" justifyContent="space-between" alignItems="flex-start">
+                                                    <Box flex={1}>
+                                                        <Stack direction="row" spacing={1} alignItems="center" mb={0.5}>
+                                                            <Typography variant="body1" fontWeight={600} sx={{ color: inscripcion.clase_color || gymColor }}>
+                                                                {inscripcion.clase_nombre}
+                                                            </Typography>
+                                                            {inscripcion.es_fija && (
+                                                                <Chip
+                                                                    icon={<AutorenewIcon sx={{ fontSize: 14, color: '#fff !important' }} />}
+                                                                    label="Fija"
+                                                                    size="small"
+                                                                    sx={{
+                                                                        bgcolor: (theme) => theme.palette.mode === 'dark' ? '#424242' : gymColor,
+                                                                        color: '#fff',
+                                                                        fontWeight: 600,
+                                                                        fontSize: '0.7rem',
+                                                                        height: 20,
+                                                                        '& .MuiChip-icon': {
+                                                                            color: '#fff',
+                                                                        }
+                                                                    }}
+                                                                />
+                                                            )}
+                                                        </Stack>
+                                                        <Stack direction="row" spacing={1} alignItems="center">
+                                                            <CalendarTodayIcon sx={{ fontSize: 14, color: 'text.secondary' }} />
+                                                            <Typography variant="caption" color="text.secondary">
+                                                                {fechaFormateada}
+                                                            </Typography>
+                                                        </Stack>
+                                                        <Stack direction="row" spacing={1} alignItems="center" mt={0.5}>
+                                                            <AccessTimeIcon sx={{ fontSize: 14, color: 'text.secondary' }} />
+                                                            <Typography variant="caption" color="text.secondary">
+                                                                {inscripcion.hora_inicio?.substring(0, 5)} hs
+                                                            </Typography>
+                                                        </Stack>
+                                                    </Box>
+                                                    {!inscripcion.es_fija && (
+                                                        <Chip
+                                                            label="Esta semana"
+                                                            size="small"
+                                                            sx={{
+                                                                bgcolor: theme.palette.info.main,
+                                                                color: '#fff',
+                                                                fontWeight: 600,
+                                                                fontSize: '0.7rem',
+                                                            }}
+                                                        />
+                                                    )}
+                                                </Stack>
+                                            </Stack>
+                                        </Box>
+                                    );
+                                })}
+                            </Stack>
+                        )}
+                    </Box>
 
                     {puedeInscribirse && servicios && servicios.length > 0 && (
                         <Box
                             sx={{
-                                bgcolor: '#fff',
+                                bgcolor: theme.palette.background.paper,
                                 borderRadius: 3,
                                 p: 2.5,
-                                border: '1px solid #e0e0e0',
+                                border: `1px solid ${theme.palette.divider}`,
                             }}
                         >
                             <Stack direction="row" spacing={1.5} alignItems="center" mb={2}>
@@ -527,12 +676,12 @@ export default function GymPanelPage() {
                                         onClick={() => handleOpenServicio(servicio)}
                                         sx={{
                                             p: 2,
-                                            bgcolor: '#f9f9f9',
+                                            bgcolor: theme.palette.action.hover,
                                             borderRadius: 2,
                                             cursor: 'pointer',
                                             transition: 'all 0.2s',
                                             '&:hover': {
-                                                bgcolor: '#f0f0f0',
+                                                bgcolor: theme.palette.action.selected,
                                                 transform: 'translateX(4px)',
                                             }
                                         }}
@@ -574,10 +723,10 @@ export default function GymPanelPage() {
                     {pagos && pagos.length > 0 && (
                         <Box
                             sx={{
-                                bgcolor: '#fff',
+                                bgcolor: theme.palette.background.paper,
                                 borderRadius: 3,
                                 p: 2.5,
-                                border: '1px solid #e0e0e0',
+                                border: `1px solid ${theme.palette.divider}`,
                             }}
                         >
                             <Stack direction="row" spacing={1.5} alignItems="center" mb={2}>
@@ -605,10 +754,10 @@ export default function GymPanelPage() {
                                         bgcolor: 'transparent',
                                     },
                                     '&::-webkit-scrollbar-thumb': {
-                                        bgcolor: '#d0d0d0',
+                                        bgcolor: theme.palette.action.disabled,
                                         borderRadius: '10px',
                                         '&:hover': {
-                                            bgcolor: '#b0b0b0',
+                                            bgcolor: theme.palette.action.disabledBackground,
                                         }
                                     },
                                 }}
@@ -623,12 +772,12 @@ export default function GymPanelPage() {
                                             }}
                                             sx={{
                                                 p: 2,
-                                                bgcolor: '#f9f9f9',
+                                                bgcolor: theme.palette.action.hover,
                                                 borderRadius: 2,
                                                 cursor: 'pointer',
                                                 transition: 'all 0.2s',
                                                 '&:hover': {
-                                                    bgcolor: '#f0f0f0',
+                                                    bgcolor: theme.palette.action.selected,
                                                     transform: 'translateX(4px)',
                                                 }
                                             }}
@@ -668,7 +817,7 @@ export default function GymPanelPage() {
             >
                 <Box
                     sx={{
-                        bgcolor: '#fff',
+                        bgcolor: theme.palette.background.paper,
                         borderRadius: 4,
                         maxWidth: 520,
                         width: '100%',
@@ -681,7 +830,7 @@ export default function GymPanelPage() {
                     <Box
                         sx={{
                             p: 3,
-                            borderBottom: '1px solid #eee',
+                            borderBottom: `1px solid ${theme.palette.divider}`,
                             background: `linear-gradient(135deg, ${gymColor}15, ${gymColor}05)`,
                         }}
                     >
@@ -710,7 +859,7 @@ export default function GymPanelPage() {
                             overflowY: 'auto',
                             '&::-webkit-scrollbar': { width: 6 },
                             '&::-webkit-scrollbar-thumb': {
-                                bgcolor: '#ccc',
+                                bgcolor: theme.palette.action.disabled,
                             },
                         }}
                     >
@@ -730,10 +879,10 @@ export default function GymPanelPage() {
                                         sx={{
                                             p: 2.5,
                                             borderRadius: 1,
-                                            border: '1px solid #e0e0e0',
+                                            border: `1px solid ${theme.palette.divider}`,
                                             borderLeft: `6px solid ${planItem.color || gymColor}`,
                                             borderRight: `6px solid ${planItem.color || gymColor}`,
-                                            bgcolor: '#fafafa',
+                                            bgcolor: theme.palette.action.hover,
                                             transition: 'all 0.2s',
                                             '&:hover': {
                                                 transform: 'translateY(-2px)',
@@ -793,7 +942,7 @@ export default function GymPanelPage() {
             >
                 <Box
                     sx={{
-                        bgcolor: '#fff',
+                        bgcolor: theme.palette.background.paper,
                         borderRadius: 3,
                         maxWidth: 500,
                         width: '100%',
@@ -808,10 +957,10 @@ export default function GymPanelPage() {
                     <Box
                         sx={{
                             p: 2.5,
-                            borderBottom: '1px solid #e0e0e0',
+                            borderBottom: `1px solid ${theme.palette.divider}`,
                             position: 'sticky',
                             top: 0,
-                            bgcolor: '#fff',
+                            bgcolor: theme.palette.background.paper,
                             zIndex: 1,
                         }}
                     >
@@ -838,8 +987,8 @@ export default function GymPanelPage() {
                                 size="small"
                                 onClick={() => setModalOpen(false)}
                                 sx={{
-                                    bgcolor: '#f5f5f5',
-                                    '&:hover': { bgcolor: '#e0e0e0' }
+                                    bgcolor: theme.palette.action.hover,
+                                    '&:hover': { bgcolor: theme.palette.action.selected }
                                 }}
                             >
                                 <CloseIcon sx={{ fontSize: 20 }} />
@@ -946,7 +1095,7 @@ export default function GymPanelPage() {
             >
                 <Box
                     sx={{
-                        bgcolor: '#fff',
+                        bgcolor: theme.palette.background.paper,
                         borderRadius: 3,
                         maxWidth: 600,
                         width: '100%',
@@ -961,10 +1110,10 @@ export default function GymPanelPage() {
                     <Box
                         sx={{
                             p: 2.5,
-                            borderBottom: '1px solid #e0e0e0',
+                            borderBottom: `1px solid ${theme.palette.divider}`,
                             position: 'sticky',
                             top: 0,
-                            bgcolor: '#fff',
+                            bgcolor: theme.palette.background.paper,
                             zIndex: 1,
                         }}
                     >
@@ -998,8 +1147,8 @@ export default function GymPanelPage() {
                                 size="small"
                                 onClick={() => setServicioModalOpen(false)}
                                 sx={{
-                                    bgcolor: '#f5f5f5',
-                                    '&:hover': { bgcolor: '#e0e0e0' }
+                                    bgcolor: theme.palette.action.hover,
+                                    '&:hover': { bgcolor: theme.palette.action.selected }
                                 }}
                             >
                                 <CloseIcon sx={{ fontSize: 20 }} />
@@ -1040,9 +1189,9 @@ export default function GymPanelPage() {
                                             key={`${sesion.id}-${sesion.dia_semana}-${sesion.hora_inicio}-${index}`}
                                             sx={{
                                                 p: 2.5,
-                                                bgcolor: '#f9f9f9',
+                                                bgcolor: theme.palette.action.hover,
                                                 borderRadius: 2,
-                                                border: '1px solid #e0e0e0',
+                                                border: `1px solid ${theme.palette.divider}`,
                                             }}
                                         >
                                             <Stack spacing={3}>
@@ -1080,23 +1229,32 @@ export default function GymPanelPage() {
 
                                                     </Stack>
                                                     <Stack direction="row" spacing={2} alignItems="center">
-                                                        <Stack direction="row" spacing={1} alignItems="center">
-                                                            <GroupIcon sx={{ fontSize: 26, color: gymColor }} />
+                                                        <Stack direction="column" spacing={1} alignItems="center">
                                                             <Typography
-                                                                variant="h6"
+                                                                variant="caption"
                                                                 fontWeight={700}
-                                                                color={sesion.cupos_disponibles === 0 ? 'error.main' : gymColor}
                                                             >
-                                                                {sesion.cupos_disponibles} / {sesion.capacidad}
+                                                                Cupos disponibles
                                                             </Typography>
+
+                                                            <Box
+                                                                display="flex"
+                                                                alignItems="center"
+                                                                justifyContent="center"
+                                                                gap={1}
+                                                            >
+                                                                <GroupIcon sx={{ fontSize: 26, color: gymColor }} />
+                                                                <Typography
+                                                                    variant="body1"
+                                                                    fontWeight={700}
+                                                                    color={sesion.cupos_disponibles === 0 ? 'error.main' : gymColor}
+                                                                >
+                                                                    {sesion.cupos_disponibles} de {sesion.capacidad}
+                                                                </Typography>
+                                                            </Box>
                                                         </Stack>
-
-
                                                     </Stack>
-
                                                 </Stack>
-
-                                                {/* Capacidad */}
 
 
                                                 {/* Botones */}
@@ -1253,7 +1411,7 @@ export default function GymPanelPage() {
             >
                 <Box
                     sx={{
-                        bgcolor: '#fff',
+                        bgcolor: theme.palette.background.paper,
                         borderRadius: 3,
                         maxWidth: 450,
                         width: '100%',
@@ -1279,15 +1437,15 @@ export default function GymPanelPage() {
                                 onClick={() => !enrollingSession && handleEnroll(false)}
                                 sx={{
                                     p: 2.5,
-                                    bgcolor: '#f9f9f9',
+                                    bgcolor: theme.palette.action.hover,
                                     borderRadius: 2,
-                                    border: '2px solid #e0e0e0',
+                                    border: `2px solid ${theme.palette.divider}`,
                                     cursor: enrollingSession ? 'not-allowed' : 'pointer',
                                     opacity: enrollingSession ? 0.6 : 1,
                                     transition: 'all 0.2s',
                                     '&:hover': {
-                                        borderColor: enrollingSession ? '#e0e0e0' : gymColor,
-                                        bgcolor: enrollingSession ? '#f9f9f9' : `${gymColor}08`,
+                                        borderColor: enrollingSession ? theme.palette.divider : gymColor,
+                                        bgcolor: enrollingSession ? theme.palette.action.hover : `${gymColor}08`,
                                         transform: enrollingSession ? 'none' : 'translateY(-2px)',
                                         boxShadow: enrollingSession ? 0 : 2,
                                     }
@@ -1327,15 +1485,15 @@ export default function GymPanelPage() {
                                 onClick={() => !enrollingSession && handleEnroll(true)}
                                 sx={{
                                     p: 2.5,
-                                    bgcolor: '#f9f9f9',
+                                    bgcolor: theme.palette.action.hover,
                                     borderRadius: 2,
-                                    border: '2px solid #e0e0e0',
+                                    border: `2px solid ${theme.palette.divider}`,
                                     cursor: enrollingSession ? 'not-allowed' : 'pointer',
                                     opacity: enrollingSession ? 0.6 : 1,
                                     transition: 'all 0.2s',
                                     '&:hover': {
-                                        borderColor: enrollingSession ? '#e0e0e0' : gymColor,
-                                        bgcolor: enrollingSession ? '#f9f9f9' : `${gymColor}08`,
+                                        borderColor: enrollingSession ? theme.palette.divider : gymColor,
+                                        bgcolor: enrollingSession ? theme.palette.action.hover : `${gymColor}08`,
                                         transform: enrollingSession ? 'none' : 'translateY(-2px)',
                                         boxShadow: enrollingSession ? 0 : 2,
                                     }
@@ -1383,7 +1541,7 @@ export default function GymPanelPage() {
                                 borderRadius: 1,
                                 transition: 'all 0.2s',
                                 '&:hover': {
-                                    bgcolor: '#f5f5f5',
+                                    bgcolor: theme.palette.action.hover,
                                     color: 'text.primary',
                                 }
                             }}

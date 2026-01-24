@@ -23,8 +23,10 @@ import clasesRoutes from "./routes/clases.routes.js"
 import sesionesRoutes from "./routes/sesiones.routes.js"
 import gymPlansRoutes from "./routes/gymPlans.routes.js"
 import suscriptionsRoutes from "./routes/suscriptions.routes.js"
+import productosRoutes from "./routes/productos.routes.js"
+import emailsRoutes from "./routes/emails.routes.js"
+import novedadesRoutes from "./routes/novedades.routes.js"
 
-import { enviarEmailsPorVencer } from './emails/mailing.brevo.fitnessflow.js'
 import { verifyToken } from '../backend/middleware/auth.js'
 import { createServer } from 'http';
 import { Server } from 'socket.io';
@@ -85,32 +87,16 @@ app.use('/api/clases', clasesRoutes);
 app.use('/api/sesiones', sesionesRoutes);
 app.use('/api/gym-plans', gymPlansRoutes);
 app.use('/api/suscriptions', suscriptionsRoutes);
+app.use('/api/productos', productosRoutes);
+
+app.use('/api/novedades', novedadesRoutes);
 
 app.use('/api/payment-methods', paymentMethodsRoutes);
 app.use('/api/auth', authRoutes);
+app.use('/api/emails', emailsRoutes);
 
 app.get('/ping', (req, res) => res.sendStatus(200));
 app.use('/api/test', testRoutes);
-
-app.get("/api/emails", async (req, res) => {
-  try {
-    const { previewOnly = false, gymIds = [] } = req.body || {}
-    await enviarEmailsPorVencer({ previewOnly, gymIds })
-
-    res.status(200).json({
-      success: true,
-      message: previewOnly
-        ? "Vista previa generada correctamente"
-        : "Emails enviados correctamente",
-    })
-  } catch (error) {
-    res.status(500).json({
-      success: false,
-      message: "Error al enviar emails",
-      error: error.message,
-    })
-  }
-})
 
 const PORT = process.env.PORT || 3001;
 

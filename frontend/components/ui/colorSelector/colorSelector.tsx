@@ -104,7 +104,7 @@ export const ColorPickerPopover = ({
                         sx: {
                             width,
                             maxHeight: 340,
-                            overflowX: "hidden", // ✅ nunca scroll X
+                            overflowX: "hidden",
                         },
                     },
                 }}
@@ -114,12 +114,12 @@ export const ColorPickerPopover = ({
                 <Box
                     sx={{
                         display: "grid",
-                        gridTemplateColumns: "repeat(4, minmax(0, 1fr))", // ✅ 4 colores por fila
+                        gridTemplateColumns: "repeat(4, minmax(0, 1fr))",
                         gap: 1,
                         p: 1,
                         maxHeight: 340,
                         overflowY: "auto",
-                        overflowX: "hidden", // ✅ nunca scroll X
+                        overflowX: "hidden",
                     }}
                 >
                     {presetColors.map((c) => (

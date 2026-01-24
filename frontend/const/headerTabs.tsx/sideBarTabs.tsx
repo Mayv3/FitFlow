@@ -9,8 +9,11 @@ import AssignmentTurnedInIcon from '@mui/icons-material/AssignmentTurnedIn';
 import StorefrontIcon from "@mui/icons-material/Storefront"
 import FitnessCenterIcon from '@mui/icons-material/FitnessCenter';
 import LinkIcon from '@mui/icons-material/Link';
+import InventoryIcon from '@mui/icons-material/Inventory';
+import AnnouncementIcon from '@mui/icons-material/Announcement';
 
 export const adminTabs = [
+  { label: 'Novedades', icon: <AnnouncementIcon />, route: '/dashboard/administrator/novedades' },
   { label: 'Estadísticas', icon: <BarChartIcon />, route: '/dashboard/administrator/stats' },
   { label: 'Asistencias', icon: <AssignmentTurnedInIcon />, route: '/dashboard/administrator/assists' },
   { label: 'Miembros', icon: <GroupIcon />, route: '/dashboard/administrator/members' },
@@ -18,6 +21,7 @@ export const adminTabs = [
   { label: 'Planes', icon: <AssignmentIcon />, route: '/dashboard/administrator/plans' },
   { label: 'Clases', icon: <FitnessCenterIcon />, route: '/dashboard/administrator/clases' },
   { label: 'Servicios', icon: <AccessibilityNewIcon />, route: '/dashboard/administrator/services' },
+  { label: 'Productos', icon: <InventoryIcon />, route: '/dashboard/administrator/products' },
   { label: 'Turnos', icon: <TodayIcon />, route: '/dashboard/administrator/appointments' },
   { label: 'Portal Alumnos', icon: <LinkIcon />, route: '/dashboard/administrator/portal' },
   { label: 'Configuración', icon: <SettingsIcon />, route: '/dashboard/administrator/settings' },
@@ -25,12 +29,14 @@ export const adminTabs = [
 ];
 
 export const recepcionistTabs = [
+  { label: 'Novedades', icon: <AnnouncementIcon />, route: '/dashboard/receptionist/novedades' },
   { label: 'Asistencias', icon: <AssignmentTurnedInIcon />, route: '/dashboard/receptionist/assists' },
   { label: 'Miembros', icon: <GroupIcon />, route: '/dashboard/receptionist/members' },
   { label: 'Pagos', icon: <PaidIcon />, route: '/dashboard/receptionist/payments' },
   { label: 'Planes', icon: <AssignmentIcon />, route: '/dashboard/receptionist/plans' },
   { label: 'Clases', icon: <FitnessCenterIcon />, route: '/dashboard/receptionist/clases' },
   { label: 'Servicios', icon: <AccessibilityNewIcon />, route: '/dashboard/receptionist/services' },
+  { label: 'Productos', icon: <InventoryIcon />, route: '/dashboard/receptionist/products' },
   { label: 'Turnos', icon: <TodayIcon />, route: '/dashboard/receptionist/appointments' },
   { label: 'Portal Alumnos', icon: <LinkIcon />, route: '/dashboard/receptionist/portal' },
   // { label: 'Soporte', icon: <HelpIcon />, route: '/dashboard/receptionist/support' },

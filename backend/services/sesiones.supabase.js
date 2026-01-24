@@ -89,7 +89,6 @@ export async function getSesionesByClase(claseId) {
     })
   );
 
-  console.log("[getSesionesByClase] RESULTADO FINAL:", JSON.stringify(result, null, 2));
   return result;
 }
 

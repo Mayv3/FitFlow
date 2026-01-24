@@ -27,11 +27,13 @@ export async function getPagosPaged({
       service_id,
       tipo,
       plan_id,
+      producto_id,
       deleted_at,
       monto_total,
       alumno:alumnos ( nombre, dni ),
       plan:planes_precios ( nombre ),
       servicio:servicios!service_id ( nombre ),
+      producto:productos ( nombre ),
       items:pago_items (
         monto,
         referencia,
@@ -93,6 +95,7 @@ export async function getPagosPaged({
       alumno_nombre: p?.alumno?.nombre ?? null,
       plan_nombre: p?.plan?.nombre ?? null,
       servicio_nombre: p?.servicio?.nombre ?? null,
+      producto_nombre: p?.producto?.nombre ?? null,
       metodo_legible,
       metodos_legibles: (p?.items ?? []).map(
         i => `${i?.metodo?.nombre ?? '—'} $${i?.monto ?? 0}`
@@ -152,13 +155,14 @@ export async function createPago(supaClient, pago) {
       plan_id: pago.plan_id,
       tipo: pago.tipo,
       service_id: pago.service_id ?? null,
+      producto_id: pago.producto_id ?? null,
       hora: pago.hora,
       fecha_de_pago: pago.fecha_de_pago,
       fecha_de_venc: pago.fecha_de_venc,
       responsable: pago.responsable,
       monto_total: pago.monto_total,
     })
-    .select('id, alumno_id, plan_id, service_id, fecha_de_venc')
+    .select('id, alumno_id, plan_id, service_id, producto_id, fecha_de_venc')
     .single();
 
   if (e1) throw e1;
@@ -197,6 +201,28 @@ export async function createPago(supaClient, pago) {
       .eq('id', pago.alumno_id);
 
     if (eUpd) throw eUpd;
+  }
+
+  // Si es un pago de producto, descontar 1 del stock
+  if (pago.producto_id) {
+    const { data: producto, error: productoError } = await supaClient
+      .from('productos')
+      .select('stock')
+      .eq('id', pago.producto_id)
+      .single();
+
+    if (productoError) throw productoError;
+
+    if (producto.stock <= 0) {
+      throw new Error('Producto sin stock disponible');
+    }
+
+    const { error: stockError } = await supaClient
+      .from('productos')
+      .update({ stock: producto.stock - 1 })
+      .eq('id', pago.producto_id);
+
+    if (stockError) throw stockError;
   }
 
 

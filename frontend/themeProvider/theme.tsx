@@ -26,7 +26,30 @@ export const DEFAULT_SETTINGS: GymSettings = {
   shape: { borderRadius: 12 },
 }
 
-function buildTheme(s: GymSettings): Theme {
+const DARK_MODE_OVERRIDES = {
+  background: "#121212",
+  paper: "#1E1E1E",
+  textPrimary: "#FFFFFF",
+  textSecondary: "#B0BEC5",
+}
+
+function buildTheme(s: GymSettings, isDarkMode: boolean = false): Theme {
+  const palette = isDarkMode
+    ? {
+        mode: "dark" as const,
+        primary: { main: s.colors.primary, contrastText: "#FFFFFF" },
+        secondary: { main: s.colors.secondary, contrastText: "#FFFFFF" },
+        background: { default: DARK_MODE_OVERRIDES.background, paper: DARK_MODE_OVERRIDES.paper },
+        text: { primary: DARK_MODE_OVERRIDES.textPrimary, secondary: DARK_MODE_OVERRIDES.textSecondary },
+      }
+    : {
+        mode: "light" as const,
+        primary: { main: s.colors.primary, contrastText: "#FFFFFF" },
+        secondary: { main: s.colors.secondary, contrastText: "#FFFFFF" },
+        background: { default: s.colors.background, paper: s.colors.paper },
+        text: { primary: s.colors.textPrimary, secondary: s.colors.textSecondary },
+      }
+
   return createTheme({
     components: {
       MuiTextField: {
@@ -41,13 +64,7 @@ function buildTheme(s: GymSettings): Theme {
         },
       },
     },
-    palette: {
-      mode: "light",
-      primary: { main: s.colors.primary, contrastText: "#FFFFFF" },
-      secondary: { main: s.colors.secondary, contrastText: "#FFFFFF" },
-      background: { default: s.colors.background, paper: s.colors.paper },
-      text: { primary: s.colors.textPrimary, secondary: s.colors.textSecondary },
-    },
+    palette,
     typography: { fontFamily: s.typography.fontFamily },
     shape: { borderRadius: s.shape.borderRadius },
   })
@@ -84,8 +101,8 @@ function readSettingsFromStorage(): GymSettings {
   }
 }
 
-export const DEFAULT_THEME = buildTheme(DEFAULT_SETTINGS)
+export const DEFAULT_THEME = buildTheme(DEFAULT_SETTINGS, false)
 
-export function createAppTheme(): Theme {
-  return buildTheme(readSettingsFromStorage())
+export function createAppTheme(isDarkMode: boolean = false): Theme {
+  return buildTheme(readSettingsFromStorage(), isDarkMode)
 }

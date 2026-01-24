@@ -2,6 +2,7 @@ import type { Metadata } from 'next'
 import './globals.css'
 import { UserProvider } from "@/context/UserContext";
 import { SubscriptionProvider } from "@/context/SubscriptionContext";
+import { DarkModeProvider } from "@/context/DarkModeContext";
 import 'react-toastify/dist/ReactToastify.css'
 import { ToastProvider } from '@/components/ui/toast/ToastProvider'
 import { ThemeProvider } from '../themeProvider/ThemeProvider'
@@ -47,14 +48,16 @@ export default function RootLayout({
       <body className="font-quicksand">
         <LocalizationProviderClient>
           <ReactQueryProvider>
-            <ThemeProvider>
-              <UserProvider>
-                <SubscriptionProvider>
-                  {children}
-                  <ToastProvider />
-                </SubscriptionProvider>
-              </UserProvider>
-            </ThemeProvider>
+            <DarkModeProvider>
+              <ThemeProvider>
+                <UserProvider>
+                  <SubscriptionProvider>
+                    {children}
+                    <ToastProvider />
+                  </SubscriptionProvider>
+                </UserProvider>
+              </ThemeProvider>
+            </DarkModeProvider>
           </ReactQueryProvider>
         </LocalizationProviderClient>
       </body>

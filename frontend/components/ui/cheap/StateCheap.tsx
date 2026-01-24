@@ -60,9 +60,9 @@ export function StateCheap({
 
   return (
     <Tooltip title={hint}>
-      <Box component="span" sx={{ display: 'inline-flex' }}>
+      <span style={{ display: 'inline-flex' }}>
         <Chip size="small" icon={icon} label={label} sx={sx} />
-      </Box>
+      </span>
     </Tooltip>
   );
 }

@@ -9,6 +9,8 @@ import {
   useMediaQuery,
 } from '@mui/material';
 import { useTheme, alpha } from '@mui/material/styles';
+import { GlowingEffect } from '@/components/ui/glowing-effect';
+import { useGymThemeSettings } from '@/hooks/useGymThemeSettings';
 import {
   ResponsiveContainer,
   PieChart,
@@ -32,11 +34,12 @@ export function PlanesSection() {
   const { data, isLoading, error } = usePlanes();
   const t = useTheme();
   const isMobile = useMediaQuery(t.breakpoints.down('sm'));
+  const { borderRadius } = useGymThemeSettings();
 
   const cardSx = {
-    borderRadius: 2,
+    borderRadius: borderRadius,
     border: `1px solid ${alpha(t.palette.text.primary, 0.06)}`,
-    bgcolor: t.palette.background.paper,
+    bgcolor: t.palette.mode === 'dark' ? '#0a0a0a' : t.palette.background.paper,
     height: '100%',
     boxShadow: '0 2px 6px rgba(0,0,0,0.04)',
   } as const;
@@ -127,190 +130,221 @@ export function PlanesSection() {
       display="grid"
       gridTemplateColumns={{ xs: '1fr', md: '1fr 1fr 1fr' }}
       gap={1.5}
+      alignItems="stretch"
     >
       {/* Top 5 planes */}
-      <Card sx={cardSx}>
-        <CardContent
-          sx={{
-            height: 360,
-            display: 'flex',
-            flexDirection: 'column',
-          }}
-        >
-          <Typography variant="subtitle2" color="text.secondary" mb={2}>
-            Top 5 planes más vendidos
-          </Typography>
-          <Box display="flex" flexDirection="column" gap={1} flex={1}>
-            {top5.map((p: any, i: number) => (
-              <Box
-                key={p.plan_id}
-                sx={{
-                  p: 1.2,
-                  borderRadius: 0.5,
-                  border: `1px solid ${alpha(t.palette.text.primary, 0.08)}`,
-                  bgcolor: alpha(t.palette.primary.main, 0.02),
-                  flex: 1,
-                  display: 'flex',
-                  flexDirection: 'row',
-                  alignItems: 'center',
-                  justifyContent: 'space-between',
-                }}
-              >
-                <Typography
-                  variant="body2"
-                  fontWeight={600}
-                  sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}
+      <Box sx={{ position: 'relative', borderRadius }}>
+        <GlowingEffect
+          spread={40}
+          glow={true}
+          disabled={false}
+          proximity={64}
+          inactiveZone={0.01}
+          borderWidth={3}
+        />
+        <Card sx={{ ...cardSx, position: 'relative', md: { width: '490px' } }}>
+          <CardContent
+            sx={{
+              height: 360,
+              display: 'flex',
+              flexDirection: 'column',
+            }}
+          >
+            <Typography variant="subtitle2" color="text.secondary" mb={2}>
+              Top 5 planes más vendidos
+            </Typography>
+            <Box display="flex" flexDirection="column" gap={1} flex={1}>
+              {top5.map((p: any, i: number) => (
+                <Box
+                  key={p.plan_id}
+                  sx={{
+                    p: 1.2,
+                    borderRadius: 0.5,
+                    border: `1px solid ${alpha(t.palette.text.primary, 0.08)}`,
+                    bgcolor: alpha(t.palette.primary.main, 0.02),
+                    flex: 1,
+                    display: 'flex',
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                  }}
                 >
-                  {p.plan_nombre}
-                </Typography>
-                <Box textAlign="right">
-                  <Typography variant="caption" color="text.secondary">
-                    Alumnos: <b>{p.cantidad_alumnos}</b>
-                  </Typography>
                   <Typography
-                    variant="caption"
-                    color="text.secondary"
-                    display="block"
+                    variant="body2"
+                    fontWeight={600}
+                    sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}
                   >
-                    $ {p.facturacion_mes_actual}
+                    {p.plan_nombre}
                   </Typography>
+                  <Box textAlign="right">
+                    <Typography variant="caption" color="text.secondary">
+                      Alumnos: <b>{p.cantidad_alumnos}</b>
+                    </Typography>
+                    <Typography
+                      variant="caption"
+                      color="text.secondary"
+                      display="block"
+                    >
+                      $ {p.facturacion_mes_actual}
+                    </Typography>
+                  </Box>
                 </Box>
-              </Box>
-            ))}
-          </Box>
-        </CardContent>
-      </Card>
+              ))}
+            </Box>
+          </CardContent>
+        </Card>
+      </Box>
 
       {/* Distribución alumnos por plan */}
-      <Card sx={cardSx}>
-        <CardContent>
-          <Typography variant="subtitle2" color="text.secondary" mb={2}>
-            Distribución de alumnos por plan
-          </Typography>
-          <Box sx={{ height: 360 }}>
-            <ResponsiveContainer>
-              <BarChart
-                data={donutData}
-                barCategoryGap={8}
-                margin={{
-                  top: 0,
-                  right: 0,
-                  bottom: 0,
-                  left: 0,
-                }}
-              >
-                <CartesianGrid
-                  vertical={false}
-                  stroke={alpha(t.palette.text.primary, 0.08)}
-                />
+      <Box sx={{ position: 'relative', borderRadius }}>
+        <GlowingEffect
+          spread={40}
+          glow={true}
+          disabled={false}
+          proximity={64}
+          inactiveZone={0.01}
+          borderWidth={3}
+        />
+        <Card sx={{ ...cardSx, position: 'relative' }}>
+          <CardContent>
+            <Typography variant="subtitle2" color="text.secondary" mb={2}>
+              Distribución de alumnos por plan
+            </Typography>
+            <Box sx={{ height: 360 }}>
+              <ResponsiveContainer>
+                <BarChart
+                  data={donutData}
+                  barCategoryGap={8}
+                  margin={{
+                    top: 0,
+                    right: 0,
+                    bottom: 0,
+                    left: 0,
+                  }}
+                >
+                  <CartesianGrid
+                    vertical={false}
+                    stroke={alpha(t.palette.text.primary, 0.08)}
+                  />
 
-                {/* Eje X numérico (cantidad de alumnos) */}
-                <XAxis
-                  dataKey="label"
-                  tick={false}          // oculta nombres
-                  axisLine={false}
-                  tickLine={false}
-                />
+                  {/* Eje X numérico (cantidad de alumnos) */}
+                  <XAxis
+                    dataKey="label"
+                    tick={false}          // oculta nombres
+                    axisLine={false}
+                    tickLine={false}
+                  />
 
-                {/* Eje Y con valores */}
-                <YAxis
-                  tickLine={false}
-                  axisLine={false}
-                  domain={[0, 'auto']}
-                  tickFormatter={(v) => v.toLocaleString('es-AR')}
-                />
+                  {/* Eje Y con valores */}
+                  <YAxis
+                    tickLine={false}
+                    axisLine={false}
+                    domain={[0, 'auto']}
+                    tickFormatter={(v) => v.toLocaleString('es-AR')}
+                  />
 
-                <Tooltip
-                  cursor={{ fill: alpha(t.palette.primary.main, 0.06) }}
-                  content={
-                    <RoundedTooltip
-                      formatter={(entry) =>
-                        `${Number(entry.value).toLocaleString("es-AR")} alumnos`
-                      }
-                    />
-                  }
-                />
+                  <Tooltip
+                    cursor={{ fill: alpha(t.palette.primary.main, 0.06) }}
+                    content={
+                      <RoundedTooltip
+                        formatter={(entry) =>
+                          `${Number(entry.value).toLocaleString("es-AR")} alumnos`
+                        }
+                      />
+                    }
+                  />
 
 
 
-                <defs>
-                  <linearGradient id="barGradient" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0%" stopColor="#FF6A00" />
-                    <stop offset="100%" stopColor="#FF2D55" />
-                  </linearGradient>
-                </defs>
+                  <defs>
+                    <linearGradient id="barGradient" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="0%" stopColor="#FF6A00" />
+                      <stop offset="100%" stopColor="#FF2D55" />
+                    </linearGradient>
+                  </defs>
 
-                <Bar
-                  dataKey="value"
-                  radius={[8, 8, 0, 0]}
-                  fill="url(#barGradient)"
-                />
-              </BarChart>
-            </ResponsiveContainer>
-          </Box>
-        </CardContent>
-      </Card>
+                  <Bar
+                    dataKey="value"
+                    radius={[8, 8, 0, 0]}
+                    fill="url(#barGradient)"
+                  />
+                </BarChart>
+              </ResponsiveContainer>
+            </Box>
+          </CardContent>
+        </Card>
+      </Box>
 
 
 
       {/* Facturación actual por plan */}
-      <Card sx={cardSx}>
-        <CardContent>
-          <Typography variant="subtitle2" color="text.secondary" mb={2}>
-            Facturación por plan (mes actual)
-          </Typography>
-          <Box sx={{ height: 360 }}>
-            <ResponsiveContainer>
-              <BarChart
-                data={facturacion}
-                layout="vertical"
-                barCategoryGap={8}
-                margin={{
-                  top: 0,
-                  right: 0,
-                  bottom: 0,
-                  left: isMobile ? 20 : 0,
-                }}
-              >
-                <CartesianGrid
-                  horizontal={false}
-                  stroke={alpha(t.palette.text.primary, 0.08)}
-                />
-                <XAxis
-                  type="number"
-                  tickLine={false}
-                  axisLine={false}
-                  domain={[0, 'auto']}
-                  tickFormatter={(v) => `$${v.toLocaleString('es-AR')}`}
-                />
+      <Box sx={{ position: 'relative', borderRadius }}>
+        <GlowingEffect
+          spread={40}
+          glow={true}
+          disabled={false}
+          proximity={64}
+          inactiveZone={0.01}
+          borderWidth={3}
+        />
+        <Card sx={{ ...cardSx, position: 'relative' }}>
+          <CardContent>
+            <Typography variant="subtitle2" color="text.secondary" mb={2}>
+              Facturación por plan (mes actual)
+            </Typography>
+            <Box sx={{ height: 360 }}>
+              <ResponsiveContainer>
+                <BarChart
+                  data={facturacion}
+                  layout="vertical"
+                  barCategoryGap={8}
+                  margin={{
+                    top: 0,
+                    right: 0,
+                    bottom: 0,
+                    left: isMobile ? 20 : 0,
+                  }}
+                >
+                  <CartesianGrid
+                    horizontal={false}
+                    stroke={alpha(t.palette.text.primary, 0.08)}
+                  />
+                  <XAxis
+                    type="number"
+                    tickLine={false}
+                    axisLine={false}
+                    domain={[0, 'auto']}
+                    tickFormatter={(v) => `$${v.toLocaleString('es-AR')}`}
+                  />
 
-                <YAxis
-                  type="category"
-                  dataKey="plan_nombre"
-                  tick={false}
-                  tickLine={false}
-                  axisLine={false}
-                  width={0}
-                />
-                <Tooltip content={<FacturacionTooltip />} />
+                  <YAxis
+                    type="category"
+                    dataKey="plan_nombre"
+                    tick={false}
+                    tickLine={false}
+                    axisLine={false}
+                    width={0}
+                  />
+                  <Tooltip content={<FacturacionTooltip />} />
 
-                <defs>
-                  <linearGradient id="barGradient" x1="0" y1="0" x2="1" y2="0">
-                    <stop offset="0%" stopColor="#FF6A00" />
-                    <stop offset="100%" stopColor="#FF2D55" />
-                  </linearGradient>
-                </defs>
+                  <defs>
+                    <linearGradient id="barGradient" x1="0" y1="0" x2="1" y2="0">
+                      <stop offset="0%" stopColor="#FF6A00" />
+                      <stop offset="100%" stopColor="#FF2D55" />
+                    </linearGradient>
+                  </defs>
 
-                <Bar
-                  dataKey="actual"
-                  radius={[0, 8, 8, 0]}
-                  fill="url(#barGradient)"
-                />
-              </BarChart>
-            </ResponsiveContainer>
-          </Box>
-        </CardContent>
-      </Card>
+                  <Bar
+                    dataKey="actual"
+                    radius={[0, 8, 8, 0]}
+                    fill="url(#barGradient)"
+                  />
+                </BarChart>
+              </ResponsiveContainer>
+            </Box>
+          </CardContent>
+        </Card>
+      </Box>
     </Box>
   );
 }

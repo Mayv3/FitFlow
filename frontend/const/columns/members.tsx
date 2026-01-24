@@ -87,11 +87,7 @@ export const columnsMember = (
       renderCell: (params) => {
         const fv = params.row.fecha_de_vencimiento ?? params.row.fecha_vencimiento;
         const { label, code, daysDiff } = estadoVencimiento(fv);
-        return (
-          <Box component="span" sx={{ display: 'inline-flex' }}>
-            <StateCheap code={code} label={label} daysDiff={daysDiff} />
-          </Box>
-        );
+        return <StateCheap code={code} label={label} daysDiff={daysDiff} />;
 
       },
     },

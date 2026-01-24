@@ -16,6 +16,8 @@ import { getInputFieldsPagos, layoutPayments } from '@/const/inputs/payments';
 import { usePlanesPrecios } from '@/hooks/plans/usePlanesPrecios';
 import { useAlumnosSimpleByGym } from '@/hooks/alumnos/useAlumnosByGym';
 import { useServicesByGym } from '@/hooks/services/useServicesOptions';
+import { useProducts } from '@/hooks/products/useProducts';
+import { useQueryClient } from '@tanstack/react-query';
 
 import {
     usePagosByGym,
@@ -29,12 +31,16 @@ import { PaymentStats } from './stats/PaymentStats';
 import { fechaHoyArgentinaSinFormato, horaActualArgentina, horaActualArgentinaFunction } from '@/utils/date/dateUtils';
 import moment from 'moment';
 import { usePaymentsStats } from '@/hooks/stats/usePaymentsStats';
+import tableSize from '@/const/tables/tableSize';
 
 export default function PaymentList() {
+    
+    const queryClient = useQueryClient();
     const { user, loading: userLoading } = useUser();
     const gymId = user?.gym_id ?? '';
     const { data: alumnosRes } = useAlumnosSimpleByGym(gymId);
     const { data: services } = useServicesByGym(gymId);
+    const { data: productsData } = useProducts(gymId, 1, 1000);
     const alumnos = useMemo(
         () => (alumnosRes?.items ?? alumnosRes ?? []) as Array<{ id: number; nombre: string; dni?: string }>,
         [alumnosRes]
@@ -52,13 +58,12 @@ export default function PaymentList() {
     const [toDate, setToDate] = useState<moment.Moment | null>(fechaHoyArgentinaSinFormato);
 
     const [page, setPage] = useState(1);
-    const pageSize = 20;
     const [q, setQ] = useState('');
 
     const fromDateISO = fromDate?.format('YYYY-MM-DD') ?? null;
     const toDateISO = toDate?.format('YYYY-MM-DD') ?? null;
 
-    const { data, isLoading, isError, error, isFetching } = usePagosByGym(gymId, page, pageSize, q, { fromDate: fromDateISO, toDate: toDateISO });
+    const { data, isLoading, isError, error, isFetching } = usePagosByGym(gymId, page, tableSize, q, { fromDate: fromDateISO, toDate: toDateISO });
     const { data: stats, isLoading: statsLoading } = usePaymentsStats(gymId, { fromDate: fromDateISO, toDate: toDateISO, })
 
     const addPago = useAddPago(gymId);
@@ -84,11 +89,28 @@ export default function PaymentList() {
         });
     }, [services]);
 
+    const productOptions = useMemo(() => {
+        if (!productsData?.items) return [];
+        return productsData.items.map((p: any) => {
+            const precio = p.precio ? `($${p.precio.toLocaleString('es-AR')})` : '';
+            const stock = p.stock !== undefined ? `[Stock: ${p.stock}]` : '';
+            const sinStock = p.stock <= 0 ? ' - SIN STOCK' : '';
+            const label = `${p.nombre} ${precio} ${stock}${sinStock}`.trim();
+            return {
+                label,
+                value: p.id,
+                stock: p.stock,
+                disabled: p.stock <= 0
+            };
+        });
+    }, [productsData]);
+
     const fields = useMemo(() => getInputFieldsPagos({
         planOptions,
         serviceOptions,
+        productOptions,
         searchFromCache,
-    }), [planOptions, serviceOptions, searchFromCache]);
+    }), [planOptions, serviceOptions, productOptions, searchFromCache]);
 
     const handleSearchChange = useMemo(
         () =>
@@ -112,48 +134,117 @@ export default function PaymentList() {
 
     const handleAddPayment = async (values: any) => {
         try {
-            const items = [];
-            if (values.monto_efectivo) {
-                items.push({ metodo_de_pago_id: 1, monto: Number(values.monto_efectivo) });
-            }
-            if (values.monto_mp) {
-                items.push({ metodo_de_pago_id: 2, monto: Number(values.monto_mp) });
-            }
-            if (values.monto_tarjeta) {
-                items.push({ metodo_de_pago_id: 3, monto: Number(values.monto_tarjeta) });
+            // 1. Validar método de pago
+            const metodoPago = Number(values.metodo_pago);
+            if (!metodoPago || ![1, 2, 3, 4].includes(metodoPago)) {
+                notify.error('❌ Debes seleccionar un método de pago válido');
+                return;
             }
 
+            // 2. Construir items según método de pago
+            const items: { metodo_de_pago_id: number; monto: number }[] = [];
+
+            if (metodoPago === 4) {
+                // Mixto: puede tener efectivo, tarjeta y/o mercado pago
+                const montoEfectivo = Number(values.monto_efectivo) || 0;
+                const montoTarjeta = Number(values.monto_tarjeta) || 0;
+                const montoMp = Number(values.monto_mp) || 0;
+
+                if (montoEfectivo > 0) items.push({ metodo_de_pago_id: 1, monto: montoEfectivo });
+                if (montoTarjeta > 0) items.push({ metodo_de_pago_id: 2, monto: montoTarjeta });
+                if (montoMp > 0) items.push({ metodo_de_pago_id: 3, monto: montoMp });
+
+                if (items.length === 0) {
+                    notify.error('❌ En pago mixto debes ingresar al menos un monto');
+                    return;
+                }
+            } else {
+                // Efectivo (1), Tarjeta (2) o Mercado Pago (3)
+                let monto = 0;
+
+                if (metodoPago === 1) {
+                    monto = Number(values.monto_efectivo) || 0;
+                } else if (metodoPago === 2) {
+                    monto = Number(values.monto_tarjeta) || 0;
+                } else if (metodoPago === 3) {
+                    monto = Number(values.monto_mp) || 0;
+                }
+
+                if (monto <= 0) {
+                    notify.error('❌ El monto debe ser mayor a 0');
+                    return;
+                }
+
+                items.push({ metodo_de_pago_id: metodoPago, monto });
+            }
+
+            // 3. Validación final: debe haber al menos un item
+            if (items.length === 0) {
+                notify.error('❌ No se pudo crear el pago: no hay items válidos');
+                return;
+            }
+
+            // 4. Calcular monto total y validar
             const monto_total = items.reduce((acc, i) => acc + i.monto, 0);
+            if (monto_total <= 0) {
+                notify.error('❌ El monto total debe ser mayor a 0');
+                return;
+            }
 
             const isPlan = values.origen_pago === "plan";
+            const isServicio = values.origen_pago === "servicio";
+            const isProducto = values.origen_pago === "producto";
 
-            const payload = {
-                ...values,
+            // 5. Construir payload limpio
+            const payload: any = {
+                alumno_id: values.alumno_id,
+                tipo: values.tipo,
+                fecha_de_pago: values.fecha_de_pago,
+                fecha_de_venc: values.fecha_de_venc,
+                hora: values.hora,
+                responsable: values.responsable,
                 gym_id: gymId,
                 items,
                 monto_total,
                 isPlan,
+                plan_id: null,
+                service_id: null,
+                producto_id: null,
             };
 
-            delete payload.monto_efectivo;
-            delete payload.monto_mp;
-            delete payload.monto_tarjeta;
-
             if (isPlan) {
-                delete payload.service_id;
-            } else {
+                payload.plan_id = values.plan_id ?? null;
+            } else if (isServicio) {
                 payload.service_id = values.servicio_id ?? null;
-                delete payload.plan_id;
+            } else if (isProducto) {
+                payload.producto_id = values.producto_id ?? null;
+
+                // Verificar stock del producto
+                const selectedProduct = productOptions.find(p => p.value === values.producto_id);
+                if (!selectedProduct || selectedProduct.stock <= 0) {
+                    notify.error('❌ El producto seleccionado no tiene stock disponible');
+                    return;
+                }
             }
 
+            console.log('[handleAddPayment] Payload final:', JSON.stringify(payload, null, 2));
 
-            // Enviamos al backend
             await addPago.mutateAsync(payload);
             setOpenAdd(false);
-            notify.success("Pago añadido correctamente");
-        } catch (error) {
+
+            if (isProducto) {
+                queryClient.invalidateQueries({ queryKey: ['products', gymId] });
+                notify.success("✅ Pago añadido correctamente. Se descontó 1 unidad del stock del producto.");
+            } else {
+                notify.success("✅ Pago añadido correctamente");
+            }
+        } catch (error: any) {
             console.error("Error al añadir pago:", error);
-            notify.error("❌ Error al añadir el pago");
+            if (error?.response?.data?.error?.includes('sin stock')) {
+                notify.error('❌ El producto seleccionado no tiene stock disponible');
+            } else {
+                notify.error("❌ Error al añadir el pago");
+            }
         }
     };
 
@@ -161,8 +252,8 @@ export default function PaymentList() {
 
     const handleOpenEdit = (payment: any) => {
         const efectivo = payment.items?.find((i: any) => i.metodo_de_pago_id === 1)?.monto ?? '';
-        const mp = payment.items?.find((i: any) => i.metodo_de_pago_id === 2)?.monto ?? '';
-        const tarjeta = payment.items?.find((i: any) => i.metodo_de_pago_id === 3)?.monto ?? '';
+        const tarjeta = payment.items?.find((i: any) => i.metodo_de_pago_id === 2)?.monto ?? '';
+        const mp = payment.items?.find((i: any) => i.metodo_de_pago_id === 3)?.monto ?? '';
 
         let metodo_pago = 'Mixto';
         if (efectivo && !mp && !tarjeta) metodo_pago = 'Efectivo';
@@ -202,8 +293,8 @@ export default function PaymentList() {
 
             const items = [
                 { metodo_de_pago_id: 1, monto: efectivo },
-                { metodo_de_pago_id: 2, monto: mp },
-                { metodo_de_pago_id: 3, monto: tarjeta },
+                { metodo_de_pago_id: 2, monto: tarjeta },
+                { metodo_de_pago_id: 3, monto: mp },
             ].filter(i => i.monto > 0);
 
             const monto_total = efectivo + mp + tarjeta;
@@ -351,7 +442,7 @@ export default function PaymentList() {
                 paginationMode="server"
                 rowCount={total}
                 page={page - 1}
-                pageSize={pageSize}
+                pageSize={tableSize}
                 onPaginationModelChange={({ page: newPage }) => setPage(newPage + 1)}
                 loading={isFetching}
             />

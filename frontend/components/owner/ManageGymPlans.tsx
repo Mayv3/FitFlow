@@ -38,6 +38,7 @@ interface PlanFormData {
   appointments: boolean
   portal: boolean
   settings: boolean
+  products: boolean
 }
 
 const initialFormData: PlanFormData = {
@@ -49,6 +50,7 @@ const initialFormData: PlanFormData = {
   appointments: true,
   portal: true,
   settings: true,
+  products: false,
 }
 
 export function ManageGymPlans() {
@@ -74,6 +76,7 @@ export function ManageGymPlans() {
         appointments: plan.appointments,
         portal: plan.portal,
         settings: plan.settings,
+        products: plan.products || false,
       })
     } else {
       setEditingId(null)
@@ -98,6 +101,7 @@ export function ManageGymPlans() {
       appointments: formData.appointments,
       portal: formData.portal,
       settings: formData.settings,
+      products: formData.products,
     }
 
     if (editingId) {
@@ -122,6 +126,7 @@ export function ManageGymPlans() {
     if (plan.appointments) features.push("Turnos")
     if (plan.portal) features.push("Portal")
     if (plan.settings) features.push("Configuración")
+    if (plan.products) features.push("Productos")
     return features
   }
 
@@ -324,6 +329,15 @@ export function ManageGymPlans() {
                   />
                 }
                 label="Configuración Avanzada"
+              />
+              <FormControlLabel
+                control={
+                  <Switch
+                    checked={formData.products}
+                    onChange={(e) => setFormData({ ...formData, products: e.target.checked })}
+                  />
+                }
+                label="Gestión de Productos"
               />
             </Box>
           </Stack>

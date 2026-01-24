@@ -26,13 +26,14 @@ import { debounce } from '@/utils/debounce/debounce';
 import { CustomBreadcrumbs } from '@/components/ui/breadcrums/CustomBreadcrumbs';
 import { usePlanNameFromCache } from '@/hooks/plans/usePlanesPrecios';
 import { notify } from '@/lib/toast';
+import tableSize from '@/const/tables/tableSize';
 
 export default function MembersList() {
   const router = useRouter();
   const { user, loading: userLoading } = useUser();
 
   const [page, setPage] = useState(1);
-  const pageSize = 20;
+
 
   const [q, setQ] = useState('');
 
@@ -62,7 +63,7 @@ export default function MembersList() {
 
   const gymId = user?.gym_id ?? '';
 
-  const { data, isLoading, isError, error, isFetching } = useAlumnosByGym(gymId, page, pageSize, q);
+  const { data, isLoading, isError, error, isFetching } = useAlumnosByGym(gymId, page, tableSize, q);
   const alumnos = data?.items ?? [];
   const total = data?.total ?? 0;
   const { options: planOptions, byId, isLoading: plansLoading } = usePlanesPrecios(gymId);
@@ -164,7 +165,7 @@ export default function MembersList() {
       const temporalId = Date.now();
 
       changeItem({
-        queryKey: ['members', gymId, page, pageSize, q],
+        queryKey: ['members', gymId, page, tableSize, q],
         identifierKey: 'dni',
         action: 'add',
         item: { ...v, plan_nombre, id: temporalId.toString() },
@@ -194,7 +195,7 @@ export default function MembersList() {
     const plan_nombre = getPlanNameFromCache(gymId!, plan_id);
 
     changeItem({
-      queryKey: ['members', gymId, page, pageSize, q],
+      queryKey: ['members', gymId, page, tableSize, q],
       identifierKey: 'dni',
       action: 'edit',
       item: { ...values, plan_id, plan_nombre },
@@ -215,7 +216,7 @@ export default function MembersList() {
   const handleDelete = async (dni: string) => {
     try {
       changeItem({
-        queryKey: ['members', gymId, page, pageSize, q],
+        queryKey: ['members', gymId, page, tableSize, q],
         identifierKey: 'dni',
         action: 'delete',
         item: { dni },
@@ -308,7 +309,7 @@ export default function MembersList() {
         paginationMode="server"
         rowCount={total}
         page={page - 1}
-        pageSize={pageSize}
+        pageSize={tableSize}
         onPaginationModelChange={({ page: newPage }) => setPage(newPage + 1)}
         loading={isFetching}
       />

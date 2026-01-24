@@ -51,13 +51,14 @@ export const columnsPayments = (
     },
     {
       field: 'plan_o_servicio',
-      headerName: 'Plan / Servicio',
+      headerName: 'Plan / Servicio / Producto',
       flex: 0.18,
       ...center,
       renderCell: (p) => {
         const row = p.row;
         if (row.plan_nombre) return row.plan_nombre;
         if (row.servicio_nombre) return row.servicio_nombre;
+        if (row.producto_nombre) return row.producto_nombre;
         return '—';
       },
     },

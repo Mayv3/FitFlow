@@ -11,6 +11,8 @@ import {
   useMediaQuery,
 } from '@mui/material';
 import { useTheme, alpha } from '@mui/material/styles';
+import { GlowingEffect } from '@/components/ui/glowing-effect';
+import { useGymThemeSettings } from '@/hooks/useGymThemeSettings';
 import {
   ResponsiveContainer,
   BarChart,
@@ -62,6 +64,7 @@ const ORDEN_GRADIENTES: GradientKey[] = [
 export function AlumnosPorOrigenSection() {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
+  const { borderRadius } = useGymThemeSettings();
 
   const currentYear = new Date().getFullYear();
   const START_YEAR = 2026;
@@ -91,9 +94,9 @@ export function AlumnosPorOrigenSection() {
   );
 
   const cardSx = {
-    borderRadius: 2,
+    borderRadius,
     border: `1px solid ${alpha(theme.palette.text.primary, 0.06)}`,
-    bgcolor: theme.palette.background.paper,
+    bgcolor: theme.palette.mode === 'dark' ? '#0a0a0a' : theme.palette.background.paper,
     height: '100%',
     boxShadow: '0 2px 6px rgba(0,0,0,0.04)',
   } as const;
@@ -129,178 +132,198 @@ export function AlumnosPorOrigenSection() {
         gap={1.5}
       >
         {/* ================= BAR ================= */}
-        <Card sx={cardSx}>
-          <CardContent>
-            <Box
-              display="flex"
-              justifyContent="space-between"
-              alignItems="center"
-              mb={2}
-              gap={1}
-            >
-              <Typography variant="subtitle2" color="text.secondary">
-                Alumnos por Origen
-              </Typography>
+        <Box sx={{ position: 'relative', borderRadius }}>
+          <GlowingEffect
+            spread={40}
+            glow={true}
+            disabled={false}
+            proximity={64}
+            inactiveZone={0.01}
+            borderWidth={3}
+          />
+          <Card sx={{ ...cardSx, position: 'relative' }}>
+            <CardContent>
+              <Box
+                display="flex"
+                justifyContent="space-between"
+                alignItems="center"
+                mb={2}
+                gap={1}
+              >
+                <Typography variant="subtitle2" color="text.secondary">
+                  Alumnos por Origen
+                </Typography>
 
-              <Box display="flex" gap={1}>
-                <TextField
-                  select
-                  size="small"
-                  value={year}
-                  onChange={(e) => setYear(Number(e.target.value))}
-                >
-                  {years.map((y) => (
-                    <MenuItem key={y} value={y}>
-                      {y}
-                    </MenuItem>
-                  ))}
-                </TextField>
+                <Box display="flex" gap={1}>
+                  <TextField
+                    select
+                    size="small"
+                    value={year}
+                    onChange={(e) => setYear(Number(e.target.value))}
+                  >
+                    {years.map((y) => (
+                      <MenuItem key={y} value={y}>
+                        {y}
+                      </MenuItem>
+                    ))}
+                  </TextField>
 
-                <TextField
-                  select
-                  size="small"
-                  value={month}
-                  onChange={(e) => setMonth(Number(e.target.value))}
-                >
-                  {MONTHS.map((m) => (
-                    <MenuItem key={m.value} value={m.value}>
-                      {m.label}
-                    </MenuItem>
-                  ))}
-                </TextField>
+                  <TextField
+                    select
+                    size="small"
+                    value={month}
+                    onChange={(e) => setMonth(Number(e.target.value))}
+                  >
+                    {MONTHS.map((m) => (
+                      <MenuItem key={m.value} value={m.value}>
+                        {m.label}
+                      </MenuItem>
+                    ))}
+                  </TextField>
+                </Box>
               </Box>
-            </Box>
 
-            {isLoading ? (
-              <Skeleton variant="rectangular" height={280} />
-            ) : !hasData ? (
-              EmptyState
-            ) : (
-              <Box sx={{ height: 280 }}>
-                <ResponsiveContainer>
-                  <BarChart data={safeData}>
-                    <defs>
-                      <GradientDefs prefix="origen-bar" />
-                    </defs>
+              {isLoading ? (
+                <Skeleton variant="rectangular" height={280} />
+              ) : !hasData ? (
+                EmptyState
+              ) : (
+                <Box sx={{ height: 280 }}>
+                  <ResponsiveContainer>
+                    <BarChart data={safeData}>
+                      <defs>
+                        <GradientDefs prefix="origen-bar" />
+                      </defs>
 
-                    <CartesianGrid
-                      vertical={false}
-                      stroke={alpha(theme.palette.text.primary, 0.08)}
-                    />
-                    <XAxis
-                      dataKey="origen"
-                      tickLine={false}
-                      axisLine={false}
-                      tickMargin={8}
-                    />
-                    <YAxis
-                      hide={isMobile}
-                      tickLine={false}
-                      axisLine={false}
-                      allowDecimals={false}
-                    />
+                      <CartesianGrid
+                        vertical={false}
+                        stroke={alpha(theme.palette.text.primary, 0.08)}
+                      />
+                      <XAxis
+                        dataKey="origen"
+                        tickLine={false}
+                        axisLine={false}
+                        tickMargin={8}
+                      />
+                      <YAxis
+                        hide={isMobile}
+                        tickLine={false}
+                        axisLine={false}
+                        allowDecimals={false}
+                      />
 
-                    <Tooltip
-                      content={
-                        <RoundedTooltip
-                          formatter={(entry) =>
-                            `${entry.payload.origen}: ${entry.value}`
-                          }
-                        />
-                      }
-                      cursor={{
-                        fill: alpha(theme.palette.primary.main, 0.06),
-                      }}
-                    />
+                      <Tooltip
+                        content={
+                          <RoundedTooltip
+                            formatter={(entry) =>
+                              `${entry.payload.origen}: ${entry.value}`
+                            }
+                          />
+                        }
+                        cursor={{
+                          fill: alpha(theme.palette.primary.main, 0.06),
+                        }}
+                      />
 
-                    <Bar dataKey="cantidad" radius={[8, 8, 0, 0]}>
-                      {safeData.map((_, i) => (
-                        <Cell
-                          key={i}
-                          fill={gradientUrl(
-                            'origen-bar',
-                            ORDEN_GRADIENTES[i % ORDEN_GRADIENTES.length]
-                          )}
-                        />
-                      ))}
-                    </Bar>
-                  </BarChart>
-                </ResponsiveContainer>
-              </Box>
-            )}
-          </CardContent>
-        </Card>
+                      <Bar dataKey="cantidad" radius={[8, 8, 0, 0]}>
+                        {safeData.map((_, i) => (
+                          <Cell
+                            key={i}
+                            fill={gradientUrl(
+                              'origen-bar',
+                              ORDEN_GRADIENTES[i % ORDEN_GRADIENTES.length]
+                            )}
+                          />
+                        ))}
+                      </Bar>
+                    </BarChart>
+                  </ResponsiveContainer>
+                </Box>
+              )}
+            </CardContent>
+          </Card>
+        </Box>
 
         {/* ================= PIE ================= */}
-        <Card sx={cardSx}>
-          <CardContent>
-            <Typography variant="subtitle2" color="text.secondary" mb={2}>
-              Proporción por Origen
-            </Typography>
+        <Box sx={{ position: 'relative', borderRadius }}>
+          <GlowingEffect
+            spread={40}
+            glow={true}
+            disabled={false}
+            proximity={64}
+            inactiveZone={0.01}
+            borderWidth={3}
+          />
+          <Card sx={{ ...cardSx, position: 'relative' }}>
+            <CardContent>
+              <Typography variant="subtitle2" color="text.secondary" mb={2}>
+                Proporción por Origen
+              </Typography>
 
-            {isLoading ? (
-              <Box display="flex" justifyContent="center">
-                <Skeleton variant="circular" width={180} height={180} />
-              </Box>
-            ) : !hasData ? (
-              EmptyState
-            ) : (
-              <Box sx={{ height: 280, position: 'relative' }}>
-                <ResponsiveContainer>
-                  <PieChart>
-                    <defs>
-                      <GradientDefs prefix="origen-pie" direction="diagonal" />
-                    </defs>
+              {isLoading ? (
+                <Box display="flex" justifyContent="center">
+                  <Skeleton variant="circular" width={180} height={180} />
+                </Box>
+              ) : !hasData ? (
+                EmptyState
+              ) : (
+                <Box sx={{ height: 280, position: 'relative' }}>
+                  <ResponsiveContainer>
+                    <PieChart>
+                      <defs>
+                        <GradientDefs prefix="origen-pie" direction="diagonal" />
+                      </defs>
 
-                    <Pie
-                      data={pieData}
-                      dataKey="porcentaje"
-                      nameKey="origen"
-                      innerRadius="65%"
-                      outerRadius="90%"
-                      startAngle={90}
-                      endAngle={-270}
-                      stroke="transparent"
-                    >
-                      {pieData.map((_, i) => (
-                        <Cell
-                          key={i}
-                          fill={gradientUrl(
-                            'origen-pie',
-                            ORDEN_GRADIENTES[i % ORDEN_GRADIENTES.length]
-                          )}
-                        />
-                      ))}
-                    </Pie>
+                      <Pie
+                        data={pieData}
+                        dataKey="porcentaje"
+                        nameKey="origen"
+                        innerRadius="65%"
+                        outerRadius="90%"
+                        startAngle={90}
+                        endAngle={-270}
+                        stroke="transparent"
+                      >
+                        {pieData.map((_, i) => (
+                          <Cell
+                            key={i}
+                            fill={gradientUrl(
+                              'origen-pie',
+                              ORDEN_GRADIENTES[i % ORDEN_GRADIENTES.length]
+                            )}
+                          />
+                        ))}
+                      </Pie>
 
-                    <Tooltip
-                      content={
-                        <RoundedTooltip
-                          formatter={(entry) =>
-                            `${entry.payload.origen}: ${entry.value}%`
-                          }
-                        />
-                      }
-                    />
-                  </PieChart>
-                </ResponsiveContainer>
+                      <Tooltip
+                        content={
+                          <RoundedTooltip
+                            formatter={(entry) =>
+                              `${entry.payload.origen}: ${entry.value}%`
+                            }
+                          />
+                        }
+                      />
+                    </PieChart>
+                  </ResponsiveContainer>
 
-                <Typography
-                  variant="caption"
-                  sx={{
-                    position: 'absolute',
-                    top: '50%',
-                    left: '50%',
-                    transform: 'translate(-50%, -50%)',
-                    fontWeight: 600,
-                  }}
-                >
-                  100%
-                </Typography>
-              </Box>
-            )}
-          </CardContent>
-        </Card>
+                  <Typography
+                    variant="caption"
+                    sx={{
+                      position: 'absolute',
+                      top: '50%',
+                      left: '50%',
+                      transform: 'translate(-50%, -50%)',
+                      fontWeight: 600,
+                    }}
+                  >
+                    100%
+                  </Typography>
+                </Box>
+              )}
+            </CardContent>
+          </Card>
+        </Box>
       </Box>
     </Box>
   );

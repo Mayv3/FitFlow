@@ -5,6 +5,7 @@ import { CreateGym } from "@/components/owner/CreateGym"
 import { ManageGymUsers } from "@/components/owner/ManageGymUsers"
 import { ManageGymPlans } from "@/components/owner/ManageGymPlans"
 import { AssignPlanToGym } from "@/components/owner/AssignPlanToGym"
+import { ManageNovedades } from "@/components/owner/ManageNovedades"
 import {
   Box,
   Tabs,
@@ -16,6 +17,7 @@ import BusinessIcon from "@mui/icons-material/Business"
 import PeopleIcon from "@mui/icons-material/People"
 import CardMembershipIcon from "@mui/icons-material/CardMembership"
 import AssignmentIcon from "@mui/icons-material/Assignment"
+import AnnouncementIcon from "@mui/icons-material/Announcement"
 
 interface TabPanelProps {
   children?: React.ReactNode
@@ -95,6 +97,11 @@ export default function OwnerDashboardPage() {
             iconPosition="start" 
             label="Suscripciones" 
           />
+          <Tab 
+            icon={<AnnouncementIcon />} 
+            iconPosition="start" 
+            label="Novedades" 
+          />
         </Tabs>
 
         <Box sx={{ p: { xs: 2, md: 3 } }}>
@@ -112,6 +119,10 @@ export default function OwnerDashboardPage() {
           
           <TabPanel value={activeTab} index={3}>
             <AssignPlanToGym />
+          </TabPanel>
+          
+          <TabPanel value={activeTab} index={4}>
+            <ManageNovedades />
           </TabPanel>
         </Box>
       </Paper>

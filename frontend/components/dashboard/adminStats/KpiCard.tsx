@@ -1,7 +1,7 @@
 'use client';
 
 import { Card, CardContent, Box, Typography } from '@mui/material';
-import { alpha } from '@mui/material/styles';
+import { alpha, useTheme } from '@mui/material/styles';
 
 export interface KpiCardProps {
   title: string;
@@ -10,9 +10,11 @@ export interface KpiCardProps {
   deltaPct?: number;
   loading?: boolean;
   iconSlot?: React.ReactNode;
+  borderRadius?: number;
 }
 
-export function KpiCard({ title, value, subtitle, deltaPct, loading, iconSlot }: KpiCardProps) {
+export function KpiCard({ title, value, subtitle, deltaPct, loading, iconSlot, borderRadius = 1.5 }: KpiCardProps) {
+  const t = useTheme();
   const deltaColor = deltaPct == null
     ? 'text.secondary'
     : deltaPct > 0
@@ -24,13 +26,14 @@ export function KpiCard({ title, value, subtitle, deltaPct, loading, iconSlot }:
   return (
     <Card
       variant="outlined"
-      sx={(t) => ({
-        borderRadius: 2,
+      sx={{
+        borderRadius,
         height: '100%',
         minHeight: 128,
         borderColor: alpha(t.palette.text.primary, 0.06),
-        boxShadow: '0 2px 6px rgba(0,0,0,0.04)'
-      })}
+        boxShadow: '0 2px 6px rgba(0,0,0,0.04)',
+        bgcolor: t.palette.mode === 'dark' ? '#161616' : t.palette.background.paper,
+      }}
     >
       <CardContent sx={{ p: 2.25 }}>
         <Box display="flex" alignItems="center" justifyContent="space-between" mb={0.75}>

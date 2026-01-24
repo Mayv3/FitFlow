@@ -25,8 +25,11 @@ import LogoutIcon from '@mui/icons-material/Logout'
 import AccountCircleIcon from '@mui/icons-material/AccountCircle'
 import LockIcon from '@mui/icons-material/Lock'
 import StarIcon from '@mui/icons-material/Star'
+import DarkModeIcon from '@mui/icons-material/DarkMode'
+import LightModeIcon from '@mui/icons-material/LightMode'
 import { useEffect, useState } from 'react'
 import { useLogout } from '@/hooks/logout/useLogout'
+import { useDarkMode } from '@/context/DarkModeContext'
 import Cookies from 'js-cookie'
 import { useRouter, usePathname } from 'next/navigation'
 import { ROLE_ROUTES } from '@/const/roles/roles'
@@ -42,6 +45,7 @@ const ROUTE_FEATURE_MAP: Record<string, string> = {
   'appointments': 'appointments',
   'portal': 'portal',
   'settings': 'settings',
+  'products': 'products',
 }
 
 function getFeatureFromRoute(route: string): string | null {
@@ -74,6 +78,7 @@ export const SideBar = ({ tabs }: HeaderComponentProps) => {
 
   const router = useRouter()
   const pathname = usePathname()
+  const { isDarkMode, toggleDarkMode } = useDarkMode()
 
   const [gym_name, setGymName] = useState<string | null>(null)
   const [gym_logo_url, setGymLogoUrl] = useState<string | null>(null)
@@ -262,6 +267,7 @@ export const SideBar = ({ tabs }: HeaderComponentProps) => {
         {tabs.map((tab, index) => {
           const selected = selectedIndex === index
           const enabled = isTabEnabled(tab.route)
+          const isNovedades = tab.label === 'Novedades'
           const item = (
             <ListItemButton
               key={tab.route}
@@ -276,6 +282,7 @@ export const SideBar = ({ tabs }: HeaderComponentProps) => {
                 bgcolor: selected && enabled ? '#fff' : 'transparent',
                 opacity: enabled ? 1 : 0.7,
                 cursor: 'pointer',
+                border: isNovedades ? 'transparent' : 'none',
                 '&:hover': {
                   bgcolor: !enabled
                     ? 'rgba(245, 206, 8, 0.1)'
@@ -288,7 +295,7 @@ export const SideBar = ({ tabs }: HeaderComponentProps) => {
             >
               <ListItemIcon
                 sx={{
-                  color: !enabled ? '#F5CE08' : selected ? 'black' : 'white',
+                  color: !enabled ? '#F5CE08' : isNovedades && !selected ? '#FFD700' : selected ? 'black' : 'white',
                   minWidth: 0,
                   mr: isExpanded ? 1.5 : 0,
                 }}
@@ -307,8 +314,11 @@ export const SideBar = ({ tabs }: HeaderComponentProps) => {
                 <ListItemText
                   primary={tab.label}
                   primaryTypographyProps={{
-                    color: !enabled ? '#F5CE08' : selected ? 'black' : 'white',
-                    sx: { textDecoration: !enabled ? 'line-through' : 'none' }
+                    color: !enabled ? '#F5CE08' : isNovedades && !selected ? '#FFD700' : selected ? 'black' : 'white',
+                    sx: { 
+                      textDecoration: !enabled ? 'line-through' : 'none',
+                      fontWeight: isNovedades ? 700 : 400,
+                    }
                   }}
                 />
               </Box>
@@ -364,6 +374,34 @@ export const SideBar = ({ tabs }: HeaderComponentProps) => {
             </Typography>
           </Box>
         </Box>
+
+        <Tooltip title={isExpanded ? '' : isDarkMode ? 'Modo claro' : 'Modo oscuro'} placement="right">
+          <ListItemButton
+            onClick={toggleDarkMode}
+            sx={{
+              borderRadius: 2,
+              height: 48,
+              px: 1.25,
+              justifyContent: 'flex-start',
+              '&:hover': { bgcolor: 'rgba(255,255,255,0.10)' },
+            }}
+          >
+            <ListItemIcon sx={{ color: 'white', minWidth: 0, mr: isExpanded ? 1.5 : 0 }}>
+              {isDarkMode ? <LightModeIcon fontSize="medium" /> : <DarkModeIcon fontSize="medium" />}
+            </ListItemIcon>
+            <Box
+              sx={{
+                overflow: 'hidden',
+                whiteSpace: 'nowrap',
+                opacity: isExpanded ? 1 : 0,
+                width: isExpanded ? 'auto' : 0,
+                transition: 'opacity .3s ease, width .3s ease',
+              }}
+            >
+              <ListItemText primary={isDarkMode ? 'Modo claro' : 'Modo oscuro'} primaryTypographyProps={{ color: 'white' }} />
+            </Box>
+          </ListItemButton>
+        </Tooltip>
 
         <Tooltip title={isExpanded ? '' : 'Salir'} placement="right">
           <ListItemButton
@@ -516,6 +554,7 @@ export const SideBar = ({ tabs }: HeaderComponentProps) => {
             >
               {tabs.map((tab, index) => {
                 const enabled = isTabEnabled(tab.route)
+                const isNovedades = tab.label === 'Novedades'
                 return (
                   <BottomNavigationAction
                     key={tab.route}
@@ -527,11 +566,14 @@ export const SideBar = ({ tabs }: HeaderComponentProps) => {
                     sx={{
                       color: !enabled
                         ? '#F5CE08'
-                        : selectedIndex === index
-                          ? 'black'
-                          : 'white',
+                        : isNovedades && selectedIndex !== index
+                          ? '#FFD700'
+                          : selectedIndex === index
+                            ? 'black'
+                            : 'white',
                       opacity: enabled ? 1 : 0.7,
                       cursor: 'pointer',
+                      bgcolor: 'transparent',
                       '&.Mui-selected': {
                         color: 'black',
                         bgcolor: enabled ? 'white !important' : 'transparent'
@@ -540,6 +582,15 @@ export const SideBar = ({ tabs }: HeaderComponentProps) => {
                   />
                 )
               })}
+              <BottomNavigationAction
+                value={20}
+                icon={isDarkMode ? <LightModeIcon /> : <DarkModeIcon />}
+                onClick={() => toggleDarkMode()}
+                sx={{
+                  color: 'white',
+                  '&.Mui-selected': { color: 'black', bgcolor: 'white !important' },
+                }}
+              />
               <BottomNavigationAction
                 value={21}
                 icon={<LogoutIcon />}

@@ -7,6 +7,8 @@ import {
   Typography,
   CircularProgress,
 } from '@mui/material';
+import { GlowingEffect } from '@/components/ui/glowing-effect';
+import { useGymThemeSettings } from '@/hooks/useGymThemeSettings';
 import {
   ResponsiveContainer,
   LineChart,
@@ -54,6 +56,7 @@ export function AsistenciasHoyPorHoraCard({ fecha }: Props) {
   const { data, isLoading } = useAsistencias(gymId, { fecha });
   const t = useTheme();
   const isMobile = useMediaQuery(t.breakpoints.down('sm'));
+  const { borderRadius } = useGymThemeSettings();
   const [open, setOpen] = useState(false);
   const [horaSeleccionada, setHoraSeleccionada] = useState<string | null>(null);
   const [alumnosHora, setAlumnosHora] = useState<any[]>([]);
@@ -89,9 +92,9 @@ export function AsistenciasHoyPorHoraCard({ fecha }: Props) {
 
 
   const cardSx = {
-    borderRadius: 2,
+    borderRadius,
     border: `1px solid ${alpha(t.palette.text.primary, 0.06)}`,
-    bgcolor: t.palette.background.paper,
+    bgcolor: t.palette.mode === 'dark' ? '#0a0a0a' : t.palette.background.paper,
     height: '100%',
     boxShadow: '0 2px 6px rgba(0,0,0,0.04)',
     transition: 'box-shadow .2s ease',
@@ -109,249 +112,258 @@ export function AsistenciasHoyPorHoraCard({ fecha }: Props) {
   const totales = data?.total ?? 0;
 
   return (
-    <Card sx={cardSx}>
-      <CardContent sx={{ pt: 2 }}>
-        <Box
-          display="flex"
-          alignItems="center"
-          justifyContent="space-between"
-          mb={1}
-        >
-          <Typography variant="subtitle2" color="text.secondary">
-            Asistencias totales de hoy: {totales}
-          </Typography>
-        </Box>
-
-        {isLoading ? (
+    <Box sx={{ position: 'relative', borderRadius }}>
+      <GlowingEffect
+        spread={40}
+        glow={true}
+        disabled={false}
+        proximity={64}
+        inactiveZone={0.01}
+        borderWidth={3}
+      />
+      <Card sx={{ ...cardSx, position: 'relative' }}>
+        <CardContent sx={{ pt: 2 }}>
           <Box
-            sx={{
+            display="flex"
+            alignItems="center"
+            justifyContent="space-between"
+            mb={1}
+          >
+            <Typography variant="subtitle2" color="text.secondary">
+              Asistencias totales de hoy: {totales}
+            </Typography>
+          </Box>
+
+          {isLoading ? (
+            <Box
+              sx={{
+                height: 260,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                cursor: 'pointer',
+                transition: 'opacity .15s ease',
+                '&:hover': {
+                  opacity: 0.95,
+                },
+              }}
+            >
+              <CircularProgress sx={{ color: COLOR_MAIN }} size={32} />
+            </Box>
+          ) : (
+            <Box sx={{
+              width: '100%',
               height: 260,
+              cursor: 'pointer',
+              '& svg': {
+                cursor: 'pointer',
+              },
+            }}>
+              <ResponsiveContainer width="100%" height="100%">
+                <LineChart
+                  data={asistencias}
+                  margin={{ top: 10, right: 16, left: -10, bottom: 0 }}
+                  onClick={(e: any) => {
+                    if (!e || !e.activeLabel) return;
+
+                    const hora = parseInt(e.activeLabel);
+                    const detalle = data?.porHora?.find(
+                      (i: any) => i.hora === hora
+                    );
+
+                    if (!detalle) return;
+
+                    setHoraSeleccionada(`${hora}:00`);
+                    setTotalHora(detalle.total);
+                    setAlumnosHora(
+                      [...(detalle.alumnos ?? [])].sort(
+                        (a: any, b: any) =>
+                          horaToMinutos(b.hora) - horaToMinutos(a.hora)
+                      )
+                    );
+                    setOpen(true);
+                  }}
+                >
+
+                  <CartesianGrid
+                    strokeDasharray="3 3"
+                    stroke={alpha(t.palette.text.primary, 0.08)}
+                  />
+
+                  <XAxis
+                    dataKey="hora"
+                    tickLine={false}
+                    axisLine={false}
+                    tick={{ fill: t.palette.text.secondary, fontSize: 12 }}
+                  />
+
+                  <YAxis
+                    hide={isMobile}
+                    tickLine={false}
+                    axisLine={false}
+                    allowDecimals={false}
+                    tick={{ fill: t.palette.text.secondary, fontSize: 12 }}
+                  />
+
+                  <defs>
+                    <linearGradient
+                      id="asistenciasGradient"
+                      x1="0"
+                      y1="0"
+                      x2="0"
+                      y2="1"
+                    >
+                      <stop offset="0%" stopColor={COLOR_MAIN} stopOpacity={0.35} />
+                      <stop offset="100%" stopColor={COLOR_MAIN} stopOpacity={0.05} />
+                    </linearGradient>
+                  </defs>
+
+                  <Tooltip
+                    contentStyle={{
+                      borderRadius: 12,
+                      border: 'none',
+                      boxShadow: t.shadows[3],
+                    }}
+                    labelStyle={{ fontWeight: 600 }}
+                  />
+
+                  <Area
+                    type="monotone"
+                    dataKey="cantidad"
+                    stroke="none"
+                    fill="url(#asistenciasGradient)"
+                  />
+
+                  <Line
+                    type="monotone"
+                    dataKey="cantidad"
+                    stroke={COLOR_MAIN}
+                    strokeWidth={2.5}
+                    dot={{ r: 4, strokeWidth: 2, fill: '#fff' }}
+                    activeDot={{ r: 6 }}
+                  />
+                </LineChart>
+              </ResponsiveContainer>
+            </Box>
+          )}
+        </CardContent>
+
+        <Dialog
+          open={open}
+          onClose={handleClose}
+          fullWidth
+          maxWidth="xs"
+          PaperProps={{
+            sx: {
+              borderRadius: 3,
+              p: 1.5,
+            },
+          }}
+        >
+          <DialogTitle
+            sx={{
               display: 'flex',
               alignItems: 'center',
-              justifyContent: 'center',
-              cursor: 'pointer',
-              transition: 'opacity .15s ease',
-              '&:hover': {
-                opacity: 0.95,
+              justifyContent: 'space-between',
+              pb: 1,
+            }}
+          >
+            <Box>
+              <Typography variant="caption" color="text.secondary">
+                Asistencias por horario - {totalHora} asistencias
+              </Typography>
+              <Typography variant="h6" fontWeight={600}>
+                {horaSeleccionada} hs
+              </Typography>
+            </Box>
+
+            <IconButton onClick={handleClose}>
+              <CloseIcon />
+            </IconButton>
+          </DialogTitle>
+
+          <DialogContent
+            sx={{
+              pt: 1,
+              maxHeight: {
+                xs: '50vh',
+                sm: 'unset',
+              },
+              overflowY: {
+                xs: 'auto',
+                sm: 'visible',
+              },
+              scrollbarWidth: 'none',
+              '&::-webkit-scrollbar': {
+                display: 'none',
               },
             }}
           >
-            <CircularProgress sx={{ color: COLOR_MAIN }} size={32} />
-          </Box>
-        ) : (
-          <Box sx={{
-            width: '100%',
-            height: 260,
-            cursor: 'pointer',
-            '& svg': {
-              cursor: 'pointer',
-            },
-          }}>
-            <ResponsiveContainer width="100%" height="100%">
-              <LineChart
-                data={asistencias}
-                margin={{ top: 10, right: 16, left: -10, bottom: 0 }}
-                onClick={(e: any) => {
-                  if (!e || !e.activeLabel) return;
-
-                  const hora = parseInt(e.activeLabel);
-                  const detalle = data?.porHora?.find(
-                    (i: any) => i.hora === hora
-                  );
-
-                  if (!detalle) return;
-
-                  setHoraSeleccionada(`${hora}:00`);
-                  setTotalHora(detalle.total);
-                  setAlumnosHora(
-                    [...(detalle.alumnos ?? [])].sort(
-                      (a: any, b: any) =>
-                        horaToMinutos(b.hora) - horaToMinutos(a.hora)
-                    )
-                  );
-                  setOpen(true);
+            {alumnosHora.length === 0 ? (
+              <Typography variant="body2" color="text.secondary">
+                No hubo asistencias en este horario.
+              </Typography>
+            ) : (
+              <Box
+                sx={{
+                  display: 'grid',
+                  gridTemplateColumns: {
+                    xs: '1fr',
+                    sm: 'repeat(1, 1fr)',
+                  },
+                  gap: .5,
                 }}
               >
-
-                <CartesianGrid
-                  strokeDasharray="3 3"
-                  stroke={alpha(t.palette.text.primary, 0.08)}
-                />
-
-                <XAxis
-                  dataKey="hora"
-                  tickLine={false}
-                  axisLine={false}
-                  tick={{ fill: t.palette.text.secondary, fontSize: 12 }}
-                />
-
-                <YAxis
-                  hide={isMobile}
-                  tickLine={false}
-                  axisLine={false}
-                  allowDecimals={false}
-                  tick={{ fill: t.palette.text.secondary, fontSize: 12 }}
-                />
-
-                <defs>
-                  <linearGradient
-                    id="asistenciasGradient"
-                    x1="0"
-                    y1="0"
-                    x2="0"
-                    y2="1"
-                  >
-                    <stop offset="0%" stopColor={COLOR_MAIN} stopOpacity={0.35} />
-                    <stop offset="100%" stopColor={COLOR_MAIN} stopOpacity={0.05} />
-                  </linearGradient>
-                </defs>
-
-                <Tooltip
-                  contentStyle={{
-                    borderRadius: 12,
-                    border: 'none',
-                    boxShadow: t.shadows[3],
-                  }}
-                  labelStyle={{ fontWeight: 600 }}
-                />
-
-                <Area
-                  type="monotone"
-                  dataKey="cantidad"
-                  stroke="none"
-                  fill="url(#asistenciasGradient)"
-                />
-
-                <Line
-                  type="monotone"
-                  dataKey="cantidad"
-                  stroke={COLOR_MAIN}
-                  strokeWidth={2.5}
-                  dot={{ r: 4, strokeWidth: 2, fill: '#fff' }}
-                  activeDot={{ r: 6 }}
-                />
-              </LineChart>
-            </ResponsiveContainer>
-          </Box>
-        )}
-      </CardContent>
-
-      <Dialog
-        open={open}
-        onClose={handleClose}
-        fullWidth
-        maxWidth="xs"
-        PaperProps={{
-          sx: {
-            borderRadius: 3,
-            p: 1.5,
-          },
-        }}
-      >
-        <DialogTitle
-          sx={{
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            pb: 1,
-          }}
-        >
-          <Box>
-            <Typography variant="caption" color="text.secondary">
-              Asistencias por horario - {totalHora} asistencias
-            </Typography>
-            <Typography variant="h6" fontWeight={600}>
-              {horaSeleccionada} hs
-            </Typography>
-          </Box>
-
-          <IconButton onClick={handleClose}>
-            <CloseIcon />
-          </IconButton>
-        </DialogTitle>
-
-        <DialogContent
-          sx={{
-            pt: 1,
-            maxHeight: {
-              xs: '50vh',
-              sm: 'unset',
-            },
-            overflowY: {
-              xs: 'auto',
-              sm: 'visible',
-            },
-            scrollbarWidth: 'none',
-            '&::-webkit-scrollbar': {
-              display: 'none',
-            },
-          }}
-        >
-          {alumnosHora.length === 0 ? (
-            <Typography variant="body2" color="text.secondary">
-              No hubo asistencias en este horario.
-            </Typography>
-          ) : (
-            <Box
-              sx={{
-                display: 'grid',
-                gridTemplateColumns: {
-                  xs: '1fr',
-                  sm: 'repeat(1, 1fr)',
-                },
-                gap: .5,
-              }}
-            >
-              {alumnosHora.map((a, idx) => (
-                <Box key={a.alumno_id} sx={itemSx}>
-                  <Box display="flex" alignItems="center" width='100%'>
-                    <Box
-                      sx={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'space-between',
-                        width: '100%',
-                      }}
-                    >
+                {alumnosHora.map((a, idx) => (
+                  <Box key={a.alumno_id} sx={itemSx}>
+                    <Box display="flex" alignItems="center" width='100%'>
                       <Box
                         sx={{
                           display: 'flex',
                           alignItems: 'center',
-                          minWidth: '50%',
+                          justifyContent: 'space-between',
+                          width: '100%',
                         }}
                       >
-                        <Typography fontWeight={500} noWrap>
-                          {a.nombre}
-                        </Typography>
-                      </Box>
-
-                      <Box
-                        sx={{
-                          ml: 2,
-                          pl: 2,
-                          minWidth: '50%',
-                          borderLeft: `1px solid ${alpha(t.palette.text.primary, 0.12)}`,
-                          flexShrink: 0,
-                        }}
-                      >
-                        <Typography
-                          variant="body2"
-                          fontWeight={600}
-                          sx={{ color: '#14b8a6', whiteSpace: 'nowrap' }}
+                        <Box
+                          sx={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            minWidth: '50%',
+                          }}
                         >
-                          {a.hora} hs
-                        </Typography>
+                          <Typography fontWeight={500} noWrap>
+                            {a.nombre}
+                          </Typography>
+                        </Box>
+
+                        <Box
+                          sx={{
+                            ml: 2,
+                            pl: 2,
+                            minWidth: '50%',
+                            borderLeft: `1px solid ${alpha(t.palette.text.primary, 0.12)}`,
+                            flexShrink: 0,
+                          }}
+                        >
+                          <Typography
+                            variant="body2"
+                            fontWeight={600}
+                            sx={{ color: '#14b8a6', whiteSpace: 'nowrap' }}
+                          >
+                            {a.hora} hs
+                          </Typography>
+                        </Box>
                       </Box>
                     </Box>
                   </Box>
-                </Box>
-              ))}
-            </Box>
-          )}
-        </DialogContent>
+                ))}
+              </Box>
+            )}
+          </DialogContent>
 
-      </Dialog>
-    </Card >
-
+        </Dialog>
+      </Card>
+    </Box>
   );
 }

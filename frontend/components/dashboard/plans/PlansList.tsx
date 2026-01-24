@@ -20,6 +20,7 @@ import {
 } from '@/hooks/plans/usePlanesPrecios'
 import { GenericModal } from '@/components/ui/modals/GenericModal'
 import { notify } from '@/lib/toast'
+import tableSize from '@/const/tables/tableSize'
 
 export default function PlansList() {
     const { user, loading: userLoading } = useUser()
@@ -32,7 +33,6 @@ export default function PlansList() {
     const [deletingId, setDeletingId] = useState<number | null>(null)
 
     const [page, setPage] = useState(1)
-    const pageSize = 20
     const [q, setQ] = useState('')
 
     const {
@@ -40,7 +40,7 @@ export default function PlansList() {
         total,
         isLoading,
         isFetching,
-    } = usePlanesPrecios(gymId, page, pageSize, q)
+    } = usePlanesPrecios(gymId, page, tableSize, q)
 
     const addPlan = useAddPlan(gymId)
     const editPlan = useEditPlan(gymId)

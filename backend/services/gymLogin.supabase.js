@@ -138,6 +138,65 @@ export const getAlumnoCompleteInfo = async (dni, gymId) => {
         console.error('Error obteniendo planes:', planesError);
     }
 
+    const { data: clasesInscritas, error: clasesError } = await supabaseAdmin
+        .from('clases_inscripciones')
+        .select(`
+      id,
+      es_fija,
+      created_at,
+      sesion_id,
+      clases_sesiones (
+        id,
+        dia_semana,
+        hora_inicio,
+        capacidad,
+        clase_id,
+        clases (
+          id,
+          nombre,
+          descripcion,
+          color
+        )
+      )
+    `)
+        .eq('alumno_id', alumno.id)
+        .order('created_at', { ascending: false });
+
+    if (clasesError) {
+        console.error('Error obteniendo clases inscritas:', clasesError);
+    }
+
+    // Formatear las clases inscritas
+    const clasesFormateadas = (clasesInscritas || []).map(inscripcion => {
+        // Calcular la próxima fecha de la clase
+        let proxima_fecha = null;
+        if (inscripcion.clases_sesiones?.dia_semana !== null && inscripcion.clases_sesiones?.dia_semana !== undefined) {
+            const hoy = new Date();
+            const diaClase = inscripcion.clases_sesiones.dia_semana;
+            const diaActual = hoy.getDay();
+            
+            let diasHastaClase = diaClase - diaActual;
+            if (diasHastaClase <= 0) {
+                diasHastaClase += 7;
+            }
+            
+            const fechaProxima = new Date(hoy);
+            fechaProxima.setDate(hoy.getDate() + diasHastaClase);
+            proxima_fecha = fechaProxima.toISOString().split('T')[0];
+        }
+
+        return {
+            id: inscripcion.id,
+            es_fija: inscripcion.es_fija,
+            fecha_inscripcion: inscripcion.created_at,
+            clase_nombre: inscripcion.clases_sesiones?.clases?.nombre || 'Sin nombre',
+            clase_color: inscripcion.clases_sesiones?.clases?.color || '#2196F3',
+            dia_semana: inscripcion.clases_sesiones?.dia_semana,
+            hora_inicio: inscripcion.clases_sesiones?.hora_inicio,
+            proxima_fecha: proxima_fecha,
+        };
+    });
+
     return {
         datosPersonales: {
             id: alumno.id,
@@ -173,6 +232,7 @@ export const getAlumnoCompleteInfo = async (dni, gymId) => {
 
         pagos: pagos || [],
         planes_disponibles: planes || [],
+        clases_inscritas: clasesFormateadas || [],
 
         totales: {
             total_pagado: pagos ? pagos

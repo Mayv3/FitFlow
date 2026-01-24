@@ -56,8 +56,21 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
         alignItems="center"
         minHeight="100vh"
         flexDirection="column"
+        sx={{
+          backgroundColor: '#f5f5f5',
+        }}
       >
-        <CircularProgress color="primary" size={60} thickness={4} />
+        <CircularProgress 
+          color="inherit"
+          size={70} 
+          thickness={3}
+          sx={{
+            color: '#0dc985',
+            '& circle': {
+              stroke: '#0dc985 !important',
+            }
+          }}
+        />
       </Box>
     );
   }

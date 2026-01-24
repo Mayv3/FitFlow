@@ -66,6 +66,18 @@ export default function GymLoginPage() {
             return
         }
 
+        // Validar que el DNI solo contenga números
+        if (!/^\d+$/.test(dni.trim())) {
+            notify.error('El DNI solo debe contener números')
+            return
+        }
+
+        // Validar longitud del DNI (7-8 dígitos)
+        if (dni.trim().length < 7 || dni.trim().length > 8) {
+            notify.error('El DNI debe tener entre 7 y 8 dígitos')
+            return
+        }
+
         if (!gymInfo) {
             notify.error('Información del gimnasio no disponible')
             return
@@ -171,17 +183,25 @@ export default function GymLoginPage() {
                             <Stack spacing={3}>
                                 <TextField
                                     label="DNI"
-                                    placeholder="Ingresa tu DNI"
+                                    placeholder="Ingresa tu DNI (7-8 dígitos)"
                                     value={dni}
-                                    onChange={(e) => setDni(e.target.value)}
+                                    onChange={(e) => {
+                                        // Solo permitir números
+                                        const value = e.target.value.replace(/\D/g, '')
+                                        // Limitar a 8 dígitos
+                                        if (value.length <= 8) {
+                                            setDni(value)
+                                        }
+                                    }}
                                     fullWidth
                                     required
                                     autoFocus
                                     type="text"
                                     inputProps={{
                                         inputMode: 'numeric',
-                                        pattern: '[0-9]*',
+                                        maxLength: 8,
                                     }}
+                                    helperText="Ingresa tu DNI sin puntos ni espacios"
                                 />
 
                                 <Button

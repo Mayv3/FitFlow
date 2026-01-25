@@ -27,10 +27,12 @@ function isPublicRoute(path: string) {
 export const UserProvider = ({ children }: { children: ReactNode }) => {
   const [user, setUser] = useState<UserData | null>(null);
   const [loading, setLoading] = useState(true);
+  const [isMounted, setIsMounted] = useState(false);
   const pathname = usePathname();
   const router = useRouter();
 
   useEffect(() => {
+    setIsMounted(true);
     const idStr = Cookies.get("id") || "";
     const dni = Cookies.get("dni") || "";
     const role_id = Cookies.get("rol") || "";
@@ -48,7 +50,8 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
     setLoading(false);
   }, []);
 
-  if (loading) {
+  // Evitar hidratación inconsistente - renderizar loading durante SSR
+  if (!isMounted || loading) {
     return (
       <Box
         display="flex"

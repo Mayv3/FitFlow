@@ -28,6 +28,17 @@ export function DarkModeProvider({ children }: { children: React.ReactNode }) {
     }
   }, [])
 
+  // Aplicar/remover clase 'dark' del elemento html
+  useEffect(() => {
+    if (isMounted) {
+      if (isDarkMode) {
+        document.documentElement.classList.add('dark')
+      } else {
+        document.documentElement.classList.remove('dark')
+      }
+    }
+  }, [isDarkMode, isMounted])
+
   const toggleDarkMode = () => {
     setIsDarkMode((prev) => {
       const newValue = !prev

@@ -19,14 +19,18 @@ import {
     AttachMoney,
     PieChart,
     Timeline,
+    DarkMode,
+    LightMode,
 } from "@mui/icons-material"
 import Image from "next/image"
+import { useDarkMode } from "@/context/DarkModeContext"
 
 export default function FitnessFlowLanding() {
     const router = useRouter()
+    const { isDarkMode, toggleDarkMode } = useDarkMode()
+    
     return (
-        <div className="min-h-screen bg-background">
-            {/* Header */}
+        <div className="min-h-screen bg-background">{/* Header */}
             <header className="border-b bg-card/50 backdrop-blur-sm sticky top-0 z-50">
                 <div className="container mx-auto px-4 py-4 flex items-center justify-between">
                     <div className="flex items-center space-x-2">
@@ -48,7 +52,7 @@ export default function FitnessFlowLanding() {
                                 } as React.CSSProperties & { WebkitUserDrag?: string }}
                             />
                         </div>
-                        <span className="text-xl font-bold text-foregroun text-primary">Fitness Flow</span>
+                        <span className="text-xl font-bold text-primary">Fitness Flow</span>
                     </div>
                     <nav className="hidden md:flex items-center space-x-6">
                         <a href="#funciones" className="text-muted-foreground hover:text-foreground transition-colors">
@@ -59,6 +63,14 @@ export default function FitnessFlowLanding() {
                         </a>
                     </nav>
                     <div className="flex items-center space-x-3">
+                        <Button 
+                            variant="ghost" 
+                            size="icon"
+                            onClick={toggleDarkMode}
+                            className="rounded-full"
+                        >
+                            {isDarkMode ? <LightMode /> : <DarkMode />}
+                        </Button>
                         <Button variant="ghost" size="sm" onClick={() => router.push("/login")}>
                             Iniciar sesión
                         </Button>

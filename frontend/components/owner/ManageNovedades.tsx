@@ -176,7 +176,7 @@ async function uploadNovedadImageApi(file: File) {
   const formData = new FormData();
   formData.append('image', file);
   
-  const API_BASE = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:3001/api';
+  const API_BASE = `${process.env.NEXT_PUBLIC_BACKEND_URL}/api`;
   const token = document.cookie.split('; ').find(row => row.startsWith('token='))?.split('=')[1];
 
   const res = await fetch(`${API_BASE}/novedades/upload-image`, {

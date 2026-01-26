@@ -16,7 +16,6 @@ const BRAND_LOGO_URL = 'https://www.fitnessflow.com.ar/images/icon.png'
 
 const EMAILS_IGNORADOS = ['123@gmail.com', '7777777@gmail.com']
 
-// Validaciones críticas de variables de entorno
 if (!BREVO_API_KEY) {
   console.error('❌ FALTA BREVO_API_KEY - No se podrán enviar emails')
   throw new Error('BREVO_API_KEY es requerida')

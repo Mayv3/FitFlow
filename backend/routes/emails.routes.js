@@ -11,7 +11,8 @@ const router = express.Router()
 router.post('/preview-vencimientos', async (req, res) => {
   try {
     console.log('🔍 Iniciando preview de vencimientos...')
-    const resultado = await enviarEmailsPorVencer({ previewOnly: true, gymIds: req.body.gymIds || [] })
+    const gymIds = (req.body && req.body.gymIds) ? req.body.gymIds : []
+    const resultado = await enviarEmailsPorVencer({ previewOnly: true, gymIds })
     res.json({ 
       success: true, 
       message: 'Preview completado. Revisa los detalles a continuación.',
@@ -32,7 +33,8 @@ router.post('/preview-vencimientos', async (req, res) => {
 router.post('/enviar-vencimientos', async (req, res) => {
   try {
     console.log('📧 Iniciando envío de vencimientos...')
-    await enviarEmailsPorVencer({ previewOnly: false, gymIds: req.body.gymIds || [] })
+    const gymIds = (req.body && req.body.gymIds) ? req.body.gymIds : []
+    await enviarEmailsPorVencer({ previewOnly: false, gymIds })
     res.json({ 
       success: true, 
       message: 'Emails enviados correctamente'

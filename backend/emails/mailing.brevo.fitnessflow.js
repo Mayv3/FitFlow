@@ -140,6 +140,7 @@ function plantillaVenceEnTres(nombre, gymLogo, gymColor, gymName) {
 
 const delay = (ms) => new Promise(res => setTimeout(res, ms))
 
+
 export async function enviarEmailsPorVencer({ previewOnly = true, gymIds = [] } = {}) {
   const ZONE = 'America/Argentina/Cordoba'
   const hoy = dayjs.tz(dayjs(), ZONE).startOf('day')

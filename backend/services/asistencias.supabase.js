@@ -13,7 +13,6 @@ export async function getAllAsistencias(gymId) {
 }
 
 export async function createAsistencia(supa, asistencia, gymId) {
-  console.time("createAsistencia-query")
   const dniRaw = asistencia?.dni ?? asistencia?.DNI
   if (!dniRaw) throw new Error('Falta DNI')
   const dni = String(dniRaw).trim()
@@ -112,7 +111,6 @@ export async function createAsistencia(supa, asistencia, gymId) {
     gym_id: gymId,
   }
 
-  console.timeEnd("createAsistencia-query")
   return { asistencia: nueva, summary }
 }
 

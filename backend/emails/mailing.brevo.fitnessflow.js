@@ -149,7 +149,6 @@ export async function enviarEmailsPorVencer({ previewOnly = true, gymIds = [] } 
 
   console.log(`📅 Buscando alumnos con vencimiento HOY (${hoyStr}) o en 3 días (${tresDiasStr})...`)
 
-  // Obtener todos los gimnasios o solo los especificados
   let gymsQuery = supabase.from('gyms').select('id,name,logo_url,settings')
   
   if (gymIds?.length) {

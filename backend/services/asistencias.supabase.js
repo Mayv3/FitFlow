@@ -112,6 +112,7 @@ export async function createAsistencia(supa, asistencia, gymId) {
     gym_id: gymId,
   }
 
+  console.timeEnd("createAsistencia-query")
   return { asistencia: nueva, summary }
 }
 

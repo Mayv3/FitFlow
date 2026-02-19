@@ -1,5 +1,11 @@
 import express from 'express'
-import { enviarEmailsPorVencer, enviarPruebaPlantillas } from '../emails/mailing.brevo.fitnessflow.js'
+import { 
+  enviarEmailsPorVencer, 
+  enviarPruebaPlantillas,
+  previewVencimientoGymPlans,
+  enviarEmailsVencimientoGymPlans,
+  enviarTestVencimientoGymPlan
+} from '../emails/mailing.brevo.fitnessflow.js'
 
 const router = express.Router()
 
@@ -60,6 +66,71 @@ router.post('/prueba-plantillas', async (req, res) => {
     })
   } catch (error) {
     console.error('❌ Error al enviar plantillas de prueba:', error)
+    res.status(500).json({ error: error.message })
+  }
+})
+
+// ===================================================================
+//  VENCIMIENTO DE PLANES DE GIMNASIOS (Suscripciones a FitnessFlow)
+// ===================================================================
+
+/**
+ * GET /api/emails/preview-vencimiento-gym-plans
+ * Preview: muestra qué gimnasios tienen el plan vencido o por vencer,
+ * con todos sus datos, sin enviar ningún mail.
+ */
+router.get('/preview-vencimiento-gym-plans', async (req, res) => {
+  try {
+    console.log('🔍 Iniciando preview de vencimiento de gym plans...')
+    const resultado = await previewVencimientoGymPlans()
+    res.json({
+      success: true,
+      message: 'Preview de vencimiento de planes de gimnasios.',
+      data: resultado
+    })
+  } catch (error) {
+    console.error('❌ Error en preview gym plans:', error)
+    res.status(500).json({ error: error.message })
+  }
+})
+
+/**
+ * POST /api/emails/enviar-vencimiento-gym-plans
+ * Envía los mails reales de vencimiento al administrador con los datos
+ * de cada gimnasio cuyo plan venció o está por vencer.
+ * CUIDADO: Esto realmente envía correos.
+ */
+router.post('/enviar-vencimiento-gym-plans', async (req, res) => {
+  try {
+    console.log('📧 Iniciando envío de vencimiento de gym plans...')
+    const resultado = await enviarEmailsVencimientoGymPlans()
+    res.json({
+      success: true,
+      message: 'Emails de vencimiento de planes enviados al administrador.',
+      data: resultado
+    })
+  } catch (error) {
+    console.error('❌ Error al enviar vencimiento gym plans:', error)
+    res.status(500).json({ error: error.message })
+  }
+})
+
+/**
+ * POST /api/emails/test-vencimiento-gym-plan
+ * Envía un mail de prueba a nicopereyra855@gmail.com para ver cómo
+ * se vería el mail de vencimiento que recibe el administrador.
+ */
+router.post('/test-vencimiento-gym-plan', async (req, res) => {
+  try {
+    console.log('🧪 Enviando test de vencimiento de gym plan...')
+    const resultado = await enviarTestVencimientoGymPlan()
+    res.json({
+      success: true,
+      message: 'Email de prueba enviado a nicopereyra855@gmail.com',
+      data: resultado
+    })
+  } catch (error) {
+    console.error('❌ Error al enviar test gym plan:', error)
     res.status(500).json({ error: error.message })
   }
 })

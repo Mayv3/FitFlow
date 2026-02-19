@@ -307,3 +307,295 @@ export async function enviarPruebaPlantillas() {
 
   console.log('✅ Correos de prueba enviados a tu cuenta personal.')
 }
+
+// ===================================================================
+//  VENCIMIENTO DE PLANES DE GIMNASIOS (Suscripciones a FitnessFlow)
+// ===================================================================
+
+const ADMIN_EMAIL = process.env.ADMIN_EMAIL || 'nicopereyra855@gmail.com'
+const FITNESSFLOW_GREEN = '#0dc985'
+
+function plantillaVencimientoGymPlan({ gymName, planName, endAt, gymLogo }) {
+  const fechaVto = dayjs(endAt).format('DD/MM/YYYY')
+  const esLogoPlaceholder = gymLogo?.includes('ui-avatars.com')
+  const logo = (gymLogo && !esLogoPlaceholder) ? gymLogo : null
+
+  return `<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Aviso de Vencimiento — Fitness Flow</title>
+  <style>
+    body { margin:0; padding:0; background:#f0f0f0; font-family:Arial,Helvetica,sans-serif; }
+    .wrapper { width:100%; background:#f0f0f0; padding:20px 0; }
+    .card { max-width:600px; margin:0 auto; background:#ffffff; border-radius:16px; overflow:hidden; box-shadow:0 4px 20px rgba(0,0,0,0.12); }
+    .header { background:#1f1f1f; padding:32px 20px; text-align:center; }
+    .header img { height:76px; width:76px; display:block; margin:0 auto 14px auto; }
+    .header h1 { color:#ffffff; margin:0; font-size:20px; font-weight:700; letter-spacing:0.3px; }
+    .header p { color:#aaaaaa; margin:6px 0 0 0; font-size:13px; }
+    .body { padding:28px 20px; color:#333333; }
+    .greeting { font-size:16px; margin:0 0 16px 0; }
+    .intro { font-size:14px; line-height:1.6; color:#555555; margin:0 0 22px 0; }
+    .plan-card { background:#f7f7f7; border-left:4px solid ${FITNESSFLOW_GREEN}; border-radius:10px; padding:18px 16px; margin:0 0 22px 0; }
+    .plan-card .gym-row { display:flex; align-items:center; margin-bottom:12px; }
+    .plan-card .gym-row img { height:36px; width:36px; border-radius:50%; object-fit:cover; margin-right:10px; }
+    .plan-card table { width:100%; border-collapse:collapse; font-size:14px; color:#444; }
+    .plan-card td { padding:7px 0; vertical-align:top; }
+    .plan-card td:first-child { font-weight:700; white-space:nowrap; padding-right:12px; width:50%; }
+    .expiry-date { color:#e53e3e; font-weight:700; }
+    .payment-box { background:#ffffff; border:2px solid ${FITNESSFLOW_GREEN}; border-radius:10px; padding:22px 20px; margin:0 0 22px 0; }
+    .payment-box h3 { color:${FITNESSFLOW_GREEN}; margin:0 0 18px 0; font-size:15px; text-align:center; font-weight:700; }
+    .payment-table { width:100%; border-collapse:collapse; font-size:14px; }
+    .payment-table tr td { padding:12px 8px; border-bottom:1px solid #e5e7eb; vertical-align:middle; }
+    .payment-table tr:last-child td { border-bottom:none; }
+    .payment-label { color:#666666; white-space:nowrap; width:130px; }
+    .payment-value { color:#1f1f1f; font-weight:700; text-align:right; }
+    .payment-alias { color:${FITNESSFLOW_GREEN}; font-size:18px; font-weight:800; letter-spacing:0.5px; }
+    .deadline-banner { background:#fffbeb; border:1px solid #f59e0b; border-radius:8px; padding:13px 14px; margin:0 0 22px 0; font-size:13px; color:#92400e; text-align:center; line-height:1.5; }
+    .reply-note { background:#f7f7f7; border-radius:8px; padding:14px 16px; font-size:13px; color:#555; line-height:1.6; margin:0 0 6px 0; }
+    .footer { background:#f7f7f7; border-top:1px solid #e5e7eb; padding:16px; text-align:center; font-size:12px; color:#888888; }
+    .footer strong { color:${FITNESSFLOW_GREEN}; }
+    @media (max-width:480px) {
+      .wrapper { padding:0; }
+      .card { border-radius:0; box-shadow:none; }
+      .body { padding:22px 16px; }
+      .header { padding:26px 16px; }
+      .payment-label { width:110px; }
+      .payment-value { text-align:right; }
+      .plan-card td:first-child { width:auto; }
+    }
+  </style>
+</head>
+<body>
+  <div class="wrapper">
+    <div class="card">
+
+      <!-- HEADER -->
+      <div class="header">
+        <img src="${BRAND_LOGO_URL}" alt="Fitness Flow" />
+        <h1>Aviso de Vencimiento de Plan</h1>
+        <p>Suscripción a Fitness Flow</p>
+      </div>
+
+      <!-- BODY -->
+      <div class="body">
+        <p class="greeting">Hola, <strong>${gymName}</strong> 👋</p>
+        <p class="intro">
+          Tu suscripción a <strong>Fitness Flow</strong> ha vencido o está próxima a vencer.<br/>
+          A continuación encontrás todos los detalles de tu plan:
+        </p>
+
+        <!-- Plan card -->
+        <div class="plan-card">
+          ${logo ? `<div class="gym-row"><img src="${logo}" alt="${gymName}" /><strong style="font-size:14px;">${gymName}</strong></div>` : ''}
+          <table>
+            <tr>
+              <td>📋 Plan contratado:</td>
+              <td>${planName || 'Sin plan asignado'}</td>
+            </tr>
+            <tr>
+              <td>📅 Fecha de vencimiento:</td>
+              <td class="expiry-date">${fechaVto}</td>
+            </tr>
+          </table>
+        </div>
+
+        <!-- Deadline banner -->
+        <div class="deadline-banner">
+          ⚠️ <strong>El pago debe realizarse del 1 al 10 de cada mes</strong> para mantener tu acceso activo.
+        </div>
+
+        <!-- Mercado Pago -->
+        <div class="payment-box">
+          <h3>💳 Datos de pago — Mercado Pago</h3>
+          <table class="payment-table">
+            <tr>
+              <td class="payment-label">Alias</td>
+              <td class="payment-value payment-alias">fitnessflow.14</td>
+            </tr>
+            <tr>
+              <td class="payment-label">A nombre de</td>
+              <td class="payment-value">Carlo Nicolas Pereyra</td>
+            </tr>
+            <tr>
+              <td class="payment-label">Plataforma</td>
+              <td class="payment-value">Mercado Pago</td>
+            </tr>
+          </table>
+        </div>
+
+        <!-- Reply note -->
+        <div class="reply-note">
+          📎 Una vez realizado el pago, <strong>respondé este correo adjuntando el comprobante</strong> para que podamos activar tu suscripción a la brevedad.
+        </div>
+      </div>
+
+      <!-- FOOTER -->
+      <div class="footer">
+        Enviado automáticamente por <strong>Fitness Flow</strong> 💚
+      </div>
+
+    </div>
+  </div>
+</body>
+</html>
+  `
+}
+
+/**
+ * Obtiene todos los gimnasios cuya suscripción activa tiene end_at vencido (< hoy)
+ */
+async function getGymsConPlanVencido() {
+  const ZONE = 'America/Argentina/Cordoba'
+  const hoy = dayjs.tz(dayjs(), ZONE).startOf('day').toISOString()
+
+  // Buscar suscripciones activas cuyo end_at ya pasó
+  const { data: suscripciones, error } = await supabase
+    .from('suscriptions')
+    .select('*, gym_plans(*), gyms:gym_id(id, name, logo_url, settings)')
+    .eq('is_active', true)
+    .lt('end_at', hoy)
+    .order('end_at', { ascending: true })
+
+  if (error) throw error
+
+  // También buscar suscripciones que venzan hoy o en los próximos 7 días
+  const sieteDias = dayjs.tz(dayjs(), ZONE).add(7, 'day').endOf('day').toISOString()
+  const { data: proximasAVencer, error: error2 } = await supabase
+    .from('suscriptions')
+    .select('*, gym_plans(*), gyms:gym_id(id, name, logo_url, settings)')
+    .eq('is_active', true)
+    .gte('end_at', hoy)
+    .lte('end_at', sieteDias)
+    .order('end_at', { ascending: true })
+
+  if (error2) throw error2
+
+  return {
+    vencidos: suscripciones || [],
+    proximosAVencer: proximasAVencer || []
+  }
+}
+
+/**
+ * PREVIEW: Muestra qué gimnasios tienen planes vencidos sin enviar mails
+ */
+export async function previewVencimientoGymPlans() {
+  const { vencidos, proximosAVencer } = await getGymsConPlanVencido()
+
+  const formatear = (subs) => subs.map(s => ({
+    suscripcion_id: s.id,
+    gym_id: s.gym_id,
+    gym_nombre: s.gyms?.name || 'Sin nombre',
+    gym_logo: s.gyms?.logo_url || null,
+    plan_id: s.plan_id,
+    plan_nombre: s.gym_plans?.name || 'Sin plan',
+    max_alumnos: s.gym_plans?.max_alumnos || null,
+    features: {
+      stats: s.gym_plans?.stats || false,
+      classes: s.gym_plans?.classes || false,
+      services: s.gym_plans?.services || false,
+      appointments: s.gym_plans?.appointments || false,
+      portal: s.gym_plans?.portal || false,
+      settings: s.gym_plans?.settings || false,
+      products: s.gym_plans?.products || false,
+    },
+    is_active: s.is_active,
+    start_at: s.start_at,
+    end_at: s.end_at,
+    dias_vencido: dayjs().diff(dayjs(s.end_at), 'day'),
+  }))
+
+  const resultado = {
+    admin_email: ADMIN_EMAIL,
+    fecha_consulta: dayjs().format('DD/MM/YYYY HH:mm'),
+    vencidos: {
+      total: vencidos.length,
+      gimnasios: formatear(vencidos),
+    },
+    proximos_a_vencer: {
+      total: proximosAVencer.length,
+      gimnasios: formatear(proximosAVencer),
+    },
+  }
+
+  console.log(`\n🔍 PREVIEW VENCIMIENTO GYM PLANS`)
+  console.log(`   Vencidos: ${vencidos.length} | Próximos a vencer (7 días): ${proximosAVencer.length}`)
+  console.log(`   Admin email: ${ADMIN_EMAIL}\n`)
+
+  return resultado
+}
+
+/**
+ * ENVÍO REAL: Manda mails de vencimiento al administrador
+ */
+export async function enviarEmailsVencimientoGymPlans() {
+  const { vencidos, proximosAVencer } = await getGymsConPlanVencido()
+  const todos = [...vencidos, ...proximosAVencer]
+
+  if (todos.length === 0) {
+    console.log('📭 No hay gimnasios con planes vencidos o por vencer.')
+    return { enviados: 0, mensaje: 'No hay gimnasios con planes vencidos o por vencer.' }
+  }
+
+  console.log(`📧 Enviando ${todos.length} email(s) de vencimiento a ${ADMIN_EMAIL}...`)
+
+  let enviados = 0
+  let errores = 0
+
+  for (const s of todos) {
+    const gymName = s.gyms?.name || 'Gimnasio sin nombre'
+    const planName = s.gym_plans?.name || 'Sin plan'
+    const gymLogo = s.gyms?.logo_url || null
+
+    const subject = `⚠️ Vencimiento de plan — ${gymName}`
+    const html = plantillaVencimientoGymPlan({
+      gymName,
+      planName,
+      endAt: s.end_at,
+      gymLogo,
+    })
+    const text = `Vencimiento de plan de ${gymName}.\nPlan: ${planName}\nVencimiento: ${dayjs(s.end_at).format('DD/MM/YYYY')}\nRecordá abonar del 1 al 10 del mes.\n\n— Fitness Flow`
+
+    try {
+      await sendBrevoEmail({ to: ADMIN_EMAIL, subject, text, html })
+      enviados++
+      await delay(800)
+    } catch (err) {
+      console.error(`❌ Error enviando mail de ${gymName}:`, err.message)
+      errores++
+    }
+  }
+
+  console.log(`✅ Envío finalizado. Enviados: ${enviados} | Errores: ${errores}`)
+
+  return {
+    enviados,
+    errores,
+    total: todos.length,
+    admin_email: ADMIN_EMAIL,
+  }
+}
+
+/**
+ * TEST: Envía un mail de prueba a nicopereyra855@gmail.com para ver cómo se ve
+ */
+export async function enviarTestVencimientoGymPlan() {
+  const TEST_EMAIL = 'nicopereyra855@gmail.com'
+
+  const subject = '🧪 [TEST] Vencimiento de plan — Gimnasio Demo'
+  const html = plantillaVencimientoGymPlan({
+    gymName: 'Gimnasio Demo',
+    planName: 'Plan Profesional',
+    endAt: dayjs().subtract(2, 'day').toISOString(),
+    gymLogo: null,
+  })
+  const text = 'Este es un email de prueba para verificar la plantilla de vencimiento de plan de gimnasio.\n\n— Fitness Flow'
+
+  console.log(`🧪 Enviando test de vencimiento a ${TEST_EMAIL}...`)
+  await sendBrevoEmail({ to: TEST_EMAIL, subject, text, html })
+  console.log(`✅ Test enviado a ${TEST_EMAIL}`)
+
+  return { enviado: true, email: TEST_EMAIL }
+}

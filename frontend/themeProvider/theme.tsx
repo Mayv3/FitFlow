@@ -63,6 +63,13 @@ function buildTheme(s: GymSettings, isDarkMode: boolean = false): Theme {
           },
         },
       },
+      MuiTableCell: {
+        styleOverrides: {
+          root: {
+            backgroundColor: "inherit",
+          },
+        },
+      },
     },
     palette,
     typography: { fontFamily: s.typography.fontFamily },

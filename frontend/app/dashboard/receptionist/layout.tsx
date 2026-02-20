@@ -1,10 +1,12 @@
 'use client';
 
 import { SideBar } from "@/components/ui/header/SideBar";
+import { SubscriptionStatusBadge } from "@/components/ui/SubscriptionStatusBadge";
 import { recepcionistTabs } from "@/const/headerTabs.tsx/sideBarTabs";
 import { useAuthRole } from "@/hooks/auth/useAuthRole";
 import { RECEPCIONISTA } from "@/const/roles/roles";
 import { useMediaQuery, useTheme } from '@mui/material';
+import { useSubscription } from '@/context/SubscriptionContext';
 
 export default function ReceptionistLayout({
   children,
@@ -14,6 +16,9 @@ export default function ReceptionistLayout({
   const theme = useTheme();
   const isDesktop = useMediaQuery(theme.breakpoints.up('md'));
   useAuthRole(RECEPCIONISTA);
+  const { isSuspended, isSubscriptionLoading } = useSubscription();
+
+  if (isSuspended || isSubscriptionLoading) return null;
 
   return (
     <div style={{
@@ -22,6 +27,7 @@ export default function ReceptionistLayout({
       width: '100%'
     }}>
       <SideBar tabs={recepcionistTabs} />
+      <SubscriptionStatusBadge />
       <main style={{
         flexGrow: 1,
         padding: '2rem',

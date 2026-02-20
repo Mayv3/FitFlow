@@ -315,7 +315,7 @@ export async function enviarPruebaPlantillas() {
 const ADMIN_EMAIL = process.env.ADMIN_EMAIL || 'nicopereyra855@gmail.com'
 const FITNESSFLOW_GREEN = '#0dc985'
 
-function plantillaVencimientoGymPlan({ gymName, planName, endAt, gymLogo }) {
+function plantillaVencimientoGymPlan({ gymName, planName, planPrice, endAt, gymLogo }) {
   const fechaVto = dayjs(endAt).format('DD/MM/YYYY')
   const esLogoPlaceholder = gymLogo?.includes('ui-avatars.com')
   const logo = (gymLogo && !esLogoPlaceholder) ? gymLogo : null
@@ -391,11 +391,15 @@ function plantillaVencimientoGymPlan({ gymName, planName, endAt, gymLogo }) {
           ${logo ? `<div class="gym-row"><img src="${logo}" alt="${gymName}" /><strong style="font-size:14px;">${gymName}</strong></div>` : ''}
           <table>
             <tr>
-              <td>📋 Plan contratado:</td>
+              <td>Plan contratado:</td>
               <td>${planName || 'Sin plan asignado'}</td>
             </tr>
             <tr>
-              <td>📅 Fecha de vencimiento:</td>
+              <td>Precio del plan:</td>
+              <td>${planPrice != null ? '$' + Number(planPrice).toLocaleString('es-AR') : 'No especificado'}</td>
+            </tr>
+            <tr>
+              <td>Fecha de vencimiento:</td>
               <td class="expiry-date">${fechaVto}</td>
             </tr>
           </table>
@@ -403,26 +407,25 @@ function plantillaVencimientoGymPlan({ gymName, planName, endAt, gymLogo }) {
 
         <!-- Deadline banner -->
         <div class="deadline-banner">
-          ⚠️ <strong>El pago debe realizarse del 1 al 10 de cada mes</strong> para mantener tu acceso activo.
+          ⚠️ <strong>El pago debe realizarse del 1 al 15 de cada mes</strong> para mantener tu acceso activo.
         </div>
 
         <!-- Mercado Pago -->
         <div class="payment-box">
-          <h3>💳 Datos de pago — Mercado Pago</h3>
+          <h3>Datos de pago</h3>
           <table class="payment-table">
             <tr>
               <td class="payment-label">Alias</td>
-              <td class="payment-value payment-alias">fitnessflow.14</td>
+              <td class="payment-value payment-alias">fitnessflow.26</td>
             </tr>
             <tr>
               <td class="payment-label">A nombre de</td>
-              <td class="payment-value">Carlo Nicolas Pereyra</td>
-            </tr>
-            <tr>
-              <td class="payment-label">Plataforma</td>
-              <td class="payment-value">Mercado Pago</td>
+              <td class="payment-value">Angelo Fabian Pollastrini</td>
             </tr>
           </table>
+          <div style="margin-top:14px;padding-top:16px;text-align:center;">
+            <img src="https://upload.wikimedia.org/wikipedia/commons/6/6a/Brubank_logo.png" alt="Brubank" style="height:100px;width:auto;" />
+          </div>
         </div>
 
         <!-- Reply note -->
@@ -441,6 +444,27 @@ function plantillaVencimientoGymPlan({ gymName, planName, endAt, gymLogo }) {
 </body>
 </html>
   `
+}
+
+/**
+ * Obtiene el email del administrador (role_id = 2) de un gimnasio
+ */
+async function getGymAdminEmail(gymId) {
+  const { data: adminUser, error } = await supabase
+    .from('users')
+    .select('auth_user_id')
+    .eq('gym_id', gymId)
+    .eq('role_id', 2)
+    .is('deleted_at', null)
+    .limit(1)
+    .single()
+
+  if (error || !adminUser?.auth_user_id) return null
+
+  const { data: authData, error: authError } = await supabase.auth.admin.getUserById(adminUser.auth_user_id)
+  if (authError || !authData?.user?.email) return null
+
+  return authData.user.email
 }
 
 /**
@@ -472,9 +496,12 @@ async function getGymsConPlanVencido() {
 
   if (error2) throw error2
 
+  // Excluir planes Free
+  const noEsFree = (s) => s.gym_plans?.name?.toLowerCase() !== 'free'
+
   return {
-    vencidos: suscripciones || [],
-    proximosAVencer: proximasAVencer || []
+    vencidos: (suscripciones || []).filter(noEsFree),
+    proximosAVencer: (proximasAVencer || []).filter(noEsFree),
   }
 }
 
@@ -484,45 +511,52 @@ async function getGymsConPlanVencido() {
 export async function previewVencimientoGymPlans() {
   const { vencidos, proximosAVencer } = await getGymsConPlanVencido()
 
-  const formatear = (subs) => subs.map(s => ({
-    suscripcion_id: s.id,
-    gym_id: s.gym_id,
-    gym_nombre: s.gyms?.name || 'Sin nombre',
-    gym_logo: s.gyms?.logo_url || null,
-    plan_id: s.plan_id,
-    plan_nombre: s.gym_plans?.name || 'Sin plan',
-    max_alumnos: s.gym_plans?.max_alumnos || null,
-    features: {
-      stats: s.gym_plans?.stats || false,
-      classes: s.gym_plans?.classes || false,
-      services: s.gym_plans?.services || false,
-      appointments: s.gym_plans?.appointments || false,
-      portal: s.gym_plans?.portal || false,
-      settings: s.gym_plans?.settings || false,
-      products: s.gym_plans?.products || false,
-    },
-    is_active: s.is_active,
-    start_at: s.start_at,
-    end_at: s.end_at,
-    dias_vencido: dayjs().diff(dayjs(s.end_at), 'day'),
-  }))
+  const formatear = async (subs) => {
+    const resultados = []
+    for (const s of subs) {
+      const emailAdmin = await getGymAdminEmail(s.gym_id)
+      resultados.push({
+        suscripcion_id: s.id,
+        gym_id: s.gym_id,
+        gym_nombre: s.gyms?.name || 'Sin nombre',
+        gym_logo: s.gyms?.logo_url || null,
+        plan_id: s.plan_id,
+        plan_nombre: s.gym_plans?.name || 'Sin plan',
+        plan_precio: s.gym_plans?.price ?? null,
+        max_alumnos: s.gym_plans?.max_alumnos || null,
+        features: {
+          stats: s.gym_plans?.stats || false,
+          classes: s.gym_plans?.classes || false,
+          services: s.gym_plans?.services || false,
+          appointments: s.gym_plans?.appointments || false,
+          portal: s.gym_plans?.portal || false,
+          settings: s.gym_plans?.settings || false,
+          products: s.gym_plans?.products || false,
+        },
+        is_active: s.is_active,
+        start_at: s.start_at,
+        end_at: s.end_at,
+        dias_vencido: dayjs().diff(dayjs(s.end_at), 'day'),
+        email_destino: emailAdmin || 'Sin email de administrador',
+      })
+    }
+    return resultados
+  }
 
   const resultado = {
-    admin_email: ADMIN_EMAIL,
     fecha_consulta: dayjs().format('DD/MM/YYYY HH:mm'),
     vencidos: {
       total: vencidos.length,
-      gimnasios: formatear(vencidos),
+      gimnasios: await formatear(vencidos),
     },
     proximos_a_vencer: {
       total: proximosAVencer.length,
-      gimnasios: formatear(proximosAVencer),
+      gimnasios: await formatear(proximosAVencer),
     },
   }
 
   console.log(`\n🔍 PREVIEW VENCIMIENTO GYM PLANS`)
-  console.log(`   Vencidos: ${vencidos.length} | Próximos a vencer (7 días): ${proximosAVencer.length}`)
-  console.log(`   Admin email: ${ADMIN_EMAIL}\n`)
+  console.log(`   Vencidos: ${vencidos.length} | Próximos a vencer (7 días): ${proximosAVencer.length}\n`)
 
   return resultado
 }
@@ -539,42 +573,78 @@ export async function enviarEmailsVencimientoGymPlans() {
     return { enviados: 0, mensaje: 'No hay gimnasios con planes vencidos o por vencer.' }
   }
 
-  console.log(`📧 Enviando ${todos.length} email(s) de vencimiento a ${ADMIN_EMAIL}...`)
+  console.log(`📧 Enviando ${todos.length} email(s) de vencimiento...`)
 
   let enviados = 0
   let errores = 0
+  let sinEmail = 0
+  const detalle = []
 
   for (const s of todos) {
     const gymName = s.gyms?.name || 'Gimnasio sin nombre'
     const planName = s.gym_plans?.name || 'Sin plan'
+    const planPrice = s.gym_plans?.price ?? null
     const gymLogo = s.gyms?.logo_url || null
+    const emailAdmin = await getGymAdminEmail(s.gym_id)
+
+    if (!emailAdmin) {
+      console.log(`⚠️ No se encontró email de administrador para ${gymName} (gym_id: ${s.gym_id})`)
+      sinEmail++
+      detalle.push({
+        gym: gymName,
+        plan: planName,
+        precio: planPrice,
+        vencimiento: dayjs(s.end_at).format('DD/MM/YYYY'),
+        destinatario: null,
+        estado: 'sin_email',
+      })
+      continue
+    }
 
     const subject = `⚠️ Vencimiento de plan — ${gymName}`
     const html = plantillaVencimientoGymPlan({
       gymName,
       planName,
+      planPrice,
       endAt: s.end_at,
       gymLogo,
     })
     const text = `Vencimiento de plan de ${gymName}.\nPlan: ${planName}\nVencimiento: ${dayjs(s.end_at).format('DD/MM/YYYY')}\nRecordá abonar del 1 al 10 del mes.\n\n— Fitness Flow`
 
     try {
-      await sendBrevoEmail({ to: ADMIN_EMAIL, subject, text, html })
+      await sendBrevoEmail({ to: emailAdmin, subject, text, html })
+      console.log(`   📧 → ${emailAdmin} (${gymName})`)
       enviados++
-      await delay(800)
+      detalle.push({
+        gym: gymName,
+        plan: planName,
+        precio: planPrice,
+        vencimiento: dayjs(s.end_at).format('DD/MM/YYYY'),
+        destinatario: emailAdmin,
+        estado: 'enviado',
+      })
     } catch (err) {
-      console.error(`❌ Error enviando mail de ${gymName}:`, err.message)
+      console.error(`❌ Error enviando mail de ${gymName} a ${emailAdmin}:`, err.message)
       errores++
+      detalle.push({
+        gym: gymName,
+        plan: planName,
+        precio: planPrice,
+        vencimiento: dayjs(s.end_at).format('DD/MM/YYYY'),
+        destinatario: emailAdmin,
+        estado: 'error',
+      })
     }
   }
 
-  console.log(`✅ Envío finalizado. Enviados: ${enviados} | Errores: ${errores}`)
+  console.log(`✅ Envío finalizado. Enviados: ${enviados} | Errores: ${errores} | Sin email: ${sinEmail}`)
 
   return {
     enviados,
     errores,
+    sin_email: sinEmail,
     total: todos.length,
-    admin_email: ADMIN_EMAIL,
+    detalle,
   }
 }
 
@@ -588,6 +658,7 @@ export async function enviarTestVencimientoGymPlan() {
   const html = plantillaVencimientoGymPlan({
     gymName: 'Gimnasio Demo',
     planName: 'Plan Profesional',
+    planPrice: 15000,
     endAt: dayjs().subtract(2, 'day').toISOString(),
     gymLogo: null,
   })

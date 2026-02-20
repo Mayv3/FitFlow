@@ -120,21 +120,27 @@ export function AssignPlanToGym() {
     setError("")
     setSuccess("")
 
+    // Parse a date string (YYYY-MM-DD) as local noon to avoid UTC offset shifting the day
+    const toLocalISOString = (dateStr: string) => {
+      const d = new Date(`${dateStr}T12:00:00`)
+      return d.toISOString()
+    }
+
     try {
       if (currentSuscription) {
         await updateSuscription.mutateAsync({
           id: currentSuscription.id,
           plan_id: selectedPlanId,
-          start_at: startDate ? new Date(startDate).toISOString() : undefined,
-          end_at: endDate ? new Date(endDate).toISOString() : null,
+          start_at: startDate ? toLocalISOString(startDate) : undefined,
+          end_at: endDate ? toLocalISOString(endDate) : null,
         })
       } else {
         await createSuscription.mutateAsync({
           gym_id: selectedGymId,
           plan_id: selectedPlanId,
           is_active: true,
-          start_at: startDate ? new Date(startDate).toISOString() : new Date().toISOString(),
-          end_at: endDate ? new Date(endDate).toISOString() : null,
+          start_at: startDate ? toLocalISOString(startDate) : new Date().toISOString(),
+          end_at: endDate ? toLocalISOString(endDate) : null,
         })
       }
       setSuccess(currentSuscription ? "Plan actualizado exitosamente" : "Plan asignado exitosamente")
@@ -222,20 +228,20 @@ export function AssignPlanToGym() {
 
       <Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", lg: "1.2fr 1fr" }, gap: 3 }}>
         {/* Tabla de gimnasios y suscripciones */}
-        <Paper variant="outlined" sx={{ borderRadius: 2, overflow: "hidden" }}>
-          <Box sx={{ p: 2, bgcolor: "grey.50", borderBottom: 1, borderColor: "divider" }}>
+        <Paper variant="outlined" sx={{ borderRadius: 2, overflow: "hidden", bgcolor: "background.paper" }}>
+          <Box sx={{ p: 2, borderBottom: 1, borderColor: "divider", background: (theme) => theme.palette.mode === "dark" ? "rgba(255,255,255,0.05)" : "rgba(0,0,0,0.03)" }}>
             <Typography variant="subtitle1" fontWeight={600}>
               Gimnasios y Suscripciones
             </Typography>
           </Box>
           <Table size="small">
             <TableHead>
-              <TableRow sx={{ bgcolor: "grey.100" }}>
-                <TableCell sx={{ fontWeight: 600 }}>Gimnasio</TableCell>
-                <TableCell sx={{ fontWeight: 600 }}>Plan Actual</TableCell>
-                <TableCell sx={{ fontWeight: 600 }}>Estado</TableCell>
-                <TableCell sx={{ fontWeight: 600 }}>Vencimiento</TableCell>
-                <TableCell align="center" sx={{ fontWeight: 600 }}>Acción</TableCell>
+              <TableRow>
+                <TableCell sx={{ fontWeight: 600, background: (theme) => theme.palette.mode === "dark" ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.05)" }}>Gimnasio</TableCell>
+                <TableCell sx={{ fontWeight: 600, background: (theme) => theme.palette.mode === "dark" ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.05)" }}>Plan Actual</TableCell>
+                <TableCell sx={{ fontWeight: 600, background: (theme) => theme.palette.mode === "dark" ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.05)" }}>Estado</TableCell>
+                <TableCell sx={{ fontWeight: 600, background: (theme) => theme.palette.mode === "dark" ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.05)" }}>Vencimiento</TableCell>
+                <TableCell align="center" sx={{ fontWeight: 600, background: (theme) => theme.palette.mode === "dark" ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.05)" }}>Acción</TableCell>
               </TableRow>
             </TableHead>
             <TableBody>
@@ -249,8 +255,8 @@ export function AssignPlanToGym() {
                   <TableRow
                     key={gym.id}
                     sx={{
-                      bgcolor: isSelected ? "primary.50" : "inherit",
-                      "&:hover": { bgcolor: isSelected ? "primary.100" : "grey.50" },
+                      bgcolor: isSelected ? "action.selected" : "inherit",
+                      "&:hover": { bgcolor: "action.hover" },
                       cursor: "pointer",
                     }}
                     onClick={() => handleSelectGym(gym.id)}
@@ -336,7 +342,7 @@ export function AssignPlanToGym() {
         </Paper>
 
         {/* Formulario de asignación */}
-        <Paper variant="outlined" sx={{ borderRadius: 1.5, p: 3, height: "fit-content" }}>
+        <Paper variant="outlined" sx={{ borderRadius: 1.5, p: 3, height: "fit-content", bgcolor: "background.paper" }}>
           <Typography variant="subtitle1" fontWeight={600} gutterBottom>
             {selectedGymId ? (currentSuscription ? "Editar Suscripción" : "Asignar Plan") : "Selecciona un Gimnasio"}
           </Typography>
@@ -354,16 +360,16 @@ export function AssignPlanToGym() {
               )}
 
               {success && (
-                <Box sx={{ mb: 2, p: 1.5, bgcolor: "success.50", borderRadius: 1.5, border: 1, borderColor: "success.200" }}>
+                <Box sx={{ mb: 2, p: 1.5, bgcolor: (theme) => theme.palette.mode === "dark" ? "rgba(76,175,80,0.15)" : "rgba(76,175,80,0.08)", borderRadius: 1.5, border: 1, borderColor: "success.main" }}>
                   <Stack direction="row" spacing={1} alignItems="center">
                     <CheckCircleIcon color="success" fontSize="small" />
-                    <Typography color="success.dark" variant="body2">{success}</Typography>
+                    <Typography color="success.main" variant="body2">{success}</Typography>
                   </Stack>
                 </Box>
               )}
 
               <Stack spacing={2.5}>
-                <Box sx={{ p: 2, bgcolor: "grey.50", borderRadius: 1.5 }}>
+                <Box sx={{ p: 2, background: (theme) => theme.palette.mode === "dark" ? "rgba(255,255,255,0.07)" : "rgba(0,0,0,0.04)", borderRadius: 1.5 }}>
                   <Typography variant="caption" color="text.secondary">Gimnasio seleccionado</Typography>
                   <Typography variant="body1" fontWeight={600}>{selectedGym?.name}</Typography>
                 </Box>
@@ -405,7 +411,7 @@ export function AssignPlanToGym() {
                 </Stack>
 
                 {selectedPlan && (
-                  <Box sx={{ p: 2, bgcolor: "primary.50", borderRadius: 1.5, border: 1, borderColor: "primary.100" }}>
+                  <Box sx={{ p: 2, background: (theme) => theme.palette.mode === "dark" ? "rgba(255,255,255,0.07)" : "rgba(0,0,0,0.04)", borderRadius: 1.5, border: 1, borderColor: "divider" }}>
                     <Typography variant="caption" color="primary.main" fontWeight={600}>
                       PLAN: {selectedPlan.name}
                     </Typography>

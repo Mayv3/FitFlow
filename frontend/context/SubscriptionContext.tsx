@@ -1,7 +1,8 @@
 'use client'
 
-import { createContext, useContext, useCallback, ReactNode } from 'react'
+import { createContext, useContext, useCallback, useEffect, ReactNode } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
+import { useRouter, usePathname } from 'next/navigation'
 import axios from 'axios'
 import Cookies from 'js-cookie'
 
@@ -53,6 +54,8 @@ interface SubscriptionContextType {
   isSubscriptionActive: boolean
   isExpiringSoon: boolean
   daysUntilExpiration: number | null
+  isSuspended: boolean
+  isPaymentWarning: boolean
 }
 
 const SubscriptionContext = createContext<SubscriptionContextType | undefined>(
@@ -72,12 +75,19 @@ const fetchGymSubscription = async (gymId: string): Promise<SubscriptionData> =>
 }
 
 
+const SUSPENDED_PATH = '/dashboard/suspended'
+const PAYMENT_WARNING_START_DAY = 10
+const PAYMENT_SUSPENSION_DAY = 16
+
 export const SubscriptionProvider = ({
   children,
 }: {
   children: ReactNode
 }) => {
+  const router = useRouter()
+  const pathname = usePathname()
   const gymId = Cookies.get('gym_id')
+  const userRole = Cookies.get('rol')
 
   const {
     data: subscriptionData,
@@ -126,6 +136,51 @@ export const SubscriptionProvider = ({
     daysUntilExpiration <= 7 &&
     daysUntilExpiration > 0
 
+  const isOwner = userRole === '1'
+
+  // Aviso de pago: del día 10 al 15 si la suscripción está vencida (no aplica a owners)
+  const isPaymentWarning = (() => {
+    if (isLoading || isOwner) return false
+    const today = new Date()
+    const dayOfMonth = today.getDate()
+    const isInWarningWindow = dayOfMonth >= PAYMENT_WARNING_START_DAY && dayOfMonth < PAYMENT_SUSPENSION_DAY
+    const isExpiredOrNoSub = (daysUntilExpiration !== null && daysUntilExpiration < 0) ||
+      (!subscriptionData?.hasSubscription && !!gymId)
+    return isInWarningWindow && isExpiredOrNoSub
+  })()
+
+  // Suspendido: a partir del día 16 si no pagó (no aplica a owners)
+  const isSuspended = (() => {
+    if (isLoading || isOwner) return false
+    const today = new Date()
+    const dayOfMonth = today.getDate()
+    const isPastSuspensionDay = dayOfMonth >= PAYMENT_SUSPENSION_DAY
+
+    // Sin suscripción y hay gym_id → si pasó el día 15, suspendido
+    if (!subscriptionData?.hasSubscription && !!gymId) {
+      return isPastSuspensionDay
+    }
+    // Suscripción vencida y pasó el día 15 del mes → suspendido
+    if (daysUntilExpiration !== null && daysUntilExpiration < 0 && isPastSuspensionDay) {
+      return true
+    }
+    return false
+  })()
+
+  // Redirigir automáticamente si está suspendido
+  useEffect(() => {
+    if (!isLoading && isSuspended && pathname !== SUSPENDED_PATH) {
+      router.replace(SUSPENDED_PATH)
+    }
+  }, [isLoading, isSuspended, pathname, router])
+
+  // Si está suspendido y navega a cualquier ruta que NO sea /dashboard/suspended, bloquear
+  useEffect(() => {
+    if (!isLoading && isSuspended && pathname !== SUSPENDED_PATH && pathname?.startsWith('/dashboard')) {
+      router.replace(SUSPENDED_PATH)
+    }
+  }, [pathname, isLoading, isSuspended, router])
+
   return (
     <SubscriptionContext.Provider
       value={{
@@ -139,6 +194,8 @@ export const SubscriptionProvider = ({
         isSubscriptionActive,
         isExpiringSoon,
         daysUntilExpiration,
+        isSuspended,
+        isPaymentWarning,
       }}
     >
       {children}

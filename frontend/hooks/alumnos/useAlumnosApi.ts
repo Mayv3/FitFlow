@@ -68,8 +68,9 @@ export function useDeleteAlumnoByDNI() {
       return dni;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['members'] });
-      queryClient.invalidateQueries({ queryKey: ['stats'] });
+      const gymId = Cookies.get('gym_id') ?? '';
+      queryClient.invalidateQueries({ queryKey: ['members', gymId] });
+      queryClient.invalidateQueries({ queryKey: ['stats', gymId] });
     }
   });
 }
@@ -83,8 +84,9 @@ export function useEditAlumnoByDNI() {
       return res.data as Member;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['members'] });
-      queryClient.invalidateQueries({ queryKey: ['stats'] });
+      const gymId = Cookies.get('gym_id') ?? '';
+      queryClient.invalidateQueries({ queryKey: ['members', gymId] });
+      queryClient.invalidateQueries({ queryKey: ['stats', gymId] });
     }
   });
 }
@@ -98,8 +100,9 @@ export function useAddAlumno() {
       return res.data;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['members'] });
-      queryClient.invalidateQueries({ queryKey: ['stats'] });
+      const gymId = Cookies.get('gym_id') ?? '';
+      queryClient.invalidateQueries({ queryKey: ['members', gymId] });
+      queryClient.invalidateQueries({ queryKey: ['stats', gymId] });
     }
   });
 }

@@ -3,8 +3,6 @@ import cors from 'cors';
 import dotenv from 'dotenv';
 import http from 'http';
 
-import { buildAlumnosLoader } from './loaders/alumnosLoader.js'
-
 import alumnosRoutes from './routes/members.routes.js';
 import pagosRoutes from './routes/payments.routes.js';
 import rolesRoutes from './routes/roles.routes.js';
@@ -31,10 +29,12 @@ import { verifyToken } from '../backend/middleware/auth.js'
 import { createServer } from 'http';
 import { Server } from 'socket.io';
 import { supaPerRequest } from './middleware/supaPerRequest.js';
+import { handleGetActiveAlumnosCountByGym } from './controllers/members.controller.js';
 
 // await enviarEmailsPorVencer(); // Comentado - ahora se usa via endpoint
 
-dotenv.config();
+dotenv.config({ path: '.env.local' }); // development (local Supabase)
+// dotenv.config();                     // production
 
 const app = express();
 
@@ -60,13 +60,7 @@ app.use(cors({
 
 app.use(express.json());
 
-app.use((req, res, next) => {
-  req.loaders = {
-    alumnos: buildAlumnosLoader(),
-  }
-  next()
-})
-
+app.get('/api/alumnos/active-count', handleGetActiveAlumnosCountByGym);
 app.use('/api/alumnos', verifyToken, supaPerRequest, alumnosRoutes);
 app.use('/api/pagos', verifyToken, supaPerRequest, pagosRoutes);
 app.use('/api/planes', verifyToken, supaPerRequest, planesRoutes);

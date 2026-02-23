@@ -94,8 +94,12 @@ export function useGymStatsLive(gymId?: string) {
         const nextPlanId = evt.next?.planId ?? null;
 
         if (prevPlanId === undefined) {
-          const alumnosCache: any[] | undefined = qc.getQueryData(['alumnos', gymId]) as any[] | undefined;
-          const m = alumnosCache?.find((x) => x?.dni === evt.dni);
+          const memberQueries = qc.getQueriesData<{ items: any[] }>({ queryKey: ['members', gymId] });
+          let m: any;
+          for (const [, d] of memberQueries) {
+            m = d?.items?.find((x: any) => x?.dni === evt.dni);
+            if (m) break;
+          }
           prevPlanId = m?.plan_id ?? m?.planId ?? null;
         }
 
@@ -194,17 +198,6 @@ export function useGymStatsLive(gymId?: string) {
         });
       });
 
-      const alumnosQueries = qc.getQueriesData<{ items: any[]; total: number }>({ queryKey: ['alumnos', gymId] });
-      alumnosQueries.forEach(([key, prevData]) => {
-        if (!prevData) return;
-        const items = Array.isArray(prevData.items) ? prevData.items : [];
-        const nextItems = items.filter((m: any) => m?.dni !== evt.dni);
-        qc.setQueryData(key, {
-          ...prevData,
-          items: nextItems,
-          total: clamp0((prevData.total ?? items.length) - 1),
-        });
-      });
     });
 
     return () => {

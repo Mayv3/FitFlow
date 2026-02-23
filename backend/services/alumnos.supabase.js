@@ -1,5 +1,23 @@
 import { supabase, supabaseAdmin } from '../db/supabaseClient.js'
 
+export async function getActiveAlumnosCountByGym() {
+  const today = new Date().toISOString().slice(0, 10);
+
+  const { data, error } = await supabaseAdmin
+    .from('alumnos')
+    .select('gym_id')
+    .is('deleted_at', null)
+    .gte('fecha_de_vencimiento', today);
+
+  if (error) throw error;
+
+  const counts = {};
+  for (const row of data ?? []) {
+    counts[row.gym_id] = (counts[row.gym_id] ?? 0) + 1;
+  }
+  return counts;
+}
+
 export async function getAllAlumnos() {
   const { data, error } = await supa
     .from('alumnos')

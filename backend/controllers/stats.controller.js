@@ -36,7 +36,6 @@ export async function getKpis(req, res) {
   try {
 
     const gymId = req.user?.user_metadata?.gym_id;
-    console.o
     if (!gymId) {
       return res.status(400).json({ error: "Falta gym_id" });
     }

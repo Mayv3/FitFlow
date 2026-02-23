@@ -32,7 +32,7 @@ export default function RootLayout({
   children: React.ReactNode
 }>) {
   return (
-    <html lang="es" className={quicksand.variable}>
+    <html lang="es" className={quicksand.variable} suppressHydrationWarning>
       <head>
         <link rel="icon" href="/favicon.png" type="image/png" />
         <link
@@ -45,7 +45,7 @@ export default function RootLayout({
           rel="stylesheet"
         />
       </head>
-      <body className="font-quicksand">
+      <body className="font-quicksand" suppressHydrationWarning>
         <LocalizationProviderClient>
           <ReactQueryProvider>
             <DarkModeProvider>

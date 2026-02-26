@@ -1,9 +1,9 @@
 import { supabase } from '../db/supabaseClient.js'
 
-export const getPlanesSvc = async ({ supa, page, pageSize, q }) => {
+export const getPlanesSvc = async ({ supa, q }) => {
   let query = supa
     .from('planes_precios')
-    .select('*', { count: 'exact' })
+    .select('*')
     .is('deleted_at', null)
 
   if (q) {
@@ -13,28 +13,17 @@ export const getPlanesSvc = async ({ supa, page, pageSize, q }) => {
       const num = Number(q)
       const min = Math.max(0, num * 0.8)
       const max = num * 1.2
-
-      query = query
-        .gte('precio', min)
-        .lte('precio', max)
+      query = query.gte('precio', min).lte('precio', max)
     } else {
       query = query.ilike('nombre', `%${lower}%`)
     }
   }
 
-  if (page && pageSize) {
-    const from = (page - 1) * pageSize
-    const to = from + pageSize - 1
-    query = query.range(from, to)
-  }
-
-  const { data, error, count } = await query
+  const { data, error } = await query
 
   if (error) throw error
 
-  return page && pageSize
-    ? { items: data ?? [], total: count ?? 0 }
-    : data ?? []
+  return data ?? []
 }
 
 export const createPlanSvc = async ({

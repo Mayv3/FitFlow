@@ -2,7 +2,7 @@
 import { Box, Button, Stack, CircularProgress, Typography, IconButton } from '@mui/material'
 import AddIcon from '@mui/icons-material/Add'
 import VisibilityIcon from '@mui/icons-material/Visibility'
-import { useMemo, useState } from 'react'
+import { useCallback, useMemo, useState } from 'react'
 import { debounce } from '@/utils/debounce/debounce'
 import { CustomBreadcrumbs } from '@/components/ui/breadcrums/CustomBreadcrumbs'
 import { SearchBar } from '@/components/ui/search/SearchBar'
@@ -70,20 +70,12 @@ export default function ClasesList() {
             
             // Crear la clase
             const nuevaClase = await addClase.mutateAsync({ ...claseData, gym_id: gymId })
-            
-            console.log('Clase creada:', nuevaClase)
-            console.log('Sesiones a crear:', sesiones)
-            
+
             // Crear las sesiones
             if (sesiones && sesiones.length > 0) {
                 for (const sesion of sesiones) {
-                    console.log('Creando sesión:', {
-                        ...sesion,
-                        clase_id: nuevaClase.id,
-                        gym_id: gymId,
-                    })
                     try {
-                        const response = await axios.post(
+                        await axios.post(
                             `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/sesiones`,
                             {
                                 ...sesion,
@@ -91,7 +83,6 @@ export default function ClasesList() {
                                 gym_id: gymId,
                             }
                         )
-                        console.log('Sesión creada:', response.data)
                     } catch (err: any) {
                         console.error('Error creando sesión:', err.response?.data || err.message)
                     }
@@ -108,34 +99,19 @@ export default function ClasesList() {
         }
     }
 
-    const handleOpenEdit = async (clase: any) => {
+    const handleOpenEdit = useCallback(async (clase: any) => {
         try {
-            console.log('[handleOpenEdit] Abriendo edición de clase:', clase)
-            
-            // Cargar las sesiones de la clase
             const response = await axios.get(
                 `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/sesiones/clase/${clase.id}`
             )
-            
-            console.log('[handleOpenEdit] Sesiones recibidas:', response.data)
-            
-            // Agregar las sesiones al objeto clase
-            const claseConSesiones = {
-                ...clase,
-                sesiones: response.data || []
-            }
-            
-            console.log('[handleOpenEdit] Clase con sesiones:', claseConSesiones)
-            
-            setEditingClase(claseConSesiones)
+            setEditingClase({ ...clase, sesiones: response.data || [] })
             setOpenEdit(true)
         } catch (error) {
             console.error('Error cargando sesiones:', error)
-            // Si falla, abrir el modal sin sesiones
             setEditingClase(clase)
             setOpenEdit(true)
         }
-    }
+    }, [gymId])
 
     const handleCloseEdit = () => {
         setOpenEdit(false)
@@ -148,29 +124,21 @@ export default function ClasesList() {
             const id = editingClase?.id
             if (!id) throw new Error('No hay id para editar la clase')
             
-            console.log('[handleEditClase] Editando clase:', id)
-            console.log('[handleEditClase] Sesiones:', sesiones)
-            
             // Actualizar la clase
             await editClase.mutateAsync({ id, values: claseData })
-            
+
             // Crear nuevas sesiones (las que tienen ID temporal con Date.now())
             if (sesiones && sesiones.length > 0) {
                 const sesionesBD = editingClase?.sesiones || []
                 const idsSesionesBD = sesionesBD.map((s: any) => s.id)
                 const diasSesionesBD = sesionesBD.map((s: any) => s.dia_semana)
-                
-                // Filtrar solo las sesiones nuevas (que no están en la BD)
+
                 const sesionesNuevas = sesiones.filter((s: any) => {
-                    // No está en BD por ID
                     const esNueva = !idsSesionesBD.includes(s.id)
-                    // Y el día no está ocupado
                     const diaNoOcupado = !diasSesionesBD.includes(s.dia_semana)
                     return esNueva && diaNoOcupado
                 })
-                
-                console.log('[handleEditClase] Sesiones nuevas a crear:', sesionesNuevas)
-                
+
                 for (const sesion of sesionesNuevas) {
                     try {
                         await axios.post(
@@ -181,7 +149,6 @@ export default function ClasesList() {
                                 gym_id: gymId,
                             }
                         )
-                        console.log('[handleEditClase] Sesión creada:', sesion)
                     } catch (err: any) {
                         console.error('[handleEditClase] Error creando sesión:', err.response?.data || err.message)
                     }
@@ -199,10 +166,10 @@ export default function ClasesList() {
         }
     }
 
-    const handleDelete = (id: number) => {
+    const handleDelete = useCallback((id: number) => {
         setDeletingId(id)
         setOpenDelete(true)
-    }
+    }, [])
 
     const confirmDelete = async () => {
         if (!deletingId) return
@@ -217,12 +184,12 @@ export default function ClasesList() {
         }
     }
 
-    const handleVerDetalle = (clase: any) => {
+    const handleVerDetalle = useCallback((clase: any) => {
         setClaseDetalle(clase)
         setOpenDetalle(true)
-    }
+    }, [])
 
-    const columns = useMemo(() => columnsClases(handleOpenEdit, handleDelete, handleVerDetalle), [])
+    const columns = useMemo(() => columnsClases(handleOpenEdit, handleDelete, handleVerDetalle), [handleOpenEdit, handleDelete, handleVerDetalle])
 
     if (userLoading || isLoading) {
         return <Box sx={{ textAlign: 'center', mt: 4 }}><CircularProgress /></Box>

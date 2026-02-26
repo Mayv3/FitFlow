@@ -25,11 +25,8 @@ import LogoutIcon from '@mui/icons-material/Logout'
 import AccountCircleIcon from '@mui/icons-material/AccountCircle'
 import LockIcon from '@mui/icons-material/Lock'
 import StarIcon from '@mui/icons-material/Star'
-import DarkModeIcon from '@mui/icons-material/DarkMode'
-import LightModeIcon from '@mui/icons-material/LightMode'
 import { useEffect, useState } from 'react'
 import { useLogout } from '@/hooks/logout/useLogout'
-import { useDarkMode } from '@/context/DarkModeContext'
 import Cookies from 'js-cookie'
 import { useRouter, usePathname } from 'next/navigation'
 import { ROLE_ROUTES } from '@/const/roles/roles'
@@ -78,8 +75,6 @@ export const SideBar = ({ tabs }: HeaderComponentProps) => {
 
   const router = useRouter()
   const pathname = usePathname()
-  const { isDarkMode, toggleDarkMode } = useDarkMode()
-
   const [gym_name, setGymName] = useState<string | null>(null)
   const [gym_logo_url, setGymLogoUrl] = useState<string | null>(null)
   const [user_name, setUserName] = useState<string | null>(null)
@@ -133,7 +128,7 @@ export const SideBar = ({ tabs }: HeaderComponentProps) => {
 
   useEffect(() => {
     const idx = tabs.findIndex(t => t.route === pathname)
-    if (idx !== -1) setSelectedIndex(idx)
+    setSelectedIndex(idx)
   }, [pathname, tabs])
 
   useEffect(() => {
@@ -350,12 +345,15 @@ export const SideBar = ({ tabs }: HeaderComponentProps) => {
             px: isExpanded ? 1.25 : 0,
             borderRadius: 2,
             cursor: 'pointer',
-            bgcolor: 'rgba(255,255,255,0.10)',
+            bgcolor: pathname === getProfileRoute() ? '#fff' : 'transparent',
+            '&:hover': {
+              bgcolor: pathname === getProfileRoute() ? '#fff' : 'rgba(255,255,255,0.10)',
+            },
           }}
         >
           <AccountCircleIcon
             sx={{
-              color: 'white',
+              color: pathname === getProfileRoute() ? 'black' : 'white',
               fontSize: 24,
               flexShrink: 0,
             }}
@@ -369,39 +367,11 @@ export const SideBar = ({ tabs }: HeaderComponentProps) => {
               transition: 'opacity .25s ease, width .25s ease',
             }}
           >
-            <Typography variant="body2" color="white" noWrap>
+            <Typography variant="body2" color={pathname === getProfileRoute() ? 'black' : 'white'} noWrap>
               {user_name || ''}
             </Typography>
           </Box>
         </Box>
-
-        <Tooltip title={isExpanded ? '' : isDarkMode ? 'Modo claro' : 'Modo oscuro'} placement="right">
-          <ListItemButton
-            onClick={toggleDarkMode}
-            sx={{
-              borderRadius: 2,
-              height: 48,
-              px: 1.25,
-              justifyContent: 'flex-start',
-              '&:hover': { bgcolor: 'rgba(255,255,255,0.10)' },
-            }}
-          >
-            <ListItemIcon sx={{ color: 'white', minWidth: 0, mr: isExpanded ? 1.5 : 0 }}>
-              {isDarkMode ? <LightModeIcon fontSize="medium" /> : <DarkModeIcon fontSize="medium" />}
-            </ListItemIcon>
-            <Box
-              sx={{
-                overflow: 'hidden',
-                whiteSpace: 'nowrap',
-                opacity: isExpanded ? 1 : 0,
-                width: isExpanded ? 'auto' : 0,
-                transition: 'opacity .3s ease, width .3s ease',
-              }}
-            >
-              <ListItemText primary={isDarkMode ? 'Modo claro' : 'Modo oscuro'} primaryTypographyProps={{ color: 'white' }} />
-            </Box>
-          </ListItemButton>
-        </Tooltip>
 
         <Tooltip title={isExpanded ? '' : 'Salir'} placement="right">
           <ListItemButton
@@ -582,15 +552,6 @@ export const SideBar = ({ tabs }: HeaderComponentProps) => {
                   />
                 )
               })}
-              <BottomNavigationAction
-                value={20}
-                icon={isDarkMode ? <LightModeIcon /> : <DarkModeIcon />}
-                onClick={() => toggleDarkMode()}
-                sx={{
-                  color: 'white',
-                  '&.Mui-selected': { color: 'black', bgcolor: 'white !important' },
-                }}
-              />
               <BottomNavigationAction
                 value={21}
                 icon={<LogoutIcon />}

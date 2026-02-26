@@ -5,6 +5,17 @@ import axios from 'axios'
 import Cookies from 'js-cookie'
 import { Turno } from '@/models/appointments/Appointment'
 
+const axiosInstance = axios.create({
+  baseURL: process.env.NEXT_PUBLIC_BACKEND_URL,
+  withCredentials: true,
+})
+
+axiosInstance.interceptors.request.use((config) => {
+  const token = Cookies.get('token')
+  if (token) config.headers.Authorization = `Bearer ${token}`
+  return config
+})
+
 const appointmentsKey = (gymId: string, page?: number, pageSize?: number, q?: string) =>
   ['appointments', gymId, page, pageSize, q] as const
 
@@ -14,7 +25,6 @@ type EditArgs = {
   skipInvalidate?: boolean
 }
 
-
 export const useAppointments = (gymId?: string, page = 1, pageSize = 20, q = '') => {
   return useQuery({
     queryKey: appointmentsKey(gymId!, page, pageSize, q),
@@ -22,14 +32,9 @@ export const useAppointments = (gymId?: string, page = 1, pageSize = 20, q = '')
     staleTime: 1000 * 60 * 5,
     placeholderData: keepPreviousData,
     queryFn: async (): Promise<{ items: any[]; total: number }> => {
-      const token = Cookies.get('token')
-      const { data } = await axios.get(
-        `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/turnos`,
-        {
-          params: { gymId, page, pageSize, q },
-          headers: token ? { Authorization: `Bearer ${token}` } : undefined,
-        }
-      )
+      const { data } = await axiosInstance.get('/api/turnos', {
+        params: { gymId, page, pageSize, q },
+      })
       return data
     },
     select: (res) => {
@@ -62,16 +67,11 @@ export const useAddAppointment = (gymId: string) => {
 
   return useMutation({
     mutationFn: async (values: any) => {
-      const token = Cookies.get('token')
-      const { data } = await axios.post(
-        `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/turnos`,
-        { ...values, gym_id: gymId },
-        { headers: token ? { Authorization: `Bearer ${token}` } : undefined }
-      )
+      const { data } = await axiosInstance.post('/api/turnos', { ...values, gym_id: gymId })
       return data as Turno
     },
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ["appointments", gymId] })
+      qc.invalidateQueries({ queryKey: ['appointments', gymId] })
     },
   })
 }
@@ -81,12 +81,7 @@ export const useEditAppointment = (gymId: string) => {
 
   return useMutation({
     mutationFn: async ({ id, values }: EditArgs) => {
-      const token = Cookies.get('token')
-      const { data } = await axios.put(
-        `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/turnos/${id}`,
-        values,
-        { headers: token ? { Authorization: `Bearer ${token}` } : undefined }
-      )
+      const { data } = await axiosInstance.put(`/api/turnos/${id}`, values)
       return data
     },
     onSuccess: (_data, variables) => {
@@ -102,15 +97,11 @@ export const useDeleteAppointment = (gymId: string) => {
 
   return useMutation({
     mutationFn: async (id: string) => {
-      const token = Cookies.get('token')
-      await axios.delete(`${process.env.NEXT_PUBLIC_BACKEND_URL}/api/turnos/${id}`, {
-        headers: token ? { Authorization: `Bearer ${token}` } : undefined,
-      })
+      await axiosInstance.delete(`/api/turnos/${id}`)
       return id
     },
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ["appointments", gymId] })
+      qc.invalidateQueries({ queryKey: ['appointments', gymId] })
     },
   })
 }
-

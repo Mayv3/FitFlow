@@ -6,10 +6,12 @@ import {
   removeAlumno,
   handleListAlumnosByGym,
   handleListAlumnosSimple,
+  handleGetActiveAlumnosCountByGym,
 } from '../controllers/members.controller.js'
 import { verifyToken } from '../middleware/auth.js'
 
 const router = Router()
+router.get('/active-count', handleGetActiveAlumnosCountByGym);
 router.get('/simple', verifyToken, handleListAlumnosSimple);
 router.get('/', verifyToken, handleListAlumnosByGym);
 router.get('/:dni', getAlumno);

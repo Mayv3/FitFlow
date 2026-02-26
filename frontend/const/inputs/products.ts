@@ -1,6 +1,6 @@
 import { Field } from "@/models/Fields/Field";
 
-export const getInputFieldsProducts = (): Field[] => [
+export const inputFieldsProducts: Field[] = [
   {
     label: 'Nombre del producto (obligatorio)',
     name: 'nombre',
@@ -52,6 +52,9 @@ export const getInputFieldsProducts = (): Field[] => [
     regex: /^$|^(0|[1-9]\d{0,5})$/
   },
 ]
+
+/** @deprecated usar inputFieldsProducts directamente */
+export const getInputFieldsProducts = () => inputFieldsProducts
 
 export const layoutProducts = {
   nombre: { rowStart: 1, colStart: 1, colSpan: 6 },

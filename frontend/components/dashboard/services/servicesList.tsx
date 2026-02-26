@@ -2,7 +2,7 @@
 
 import { Box, Button, Stack, CircularProgress, Typography } from '@mui/material'
 import AddIcon from '@mui/icons-material/Add'
-import { useMemo, useState } from 'react'
+import { useCallback, useMemo, useState } from 'react'
 import { debounce } from '@/utils/debounce/debounce'
 import { CustomBreadcrumbs } from '@/components/ui/breadcrums/CustomBreadcrumbs'
 import { SearchBar } from '@/components/ui/search/SearchBar'
@@ -10,7 +10,7 @@ import { GenericDataGrid } from '@/components/ui/tables/DataGrid'
 import { columnsServices } from '@/const/columns/services'
 import { useUser } from '@/context/UserContext'
 import { FormModal } from '@/components/ui/modals/FormModal'
-import { getInputFieldsServices, layoutServices } from '@/const/inputs/services'
+import { inputFieldsServices, layoutServices } from '@/const/inputs/services'
 import {
   useAddService,
   useEditService,
@@ -68,15 +68,15 @@ export default function ServicesList() {
     }
   }
 
-  const handleOpenEdit = (service: any) => {
+  const handleOpenEdit = useCallback((service: any) => {
     setEditingService(service)
     setOpenEdit(true)
-  }
+  }, [])
 
-  const handleCloseEdit = () => {
+  const handleCloseEdit = useCallback(() => {
     setOpenEdit(false)
     setEditingService(null)
-  }
+  }, [])
 
   const handleEditService = async (values: any) => {
     try {
@@ -91,10 +91,10 @@ export default function ServicesList() {
     }
   }
 
-  const handleDelete = (id: string) => {
+  const handleDelete = useCallback((id: string) => {
     setDeletingId(id)
     setOpenDelete(true)
-  }
+  }, [])
 
   const confirmDelete = async () => {
     if (!deletingId) return
@@ -111,7 +111,7 @@ export default function ServicesList() {
 
   const columns = useMemo(
     () => columnsServices(handleOpenEdit, handleDelete),
-    [handleOpenEdit]
+    [handleOpenEdit, handleDelete]
   )
 
   if (userLoading || isLoading) {
@@ -190,7 +190,7 @@ export default function ServicesList() {
         <FormModal
           open={openAdd}
           title="Añadir un servicio"
-          fields={getInputFieldsServices()}
+          fields={inputFieldsServices}
           initialValues={null}
           onClose={() => setOpenAdd(false)}
           onSubmit={handleAddService}
@@ -208,7 +208,7 @@ export default function ServicesList() {
         <FormModal
           open={openEdit}
           title="Editar servicio"
-          fields={getInputFieldsServices()}
+          fields={inputFieldsServices}
           gridColumns={12}
           gridGap={16}
           initialValues={editingService}

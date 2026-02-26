@@ -315,7 +315,7 @@ export function ClaseDetalleModal({ open, onClose, clase, gymId }: ClaseDetalleM
                                                                                         </ListItemAvatar>
                                                                                         <ListItemText
                                                                                             primary={
-                                                                                                <Stack direction="row" spacing={1} alignIptems="center">
+                                                                                                <Stack direction="row" spacing={1} alignItems="center">
                                                                                                     <Typography variant="body2" fontWeight="medium">
                                                                                                         {alumno.nombre || 'Sin nombre'}
                                                                                                     </Typography>

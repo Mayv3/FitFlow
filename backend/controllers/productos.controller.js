@@ -12,10 +12,6 @@ export const getProductos = async (req, res) => {
     const { page, pageSize, q, categoria } = req.query
     const gymId = req.gymId
 
-    console.log(
-      `Received getProductos request with params: page=${page}, pageSize=${pageSize}, q=${q}, categoria=${categoria}, gymId=${gymId}`
-    )
-
     if (!gymId) {
       return res.status(401).json({ message: 'Gym no identificado' })
     }
@@ -23,38 +19,16 @@ export const getProductos = async (req, res) => {
     const pageNum = page ? parseInt(page, 10) : undefined
     const pageSizeNum = pageSize ? parseInt(pageSize, 10) : undefined
 
-    if (pageNum && pageSizeNum) {
-      const { items, total } = await getProductosSvc({
-        supa: req.supa,
-        gymId,
-        page: pageNum,
-        pageSize: pageSizeNum,
-        q,
-        categoria
-      })
+    const { items, total } = await getProductosSvc({
+      supa: req.supa,
+      gymId,
+      page: pageNum,
+      pageSize: pageSizeNum,
+      q,
+      categoria,
+    })
 
-      if (total <= 100) {
-        const allProductos = await getProductosSvc({
-          supa: req.supa,
-          gymId,
-          q,
-          categoria
-        })
-
-        return res.status(200).json({ items: allProductos, total })
-      }
-
-      return res.status(200).json({ items, total })
-    } else {
-      const productos = await getProductosSvc({
-        supa: req.supa,
-        gymId,
-        q,
-        categoria
-      })
-
-      return res.status(200).json(productos)
-    }
+    return res.status(200).json({ items, total })
   } catch (error) {
     console.error('Error al obtener productos:', error)
     return res.status(500).json({ message: 'Error al obtener productos', error: error.message })

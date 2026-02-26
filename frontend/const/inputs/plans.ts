@@ -1,6 +1,6 @@
 import { Field } from "@/models/Fields/Field";
 
-export const getInputFieldsPlans = (): Field[] => [
+export const inputFieldsPlans: Field[] = [
     {
         label: 'Nombre del plan (obligatorio)',
         name: 'nombre',
@@ -36,8 +36,10 @@ export const getInputFieldsPlans = (): Field[] => [
         required: true,
         placeholder: '#000000',
     },
-
 ]
+
+/** @deprecated usar inputFieldsPlans directamente */
+export const getInputFieldsPlans = () => inputFieldsPlans
 
 export const layoutPlans = {
     nombre: { rowStart: 1, colStart: 1, colSpan: 6 },

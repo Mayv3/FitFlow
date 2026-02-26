@@ -11,18 +11,16 @@ const ARS = new Intl.NumberFormat('es-AR', {
 
 const center = { align: 'center' as const, headerAlign: 'center' as const }
 
-// Función para obtener el color según la categoría
-const getCategoryColor = (categoria: string): 'primary' | 'secondary' | 'success' | 'error' | 'warning' | 'info' => {
-  const categoryColors: Record<string, 'primary' | 'secondary' | 'success' | 'error' | 'warning' | 'info'> = {
-    'Suplementos': 'primary',
-    'Bebidas': 'info',
-    'Merchandising': 'secondary',
-    'Accesorios': 'warning',
-    'Alimentos': 'success',
-    'Otros': 'error',
-  }
-  return categoryColors[categoria] || 'primary'
+const CATEGORY_COLORS: Record<string, 'primary' | 'secondary' | 'success' | 'error' | 'warning' | 'info'> = {
+  'Suplementos': 'primary',
+  'Bebidas': 'info',
+  'Merchandising': 'secondary',
+  'Accesorios': 'warning',
+  'Alimentos': 'success',
+  'Otros': 'error',
 }
+
+const getCategoryColor = (categoria: string) => CATEGORY_COLORS[categoria] ?? 'primary'
 
 export const columnsProducts = (
   handleEdit: (product: any) => void,
@@ -40,7 +38,7 @@ export const columnsProducts = (
       headerName: 'Descripción',
       flex: 0.3,
       ...center,
-      renderCell: (p) => (p.row?.descripcion ? p.row.descripcion : '—'),
+      renderCell: (p) => p.row?.descripcion ?? '—',
     },
     {
       field: 'categoria',

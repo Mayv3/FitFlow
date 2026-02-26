@@ -24,39 +24,44 @@ export async function getClasesService({ gymId, page, limit, q = '' }) {
 
   if (error) throw error;
 
-  // Para cada clase, verificar si tiene inscripciones fijas
-  const clasesConFijas = await Promise.all(
-    (data ?? []).map(async (clase) => {
-      // Obtener sesiones de la clase
-      const { data: sesiones } = await supabase
-        .from('clases_sesiones')
-        .select('id')
-        .eq('clase_id', clase.id)
-        .is('deleted_at', null);
+  const clases = data ?? [];
+  if (clases.length === 0) return { items: [], total: 0, page, limit, q };
 
-      if (!sesiones || sesiones.length === 0) {
-        return { ...clase, tiene_fijas: false };
-      }
+  // Batch 1: todas las sesiones de todas las clases en una sola query
+  const claseIds = clases.map(c => c.id);
+  const { data: todasSesiones } = await supabase
+    .from('clases_sesiones')
+    .select('id, clase_id')
+    .in('clase_id', claseIds)
+    .is('deleted_at', null);
 
-      const sesionIds = sesiones.map(s => s.id);
+  const sesionIds = (todasSesiones ?? []).map(s => s.id);
 
-      // Verificar si hay inscripciones fijas en alguna sesión
-      const { data: inscripcionesFijas } = await supabase
-        .from('clases_inscripciones')
-        .select('id')
-        .in('sesion_id', sesionIds)
-        .eq('es_fija', true)
-        .limit(1);
+  // Batch 2: inscripciones fijas de todas las sesiones en una sola query
+  const sesionesConFijas = new Set();
+  if (sesionIds.length > 0) {
+    const { data: inscripciones } = await supabase
+      .from('clases_inscripciones')
+      .select('sesion_id')
+      .in('sesion_id', sesionIds)
+      .eq('es_fija', true);
+    (inscripciones ?? []).forEach(i => sesionesConFijas.add(i.sesion_id));
+  }
 
-      return {
-        ...clase,
-        tiene_fijas: (inscripcionesFijas?.length ?? 0) > 0
-      };
-    })
-  );
+  // Join en memoria
+  const sesionIdsPorClase = {};
+  (todasSesiones ?? []).forEach(s => {
+    if (!sesionIdsPorClase[s.clase_id]) sesionIdsPorClase[s.clase_id] = [];
+    sesionIdsPorClase[s.clase_id].push(s.id);
+  });
+
+  const items = clases.map(clase => ({
+    ...clase,
+    tiene_fijas: (sesionIdsPorClase[clase.id] ?? []).some(sid => sesionesConFijas.has(sid)),
+  }));
 
   return {
-    items: clasesConFijas,
+    items,
     total: count ?? 0,
     page,
     limit,

@@ -38,9 +38,7 @@ export const getProductosSvc = async ({ supa, gymId, page, pageSize, q, categori
 
   if (error) throw error
 
-  return page && pageSize
-    ? { items: data ?? [], total: count ?? 0 }
-    : data ?? []
+  return { items: data ?? [], total: count ?? 0 }
 }
 
 export const getProductoByIdSvc = async ({ supa, id }) => {

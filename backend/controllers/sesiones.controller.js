@@ -5,6 +5,7 @@ import {
   deleteSesion,
   inscribirAlumnoSesion,
   desinscribirAlumnoSesion,
+  toggleEsFijaInscripcion,
   getInscripcionesByAlumno,
 } from '../services/sesiones.supabase.js';
 
@@ -98,6 +99,23 @@ export async function handleDesinscribirAlumno(req, res) {
     res.sendStatus(204);
   } catch (error) {
     console.error('[handleDesinscribirAlumno] Error:', error);
+    res.status(400).json({ error: error.message });
+  }
+}
+
+// Cambiar estado fija/temporal
+export async function handleToggleEsFija(req, res) {
+  try {
+    const { sesion_id, alumno_id, es_fija, gym_id } = req.body;
+    const inscripcion = await toggleEsFijaInscripcion({ sesion_id, alumno_id, es_fija });
+
+    req.app.get('io')
+      ?.to(`gym:${gym_id}`)
+      .emit('inscripcion:updated', { inscripcion });
+
+    res.json(inscripcion);
+  } catch (error) {
+    console.error('[handleToggleEsFija] Error:', error);
     res.status(400).json({ error: error.message });
   }
 }

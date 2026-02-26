@@ -61,18 +61,23 @@ router.get('/service/:service_id/sessions', async (req, res) => {
             .in('estado', ['inscripto', 'asistio'])
             .maybeSingle();
 
-          // Contar inscripciones actuales (solo inscriptos y asistidos)
+          // Contar inscripciones actuales (solo inscriptos y asistidos), excluyendo fijas vencidas
           const { data: inscripciones } = await supabaseAdmin
             .from('clases_inscripciones')
-            .select('id')
+            .select('es_fija, alumno:alumnos(fecha_de_vencimiento)')
             .eq('sesion_id', sesion.id)
             .in('estado', ['inscripto', 'asistio']);
+
+          const today = new Date().toISOString().slice(0, 10);
+          const activeCount = (inscripciones ?? []).filter(i =>
+            !i.es_fija || (i.alumno?.fecha_de_vencimiento ?? '') >= today
+          ).length;
 
           return {
             ...sesion,
             inscrito: !!inscripcion,
             es_fija: inscripcion?.es_fija || false,
-            cupos_disponibles: sesion.capacidad - (inscripciones?.length || 0),
+            cupos_disponibles: sesion.capacidad - activeCount,
           };
         })
       );
@@ -107,16 +112,19 @@ router.post('/session/:session_id/enroll', async (req, res) => {
       return res.status(404).json({ error: 'Sesión no encontrada' });
     }
 
-    // Contar inscripciones actuales (solo inscriptos y asistidos)
+    // Contar inscripciones actuales (solo inscriptos y asistidos), excluyendo fijas vencidas
     const { data: inscripciones, error: countError } = await supabaseAdmin
       .from('clases_inscripciones')
-      .select('id')
+      .select('es_fija, alumno:alumnos(fecha_de_vencimiento)')
       .eq('sesion_id', session_id)
       .in('estado', ['inscripto', 'asistio']);
 
     if (countError) throw countError;
 
-    const inscritosActuales = inscripciones?.length || 0;
+    const today = new Date().toISOString().slice(0, 10);
+    const inscritosActuales = (inscripciones ?? []).filter(i =>
+      !i.es_fija || (i.alumno?.fecha_de_vencimiento ?? '') >= today
+    ).length;
 
     if (inscritosActuales >= sesion.capacidad) {
       return res.status(400).json({ error: 'No hay cupos disponibles' });

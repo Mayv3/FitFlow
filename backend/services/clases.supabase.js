@@ -42,10 +42,13 @@ export async function getClasesService({ gymId, page, limit, q = '' }) {
   if (sesionIds.length > 0) {
     const { data: inscripciones } = await supabase
       .from('clases_inscripciones')
-      .select('sesion_id')
+      .select('sesion_id, alumno:alumnos(fecha_de_vencimiento)')
       .in('sesion_id', sesionIds)
       .eq('es_fija', true);
-    (inscripciones ?? []).forEach(i => sesionesConFijas.add(i.sesion_id));
+    const today = new Date().toISOString().slice(0, 10);
+    (inscripciones ?? [])
+      .filter(i => (i.alumno?.fecha_de_vencimiento ?? '') >= today)
+      .forEach(i => sesionesConFijas.add(i.sesion_id));
   }
 
   // Join en memoria
@@ -80,7 +83,8 @@ export async function getClaseById(id) {
         inscripciones:clases_inscripciones(
           id,
           alumno_id,
-          alumno:alumnos(id, nombre, dni, email)
+          es_fija,
+          alumno:alumnos(id, nombre, dni, email, fecha_de_vencimiento)
         )
       )
     `)
@@ -91,13 +95,18 @@ export async function getClaseById(id) {
   if (error) throw error;
   
   if (data && data.sesiones) {
+    const today = new Date().toISOString().slice(0, 10);
+    const isActive = (i) => !i.es_fija || (i.alumno?.fecha_de_vencimiento ?? '') >= today;
     data.sesiones = data.sesiones
       .filter(s => !s.deleted_at)
-      .map(sesion => ({
-        ...sesion,
-        capacidad_actual: sesion.inscripciones?.length ?? 0,
-        alumnos_inscritos: sesion.inscripciones?.map(i => i.alumno) ?? []
-      }))
+      .map(sesion => {
+        const activeInscripciones = (sesion.inscripciones ?? []).filter(isActive);
+        return {
+          ...sesion,
+          capacidad_actual: activeInscripciones.length,
+          alumnos_inscritos: activeInscripciones.map(i => i.alumno),
+        };
+      })
       .sort((a, b) => {
         if (a.dia_semana !== b.dia_semana) return a.dia_semana - b.dia_semana;
         return a.hora_inicio.localeCompare(b.hora_inicio);

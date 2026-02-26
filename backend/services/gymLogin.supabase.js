@@ -159,8 +159,14 @@ export const getAlumnoCompleteInfo = async (dni, gymId) => {
         console.error('Error obteniendo clases inscritas:', clasesResult.error);
     }
 
+    // Filtrar inscripciones fijas vencidas
+    const today = new Date().toISOString().slice(0, 10);
+    const clasesInscritasActivas = (clasesInscritas || []).filter(inscripcion =>
+        !inscripcion.es_fija || (alumno.fecha_de_vencimiento ?? '') >= today
+    );
+
     // Formatear las clases inscritas
-    const clasesFormateadas = (clasesInscritas || []).map(inscripcion => {
+    const clasesFormateadas = clasesInscritasActivas.map(inscripcion => {
         // Calcular la próxima fecha de la clase
         let proxima_fecha = null;
         if (inscripcion.clases_sesiones?.dia_semana !== null && inscripcion.clases_sesiones?.dia_semana !== undefined) {

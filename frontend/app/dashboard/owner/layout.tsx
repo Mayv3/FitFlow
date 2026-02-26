@@ -18,8 +18,7 @@ export default function OwnerLayout({
   useAuthRole(OWNER);
   const { isSuspended, isSubscriptionLoading } = useSubscription();
 
-  // Si está suspendido, no renderizar el dashboard (el context redirige)
-  if (isSuspended || isSubscriptionLoading) return null;
+  if (isSuspended) return null;
 
   return (
     <div style={{

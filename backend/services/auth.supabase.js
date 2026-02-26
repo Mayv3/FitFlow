@@ -106,7 +106,7 @@ export async function loginUser({ email, password }) {
       role_id,
       auth_user_id,
       name,
-      gyms ( name )
+      gyms ( name, settings, logo_url )
     `)
     .eq("auth_user_id", user.id)
     .single()

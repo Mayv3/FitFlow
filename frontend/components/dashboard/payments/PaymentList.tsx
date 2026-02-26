@@ -121,14 +121,7 @@ export default function PaymentList() {
         []
     );
 
-    const pagos = useMemo(() => {
-        const items = data?.items ?? [];
-        return [...items].sort((a, b) => {
-            const fechaA = new Date(`${a.fecha_de_pago}T${a.hora ?? '00:00:00'}`);
-            const fechaB = new Date(`${b.fecha_de_pago}T${b.hora ?? '00:00:00'}`);
-            return fechaB.getTime() - fechaA.getTime();
-        });
-    }, [data]);
+    const pagos = data?.items ?? [];
 
     const total = data?.total ?? 0;
 

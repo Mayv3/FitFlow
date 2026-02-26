@@ -5,6 +5,7 @@ import {
   deleteAlumno,
   getAlumnosService,
   getAlumnosSimpleService,
+  getActiveAlumnosCountByGym,
 } from '../services/alumnos.supabase.js'
 import jwt from 'jsonwebtoken';
 
@@ -160,11 +161,21 @@ export async function getAlumnosByParams(req, res) {
 
     if (!gymId) return res.status(400).json({ message: 'gym_id requerido' });
 
-    const result = await getAlumnosService({ gymId, page, limit, q });
+    const result = await getAlumnosService({ page, limit, q }, req.supa);
     res.json(result);
   } catch (err) {
     console.error(err);
     res.status(500).json({ message: err.message ?? 'Error obteniendo alumnos' });
+  }
+}
+
+export async function handleGetActiveAlumnosCountByGym(req, res) {
+  try {
+    const counts = await getActiveAlumnosCountByGym();
+    res.json(counts);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: err.message ?? 'Error obteniendo conteo de alumnos' });
   }
 }
 

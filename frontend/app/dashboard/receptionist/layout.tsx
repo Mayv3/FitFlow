@@ -18,7 +18,7 @@ export default function ReceptionistLayout({
   useAuthRole(RECEPCIONISTA);
   const { isSuspended, isSubscriptionLoading } = useSubscription();
 
-  if (isSuspended || isSubscriptionLoading) return null;
+  if (isSuspended) return null;
 
   return (
     <div style={{

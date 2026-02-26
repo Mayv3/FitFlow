@@ -62,21 +62,9 @@ const LoginPage = () => {
       Cookies.set("email", String(session.user.email))
       if (profile?.gyms?.name) Cookies.set("gym_name", String(profile.gyms.name))
 
-      try {
-        const { data: gym } = await axios.get(
-          `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/gyms/${profile.gym_id}?include_settings=true`,
-          { headers: { Authorization: `Bearer ${session.access_token}` } }
-        )
-
-        localStorage.setItem("gym_settings", JSON.stringify(gym?.settings || {}))
-        localStorage.setItem("gym_logo_url", gym?.logo_url || "")
-
-        window.dispatchEvent(new Event("gym-settings-updated"))
-      } catch (e) {
-        console.warn("No se pudieron cargar los settings del gimnasio:", e)
-        localStorage.removeItem("gym_settings")
-        localStorage.removeItem("gym_logo_url")
-      }
+      localStorage.setItem("gym_settings", JSON.stringify(profile?.gyms?.settings || {}))
+      localStorage.setItem("gym_logo_url", profile?.gyms?.logo_url || "")
+      window.dispatchEvent(new Event("gym-settings-updated"))
 
       setUser({
         id: profile.auth_user_id,

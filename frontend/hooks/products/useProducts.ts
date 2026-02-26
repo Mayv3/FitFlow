@@ -26,9 +26,6 @@ type Product = {
 type GetProductsResponse<T = Product> = {
   items: T[];
   total: number;
-  page: number;
-  limit: number;
-  q: string;
 };
 
 const key = (gymId: string, page: number, limit: number, q: string, categoria?: string) =>
@@ -44,10 +41,6 @@ export function useProducts(gymId: string, page = 1, limit = 20, q = '', categor
       const { data } = await axiosInstance.get('/api/productos', {
         params: { gym_id: gymId, page, pageSize: limit, q, categoria },
       });
-      // Si el backend devuelve un array directamente, lo convertimos al formato esperado
-      if (Array.isArray(data)) {
-        return { items: data, total: data.length } as GetProductsResponse;
-      }
       return data as GetProductsResponse;
     },
   });
@@ -60,7 +53,7 @@ export function useAddProduct(gymId: string) {
       const { data } = await axiosInstance.post('/api/productos', values);
       return data as Product;
     },
-    onSuccess: (nuevo) => {
+    onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['products', gymId] });
     },
   });
@@ -73,7 +66,7 @@ export function useEditProduct(gymId: string) {
       const { data } = await axiosInstance.put(`/api/productos/${id}`, values);
       return data as Product;
     },
-    onSuccess: (updated) => {
+    onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['products', gymId] });
     },
   });
@@ -102,15 +95,3 @@ export function useDeleteProduct(gymId: string) {
   });
 }
 
-export function useUpdateStock(gymId: string) {
-  const qc = useQueryClient();
-  return useMutation({
-    mutationFn: async ({ id, cantidad, operacion }: { id: string; cantidad: number; operacion: 'incrementar' | 'decrementar' }) => {
-      const { data } = await axiosInstance.patch(`/api/productos/${id}/stock`, { cantidad, operacion });
-      return data as Product;
-    },
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['products', gymId] });
-    },
-  });
-}

@@ -5,22 +5,14 @@ import { api } from '@/lib/api'
 
 const planesKey = (gymId: string) => ['planes-precios', gymId] as const
 
-export const usePlanesPrecios = (
-  gymId?: string,
-  page = 1,
-  pageSize = 20,
-  q = ''
-) => {
+export const usePlanesPrecios = (gymId?: string, q = '') => {
   const query = useQuery({
-    queryKey: ['planes-precios', gymId, page, pageSize, q],
+    queryKey: ['planes-precios', gymId, q],
     enabled: !!gymId,
     staleTime: 1000 * 60 * 5,
     placeholderData: keepPreviousData,
     queryFn: async (): Promise<{ items: Plan[]; total: number }> => {
-      const { data } = await api.get(
-        `/api/planes`,
-        { params: { page, pageSize, q } }
-      )
+      const { data } = await api.get(`/api/planes`, { params: { q } })
       return data
     },
     select: (res) => {

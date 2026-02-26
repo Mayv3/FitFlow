@@ -31,7 +31,7 @@ export interface FormModalProps<T> {
   fields: Field[];
   initialValues?: T | null;
   onClose: () => void;
-  onSubmit: (values: T) => void;
+  onSubmit: (values: T) => void | Promise<void>;
   confirmText?: string;
   cancelText?: string;
   gridColumns?: number;

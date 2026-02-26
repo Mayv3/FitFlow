@@ -24,7 +24,7 @@ import DeleteIcon from '@mui/icons-material/Delete'
 import PersonIcon from '@mui/icons-material/Person'
 import EmailIcon from '@mui/icons-material/Email'
 import BadgeIcon from '@mui/icons-material/Badge'
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import { getDiaNombre } from '@/const/inputs/sesiones'
 import { useAlumnosSimpleService } from '@/hooks/alumnos/useAlumnosApi'
 
@@ -56,8 +56,9 @@ export function InscripcionesModal({
     const { data: alumnos = [] } = useAlumnosSimpleService(gymId)
 
     const alumnosInscritos = sesion.alumnos_inscritos || []
-    const alumnosDisponibles = alumnos.filter(
-        (a: any) => !alumnosInscritos.some((ai: any) => ai.id === a.id)
+    const alumnosDisponibles = useMemo(
+        () => alumnos.filter((a: any) => !alumnosInscritos.some((ai: any) => ai.id === a.id)),
+        [alumnos, alumnosInscritos]
     )
 
     const handleInscribir = () => {
@@ -139,12 +140,12 @@ export function InscripcionesModal({
                         Alumnos inscritos ({alumnosInscritos.length})
                     </Typography>
                     {alumnosInscritos.length === 0 ? (
-                        <Paper 
-                            elevation={0} 
-                            sx={{ 
-                                p: 4, 
-                                textAlign: 'center', 
-                                bgcolor: 'background.default',
+                        <Paper
+                            elevation={0}
+                            sx={{
+                                p: 4,
+                                textAlign: 'center',
+                                bgcolor: 'action.hover',
                                 borderRadius: 2,
                             }}
                         >

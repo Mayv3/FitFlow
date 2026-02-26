@@ -24,7 +24,6 @@ import { usePlanesPrecios } from '@/hooks/plans/usePlanesPrecios';
 import { SearchBar } from '@/components/ui/search/SearchBar';
 import { debounce } from '@/utils/debounce/debounce';
 import { CustomBreadcrumbs } from '@/components/ui/breadcrums/CustomBreadcrumbs';
-import { usePlanNameFromCache } from '@/hooks/plans/usePlanesPrecios';
 import { notify } from '@/lib/toast';
 import tableSize from '@/const/tables/tableSize';
 
@@ -52,8 +51,6 @@ export default function MembersList() {
   const [openEdit, setOpenEdit] = useState(false);
   const [editingMember, setEditingMember] = useState<Member | null>(null);
   const asyncValidators = useMemberAsyncValidators();
-
-  const getPlanNameFromCache = usePlanNameFromCache();
 
   const addmember = useAddAlumno();
   const deleteAlumno = useDeleteAlumnoByDNI();
@@ -159,7 +156,7 @@ export default function MembersList() {
           : Number(values.plan_id),
     };
 
-    const plan_nombre = getPlanNameFromCache(gymId!, v.plan_id);
+    const plan_nombre = byId[String(v.plan_id)]?.nombre ?? null;
 
     try {
       const temporalId = Date.now();
@@ -192,7 +189,7 @@ export default function MembersList() {
         ? null
         : Number(values.plan_id);
 
-    const plan_nombre = getPlanNameFromCache(gymId!, plan_id);
+    const plan_nombre = byId[String(plan_id)]?.nombre ?? null;
 
     changeItem({
       queryKey: ['members', gymId, page, tableSize, q],

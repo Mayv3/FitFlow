@@ -2,7 +2,7 @@
 
 import { Box, Button, Stack, CircularProgress, Typography } from '@mui/material'
 import AddIcon from '@mui/icons-material/Add'
-import { useMemo, useState } from 'react'
+import { useCallback, useMemo, useState } from 'react'
 import { debounce } from '@/utils/debounce/debounce'
 import { CustomBreadcrumbs } from '@/components/ui/breadcrums/CustomBreadcrumbs'
 import { SearchBar } from '@/components/ui/search/SearchBar'
@@ -10,7 +10,7 @@ import { GenericDataGrid } from '@/components/ui/tables/DataGrid'
 import { columnsProducts } from '@/const/columns/products'
 import { useUser } from '@/context/UserContext'
 import { FormModal } from '@/components/ui/modals/FormModal'
-import { getInputFieldsProducts, layoutProducts } from '@/const/inputs/products'
+import { inputFieldsProducts, layoutProducts } from '@/const/inputs/products'
 import {
   useAddProduct,
   useEditProduct,
@@ -68,15 +68,15 @@ export default function ProductsList() {
     }
   }
 
-  const handleOpenEdit = (product: any) => {
+  const handleOpenEdit = useCallback((product: any) => {
     setEditingProduct(product)
     setOpenEdit(true)
-  }
+  }, [])
 
-  const handleCloseEdit = () => {
+  const handleCloseEdit = useCallback(() => {
     setOpenEdit(false)
     setEditingProduct(null)
-  }
+  }, [])
 
   const handleEditProduct = async (values: any) => {
     try {
@@ -91,10 +91,10 @@ export default function ProductsList() {
     }
   }
 
-  const handleDelete = (id: string) => {
+  const handleDelete = useCallback((id: string) => {
     setDeletingId(id)
     setOpenDelete(true)
-  }
+  }, [])
 
   const confirmDelete = async () => {
     if (!deletingId) return
@@ -111,7 +111,7 @@ export default function ProductsList() {
 
   const columns = useMemo(
     () => columnsProducts(handleOpenEdit, handleDelete),
-    [handleOpenEdit]
+    [handleOpenEdit, handleDelete]
   )
 
   if (userLoading || isLoading) {
@@ -190,7 +190,7 @@ export default function ProductsList() {
         <FormModal
           open={openAdd}
           title="Añadir un producto"
-          fields={getInputFieldsProducts()}
+          fields={inputFieldsProducts}
           initialValues={null}
           onClose={() => setOpenAdd(false)}
           onSubmit={handleAddProduct}
@@ -208,7 +208,7 @@ export default function ProductsList() {
         <FormModal
           open={openEdit}
           title="Editar producto"
-          fields={getInputFieldsProducts()}
+          fields={inputFieldsProducts}
           gridColumns={12}
           gridGap={16}
           initialValues={editingProduct}

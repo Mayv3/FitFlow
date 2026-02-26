@@ -1,6 +1,6 @@
 import { Field } from "@/models/Fields/Field";
 
-export const getInputFieldsServices = (): Field[] => [
+export const inputFieldsServices: Field[] = [
   {
     label: 'Nombre del servicio (obligatorio)',
     name: 'nombre',
@@ -39,7 +39,7 @@ export const getInputFieldsServices = (): Field[] => [
     type: 'number',
     required: true,
     placeholder: 'Ej: 10000',
-    regex: /^$|^(0|[1-9]\d{0,4}|100000)$/
+    regex: /^$|^(0|[1-9]\d{0,4}|100000)$/,
   },
   {
     label: 'Color',
@@ -49,6 +49,9 @@ export const getInputFieldsServices = (): Field[] => [
     placeholder: '#4caf50',
   },
 ]
+
+/** @deprecated usar inputFieldsServices directamente */
+export const getInputFieldsServices = () => inputFieldsServices
 
 export const layoutServices = {
   nombre: { rowStart: 1, colStart: 1, colSpan: 6 },

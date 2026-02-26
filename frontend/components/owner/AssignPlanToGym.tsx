@@ -63,28 +63,39 @@ export function AssignPlanToGym() {
   const [loadingGyms, setLoadingGyms] = useState(true)
   const [error, setError] = useState("")
   const [success, setSuccess] = useState("")
+  const [alumnosCounts, setAlumnosCounts] = useState<Record<string, number>>({})
 
   const { data: plans = [], isLoading: loadingPlans } = useGymPlans()
   const { data: suscriptions = [], isLoading: loadingSuscriptions } = useSuscriptions()
   const createSuscription = useCreateSuscription()
   const updateSuscription = useUpdateSuscription()
 
-  // Cargar gimnasios
+  // Cargar gimnasios y conteo de alumnos activos
   useEffect(() => {
     const fetchGyms = async () => {
       try {
         const token = Cookies.get("token")
         const headers = token ? { Authorization: `Bearer ${token}` } : {}
         const res = await axios.get(`${process.env.NEXT_PUBLIC_BACKEND_URL}/api/gyms`, { headers })
-        const gymsData = Array.isArray(res.data) ? res.data : []
-        setGyms(gymsData)
+        setGyms(Array.isArray(res.data) ? res.data : [])
       } catch (err: any) {
         setError(err.response?.data?.error || "Error al cargar gimnasios")
       } finally {
         setLoadingGyms(false)
       }
     }
+
+    const fetchCounts = async () => {
+      try {
+        const res = await axios.get(`${process.env.NEXT_PUBLIC_BACKEND_URL}/api/alumnos/active-count`)
+        setAlumnosCounts(res.data ?? {})
+      } catch {
+        // no crítico, la tabla sigue funcionando sin conteos
+      }
+    }
+
     fetchGyms()
+    fetchCounts()
   }, [])
 
   // Obtener la suscripción activa del gimnasio seleccionado
@@ -240,6 +251,7 @@ export function AssignPlanToGym() {
                 <TableCell sx={{ fontWeight: 600, background: (theme) => theme.palette.mode === "dark" ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.05)" }}>Gimnasio</TableCell>
                 <TableCell sx={{ fontWeight: 600, background: (theme) => theme.palette.mode === "dark" ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.05)" }}>Plan Actual</TableCell>
                 <TableCell sx={{ fontWeight: 600, background: (theme) => theme.palette.mode === "dark" ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.05)" }}>Estado</TableCell>
+                <TableCell sx={{ fontWeight: 600, background: (theme) => theme.palette.mode === "dark" ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.05)" }}>Alumnos Activos</TableCell>
                 <TableCell sx={{ fontWeight: 600, background: (theme) => theme.palette.mode === "dark" ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.05)" }}>Vencimiento</TableCell>
                 <TableCell align="center" sx={{ fontWeight: 600, background: (theme) => theme.palette.mode === "dark" ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.05)" }}>Acción</TableCell>
               </TableRow>
@@ -255,15 +267,28 @@ export function AssignPlanToGym() {
                   <TableRow
                     key={gym.id}
                     sx={{
-                      bgcolor: isSelected ? "action.selected" : "inherit",
-                      "&:hover": { bgcolor: "action.hover" },
+                      bgcolor: isSelected
+                        ? (theme) => theme.palette.mode === "dark"
+                          ? "rgba(25, 118, 210, 0.18)"
+                          : "rgba(25, 118, 210, 0.10)"
+                        : "inherit",
+                      borderLeft: isSelected ? "3px solid" : "3px solid transparent",
+                      borderColor: isSelected ? "primary.main" : "transparent",
+                      "&:hover": {
+                        bgcolor: isSelected
+                          ? (theme) => theme.palette.mode === "dark"
+                            ? "rgba(25, 118, 210, 0.25)"
+                            : "rgba(25, 118, 210, 0.15)"
+                          : "action.hover",
+                      },
                       cursor: "pointer",
+                      transition: "background-color 0.15s, border-color 0.15s",
                     }}
                     onClick={() => handleSelectGym(gym.id)}
                   >
                     <TableCell>
                       <Stack direction="row" spacing={1} alignItems="center">
-                        <BusinessIcon fontSize="small" color="action" />
+                        <BusinessIcon fontSize="small" color={isSelected ? "primary" : "action"} />
                         <Typography variant="body2" fontWeight={isSelected ? 600 : 400}>
                           {gym.name}
                         </Typography>
@@ -301,6 +326,11 @@ export function AssignPlanToGym() {
                           variant="outlined"
                         />
                       )}
+                    </TableCell>
+                    <TableCell>
+                      <Typography variant="body2" fontWeight={500}>
+                        {alumnosCounts[gym.id] ?? 0}
+                      </Typography>
                     </TableCell>
                     <TableCell>
                       {suscription?.end_at ? (

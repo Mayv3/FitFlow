@@ -12,6 +12,7 @@ import {
   Box,
   Divider,
   IconButton,
+  Tooltip,
 } from '@mui/material'
 import CheckCircleIcon from '@mui/icons-material/CheckCircle'
 import WarningAmberIcon from '@mui/icons-material/WarningAmber'
@@ -20,7 +21,10 @@ import HelpOutlineIcon from '@mui/icons-material/HelpOutline'
 import CloseIcon from '@mui/icons-material/Close'
 import CalendarTodayIcon from '@mui/icons-material/CalendarToday'
 import StarIcon from '@mui/icons-material/Star'
+import DarkModeIcon from '@mui/icons-material/DarkMode'
+import LightModeIcon from '@mui/icons-material/LightMode'
 import { useSubscription } from '@/context/SubscriptionContext'
+import { useDarkMode } from '@/context/DarkModeContext'
 
 function formatDate(dateStr: string | null | undefined): string {
   if (!dateStr) return 'Sin fecha'
@@ -100,6 +104,8 @@ export const SubscriptionStatusBadge = () => {
     isPaymentWarning,
   } = useSubscription()
 
+  const { isDarkMode, toggleDarkMode } = useDarkMode()
+
   const status = getStatus(isSubscriptionActive, isExpiringSoon, daysUntilExpiration, isPaymentWarning)
 
   // Auto-abrir el modal si el plan está vencido, sin plan, o en aviso de pago pendiente
@@ -117,13 +123,16 @@ export const SubscriptionStatusBadge = () => {
 
   return (
     <>
-      {/* Badge fixed arriba a la derecha */}
+      {/* Badge + toggle de tema — fixed arriba a la derecha */}
       <Box
         sx={{
           position: 'fixed',
           top: 12,
           right: 16,
           zIndex: 1400,
+          display: 'flex',
+          alignItems: 'center',
+          gap: 1,
         }}
       >
         <Chip
@@ -155,6 +164,21 @@ export const SubscriptionStatusBadge = () => {
             }),
           })}
         />
+        <Tooltip title={isDarkMode ? 'Modo claro' : 'Modo oscuro'}>
+          <IconButton
+            onClick={toggleDarkMode}
+            size="small"
+            sx={(theme) => ({
+              bgcolor: theme.palette.mode === 'dark' ? 'rgba(255,255,255,0.12)' : 'rgba(0,0,0,0.08)',
+              boxShadow: '0 2px 8px rgba(0,0,0,0.15)',
+              '&:hover': {
+                bgcolor: theme.palette.mode === 'dark' ? 'rgba(255,255,255,0.2)' : 'rgba(0,0,0,0.14)',
+              },
+            })}
+          >
+            {isDarkMode ? <LightModeIcon fontSize="small" /> : <DarkModeIcon fontSize="small" />}
+          </IconButton>
+        </Tooltip>
       </Box>
 
       {/* Dialog con detalle de la suscripción */}

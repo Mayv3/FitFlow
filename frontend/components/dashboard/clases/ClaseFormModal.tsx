@@ -19,6 +19,7 @@ import {
     ListItem,
     ListItemText,
     Divider,
+    CircularProgress,
 } from '@mui/material'
 import AddIcon from '@mui/icons-material/Add'
 import DeleteIcon from '@mui/icons-material/Delete'
@@ -50,7 +51,7 @@ const formatHora = (hora: string): string => {
 interface ClaseFormModalProps {
     open: boolean
     onClose: () => void
-    onSubmit: (values: any) => void
+    onSubmit: (values: any) => void | Promise<void>
     initialValues?: any
     mode: 'create' | 'edit'
     title: string
@@ -72,6 +73,7 @@ export function ClaseFormModal({
     const [confirmDelete, setConfirmDelete] = useState(false)
     const [sesionToDelete, setSesionToDelete] = useState<number | null>(null)
     const [editingSesion, setEditingSesion] = useState<any | null>(null)
+    const [submitting, setSubmitting] = useState(false)
 
     // Formulario de nueva sesión
     const [diaSemana, setDiaSemana] = useState<number>(1)
@@ -208,7 +210,7 @@ export function ClaseFormModal({
     // Verificar si un día ya está ocupado
     const isDiaOcupado = (dia: number) => diasOcupados.includes(dia)
 
-    const handleSubmit = () => {
+    const handleSubmit = async () => {
         const values = {
             nombre,
             descripcion,
@@ -222,7 +224,12 @@ export function ClaseFormModal({
             })),
         }
 
-        onSubmit(values)
+        try {
+            setSubmitting(true)
+            await onSubmit(values)
+        } finally {
+            setSubmitting(false)
+        }
     }
 
     const isValid = nombre.trim().length >= 3 && capacidadDefault > 0
@@ -432,13 +439,13 @@ export function ClaseFormModal({
                 </Stack>
             </DialogContent>
             <DialogActions>
-                <Button onClick={onClose}>Cancelar</Button>
+                <Button onClick={onClose} disabled={submitting}>Cancelar</Button>
                 <Button
                     onClick={handleSubmit}
                     variant="contained"
-                    disabled={!isValid}
+                    disabled={!isValid || submitting}
                 >
-                    {mode === 'create' ? 'Crear clase' : 'Guardar cambios'}
+                    {submitting ? <CircularProgress size={22} color="inherit" /> : (mode === 'create' ? 'Crear clase' : 'Guardar cambios')}
                 </Button>
             </DialogActions>
 

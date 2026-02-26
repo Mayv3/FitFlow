@@ -162,11 +162,18 @@ export async function createPago(supaClient, pago) {
       responsable: pago.responsable,
       monto_total: pago.monto_total,
     })
-    .select('id, alumno_id, plan_id, service_id, producto_id, fecha_de_venc')
+    .select(`
+      id, alumno_id, plan_id, service_id, producto_id, fecha_de_venc,
+      fecha_de_pago, responsable, tipo, monto_total,
+      plan:planes_precios ( id, nombre ),
+      servicio:servicios!service_id ( id, nombre ),
+      alumno:alumnos ( id, nombre, dni )
+    `)
     .single();
 
   if (e1) throw e1;
 
+  let insertedItems = [];
   if ((pago.items ?? []).length) {
     const rows = pago.items.map(it => ({
       pago_id: cab.id,
@@ -175,8 +182,12 @@ export async function createPago(supaClient, pago) {
       referencia: it.referencia ?? null,
     }));
 
-    const { error: e2 } = await supaClient.from('pago_items').insert(rows);
+    const { data: itemsData, error: e2 } = await supaClient
+      .from('pago_items')
+      .insert(rows)
+      .select('monto, referencia, metodo:metodos_de_pago(id, nombre)');
     if (e2) throw e2;
+    insertedItems = itemsData ?? [];
   }
 
   if (pago.isPlan && pago.plan_id) {
@@ -226,7 +237,14 @@ export async function createPago(supaClient, pago) {
   }
 
 
-  return await getPagoById(supaClient, cab.id);
+  return {
+    ...cab,
+    alumno_nombre: cab?.alumno?.nombre ?? null,
+    plan_nombre: cab?.plan?.nombre ?? null,
+    servicio_nombre: cab?.servicio?.nombre ?? null,
+    items: insertedItems,
+    metodos_legibles: insertedItems.map(i => `${i?.metodo?.nombre ?? '—'} $${i?.monto ?? 0}`),
+  };
 }
 
 export async function updatePago(supaClient, id, nuevosDatos, { includeDeleted = false } = {}) {
@@ -250,7 +268,13 @@ export async function updatePago(supaClient, id, nuevosDatos, { includeDeleted =
     .from('pagos')
     .update({ ...cabecera, monto_total, service_id: cabecera.service_id ?? null })
     .eq('id', id)
-    .select('id, alumno_id, plan_id, service_id, fecha_de_venc')
+    .select(`
+      id, alumno_id, plan_id, service_id, fecha_de_venc,
+      fecha_de_pago, responsable, tipo, monto_total,
+      plan:planes_precios ( id, nombre ),
+      servicio:servicios!service_id ( id, nombre ),
+      alumno:alumnos ( id, nombre, dni )
+    `)
     .single();
 
   if (!includeDeleted) q = q.is('deleted_at', null);
@@ -258,7 +282,7 @@ export async function updatePago(supaClient, id, nuevosDatos, { includeDeleted =
   const { data: pagoCab, error } = await q;
   if (error) throw error;
 
-  // 4. Si mandaron items → reemplazamos
+  let pagoItems = [];
   if (Array.isArray(items)) {
     await supaClient.from('pago_items').delete().eq('pago_id', id);
 
@@ -270,13 +294,29 @@ export async function updatePago(supaClient, id, nuevosDatos, { includeDeleted =
         referencia: it.referencia ?? null,
       }));
 
-      const { error: eItems } = await supaClient.from('pago_items').insert(rows);
+      const { data: itemsData, error: eItems } = await supaClient
+        .from('pago_items')
+        .insert(rows)
+        .select('monto, referencia, metodo:metodos_de_pago(id, nombre)');
       if (eItems) throw eItems;
+      pagoItems = itemsData ?? [];
     }
+  } else {
+    const { data: existingItems } = await supaClient
+      .from('pago_items')
+      .select('monto, referencia, metodo:metodos_de_pago(id, nombre)')
+      .eq('pago_id', id);
+    pagoItems = existingItems ?? [];
   }
 
-  // 5. Devolver pago completo (con joins)
-  return await getPagoById(supaClient, id);
+  return {
+    ...pagoCab,
+    alumno_nombre: pagoCab?.alumno?.nombre ?? null,
+    plan_nombre: pagoCab?.plan?.nombre ?? null,
+    servicio_nombre: pagoCab?.servicio?.nombre ?? null,
+    items: pagoItems,
+    metodos_legibles: pagoItems.map(i => `${i?.metodo?.nombre ?? '—'} $${i?.monto ?? 0}`),
+  };
 }
 
 /** Soft delete */

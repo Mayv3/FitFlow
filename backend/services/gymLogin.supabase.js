@@ -59,28 +59,56 @@ export const getAlumnoCompleteInfo = async (dni, gymId) => {
     if (alumnoError) throw alumnoError;
     if (!alumno) throw new Error('Alumno no encontrado en este gimnasio');
 
-    let planInfo = null;
-    if (alumno.plan_id) {
-        const { data: plan, error: planError } = await supabaseAdmin
+    const [planResult, pagosResult, planesResult, clasesResult] = await Promise.all([
+        alumno.plan_id
+            ? supabaseAdmin
+                .from('planes_precios')
+                .select('id, nombre, precio, numero_clases, color')
+                .eq('id', alumno.plan_id)
+                .is('deleted_at', null)
+                .maybeSingle()
+            : Promise.resolve({ data: null, error: null }),
+        supabaseAdmin
+            .from('pagos')
+            .select('id, monto_total, fecha_de_pago, fecha_de_venc, tipo, responsable')
+            .eq('alumno_id', alumno.id)
+            .is('deleted_at', null)
+            .order('fecha_de_pago', { ascending: false })
+            .limit(10),
+        supabaseAdmin
             .from('planes_precios')
             .select('id, nombre, precio, numero_clases, color')
-            .eq('id', alumno.plan_id)
+            .eq('gym_id', gymId)
             .is('deleted_at', null)
-            .maybeSingle();
+            .order('precio', { ascending: true }),
+        supabaseAdmin
+            .from('clases_inscripciones')
+            .select(`
+      id,
+      es_fija,
+      created_at,
+      sesion_id,
+      clases_sesiones (
+        id,
+        dia_semana,
+        hora_inicio,
+        capacidad,
+        clase_id,
+        clases (
+          id,
+          nombre,
+          descripcion,
+          color
+        )
+      )
+    `)
+            .eq('alumno_id', alumno.id)
+            .order('created_at', { ascending: false }),
+    ]);
 
-        if (!planError && plan) {
-            planInfo = plan;
-        }
-    }
-
-    const { data: pagos, error: pagosError } = await supabaseAdmin
-        .from('pagos')
-        .select('id, monto_total, fecha_de_pago, fecha_de_venc, tipo, responsable')
-        .eq('alumno_id', alumno.id)
-        .is('deleted_at', null)
-        .order('fecha_de_pago', { ascending: false })
-        .limit(10);
-
+    const planInfo = (!planResult.error && planResult.data) ? planResult.data : null;
+    const pagos = pagosResult.data;
+    const pagosError = pagosResult.error;
     if (pagosError) {
         console.error('Error obteniendo pagos:', pagosError);
     }
@@ -121,49 +149,14 @@ export const getAlumnoCompleteInfo = async (dni, gymId) => {
         );
     }
 
-    const { data: planes, error: planesError } = await supabaseAdmin
-        .from('planes_precios')
-        .select(`
-    id,
-    nombre,
-    precio,
-    numero_clases,
-    color
-  `)
-        .eq('gym_id', gymId)
-        .is('deleted_at', null)
-        .order('precio', { ascending: true });
-
-    if (planesError) {
-        console.error('Error obteniendo planes:', planesError);
+    const planes = planesResult.data;
+    if (planesResult.error) {
+        console.error('Error obteniendo planes:', planesResult.error);
     }
 
-    const { data: clasesInscritas, error: clasesError } = await supabaseAdmin
-        .from('clases_inscripciones')
-        .select(`
-      id,
-      es_fija,
-      created_at,
-      sesion_id,
-      clases_sesiones (
-        id,
-        dia_semana,
-        hora_inicio,
-        capacidad,
-        clase_id,
-        clases (
-          id,
-          nombre,
-          descripcion,
-          color
-        )
-      )
-    `)
-        .eq('alumno_id', alumno.id)
-        .order('created_at', { ascending: false });
-
-    if (clasesError) {
-        console.error('Error obteniendo clases inscritas:', clasesError);
+    const clasesInscritas = clasesResult.data;
+    if (clasesResult.error) {
+        console.error('Error obteniendo clases inscritas:', clasesResult.error);
     }
 
     // Formatear las clases inscritas

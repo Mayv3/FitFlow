@@ -7,49 +7,16 @@ import {
 
 export const getPlanes = async (req, res) => {
   try {
-    const { page, pageSize, q } = req.query
+    const { q } = req.query
     const gymId = req.gymId
-
-    console.log(
-      `Received getPlanes request with params: page=${page}, pageSize=${pageSize}, q=${q}, gymId=${gymId}`
-    )
 
     if (!gymId) {
       return res.status(401).json({ message: 'Gym no identificado' })
     }
 
-    const pageNum = page ? parseInt(page, 10) : undefined
-    const pageSizeNum = pageSize ? parseInt(pageSize, 10) : undefined
+    const planes = await getPlanesSvc({ supa: req.supa, q })
 
-    if (pageNum && pageSizeNum) {
-      const { items, total } = await getPlanesSvc({
-        supa: req.supa,
-        page: pageNum,
-        pageSize: pageSizeNum,
-        q,
-      })
-
-      if (total <= 100) {
-        const allPlanes = await getPlanesSvc({
-          supa: req.supa,
-          q,
-        })
-
-        return res.status(200).json({ items: allPlanes, total })
-      }
-
-      return res.status(200).json({ items, total })
-    }
-
-    const planes = await getPlanesSvc({
-      supa: req.supa,
-      q,
-    })
-
-    return res.status(200).json({
-      items: planes,
-      total: planes.length,
-    })
+    return res.status(200).json({ items: planes, total: planes.length })
   } catch (err) {
     console.error(err)
     res.status(500).json({

@@ -3,7 +3,7 @@
 'use client'
 import { Box, Button, Stack, CircularProgress, Typography } from '@mui/material'
 import AddIcon from '@mui/icons-material/Add'
-import { useMemo, useState } from 'react'
+import { useCallback, useMemo, useState } from 'react'
 import { debounce } from '@/utils/debounce/debounce'
 import { CustomBreadcrumbs } from '@/components/ui/breadcrums/CustomBreadcrumbs'
 import { SearchBar } from '@/components/ui/search/SearchBar'
@@ -11,7 +11,7 @@ import { GenericDataGrid } from '@/components/ui/tables/DataGrid'
 import { columnsPlans } from '@/const/columns/plans'
 import { useUser } from '@/context/UserContext'
 import { FormModal } from '@/components/ui/modals/FormModal'
-import { getInputFieldsPlans, layoutPlans } from '@/const/inputs/plans'
+import { inputFieldsPlans, layoutPlans } from '@/const/inputs/plans'
 import {
     useAddPlan,
     useEditPlan,
@@ -32,7 +32,6 @@ export default function PlansList() {
     const [openDelete, setOpenDelete] = useState(false)
     const [deletingId, setDeletingId] = useState<number | null>(null)
 
-    const [page, setPage] = useState(1)
     const [q, setQ] = useState('')
 
     const {
@@ -40,7 +39,7 @@ export default function PlansList() {
         total,
         isLoading,
         isFetching,
-    } = usePlanesPrecios(gymId, page, tableSize, q)
+    } = usePlanesPrecios(gymId, q)
 
     const addPlan = useAddPlan(gymId)
     const editPlan = useEditPlan(gymId)
@@ -50,9 +49,7 @@ export default function PlansList() {
     const handleSearchChange = useMemo(
         () =>
             debounce((value: string) => {
-                const clean = value.trim()
-                setQ(clean)
-                setPage(1)
+                setQ(value.trim())
             }, 450),
         []
     )
@@ -68,10 +65,10 @@ export default function PlansList() {
         }
     }
 
-    const handleOpenEdit = (plan: any) => {
+    const handleOpenEdit = useCallback((plan: any) => {
         setEditingPlan(plan)
         setOpenEdit(true)
-    }
+    }, [])
 
     const handleCloseEdit = () => {
         setOpenEdit(false)
@@ -91,10 +88,10 @@ export default function PlansList() {
         }
     }
 
-    const handleDelete = (id: number) => {
+    const handleDelete = useCallback((id: number) => {
         setDeletingId(id)
         setOpenDelete(true)
-    }
+    }, [])
 
     const confirmDelete = async () => {
         if (!deletingId) return
@@ -109,13 +106,11 @@ export default function PlansList() {
         }
     }
 
-    const columns = useMemo(() => columnsPlans(handleOpenEdit, handleDelete), [handleOpenEdit])
+    const columns = useMemo(() => columnsPlans(handleOpenEdit, handleDelete), [handleOpenEdit, handleDelete])
 
     if (userLoading || isLoading) {
         return <Box sx={{ textAlign: 'center', mt: 4 }}><CircularProgress /></Box>
     }
-
-    console.log(getInputFieldsPlans());
 
     return (
         <Box sx={{ maxWidth: 'xl', mx: 'auto', py: 2 }}>
@@ -144,10 +139,7 @@ export default function PlansList() {
                         <SearchBar
                             value={q}
                             onChange={(val) => handleSearchChange(val)}
-                            onSearch={(text) => {
-                                setQ(text)
-                                setPage(1)
-                            }}
+                            onSearch={(text) => setQ(text.trim())}
                             isLoading={isFetching}
                             placeholder="Buscar planes"
                         />
@@ -180,7 +172,7 @@ export default function PlansList() {
                 <FormModal
                     open={openAdd}
                     title="Añadir un plan"
-                    fields={getInputFieldsPlans()}
+                    fields={inputFieldsPlans}
                     initialValues={{ origen_pago: "plan" }}
                     onClose={() => setOpenAdd(false)}
                     onSubmit={handleAddPlan}
@@ -198,7 +190,7 @@ export default function PlansList() {
                 <FormModal
                     open={openEdit}
                     title="Editar plan"
-                    fields={getInputFieldsPlans()}
+                    fields={inputFieldsPlans}
                     gridColumns={12}
                     gridGap={16}
                     initialValues={editingPlan}

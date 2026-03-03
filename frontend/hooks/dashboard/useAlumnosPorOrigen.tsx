@@ -13,7 +13,7 @@ export function useAlumnosPorOrigen({ year, month }: Params) {
 
   return useQuery({
     queryKey: ['alumnos-por-origen', gym_id, year, month],
-    enabled: !!gym_id && !!year && !!month,
+    enabled: !!gym_id && year > 0 && month >= 0,
     queryFn: async () => {
       const token = Cookies.get('token');
       if (!token) throw new Error('No token');

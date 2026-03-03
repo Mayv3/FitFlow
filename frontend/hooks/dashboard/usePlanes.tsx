@@ -2,9 +2,12 @@
 
 import { useQuery } from '@tanstack/react-query';
 
-export function usePlanes() {
+export function usePlanes(
+  year: number = new Date().getFullYear(),
+  month: number = new Date().getMonth() + 1
+) {
   return useQuery({
-    queryKey: ['planes'],
+    queryKey: ['planes', year, month],
     queryFn: async () => {
       const token = document.cookie
         .split('; ')
@@ -16,7 +19,7 @@ export function usePlanes() {
       }
 
       const res = await fetch(
-        `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/stats/dashboard/planes`,
+        `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/stats/dashboard/planes?year=${year}&month=${month}`,
         {
           headers: { Authorization: `Bearer ${token}` },
           credentials: 'include',

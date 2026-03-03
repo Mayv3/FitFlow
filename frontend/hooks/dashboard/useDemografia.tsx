@@ -2,9 +2,9 @@
 
 import { useQuery } from '@tanstack/react-query';
 
-export function useDemografia() {
+export function useDemografia(year: number = new Date().getFullYear()) {
   return useQuery({
-    queryKey: ['demografia'],
+    queryKey: ['demografia', year],
     queryFn: async () => {
       const token = document.cookie
         .split('; ')
@@ -16,7 +16,7 @@ export function useDemografia() {
       }
 
       const res = await fetch(
-        `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/stats/dashboard/demografia`,
+        `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/stats/dashboard/demografia?year=${year}`,
         {
           headers: {
             Authorization: `Bearer ${token}`,

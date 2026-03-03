@@ -1,6 +1,16 @@
 import { supabaseAdmin } from '../db/supabaseClient.js';
 import { getPaymentsStatsService } from '../services/paymentsStats.supabase.js';
-import { getDashboardData, getDemografiaStatsService, getGymStatsService, getPlanesStatsService } from '../services/stats.supabase.js';
+import {
+  getDashboardData,
+  getDashboardDataByYear,
+  getDemografiaStatsService,
+  getDemografiaByYear,
+  getGymStatsService,
+  getPlanesStatsByPeriodo,
+  getFacturacionByPeriodo,
+  getFacturacionPorPlan,
+  getFacturacionMes,
+} from '../services/stats.supabase.js';
 
 export async function getGymStatsController(req, res) {
   try {
@@ -34,13 +44,17 @@ export async function getPaymentsStatsController(req, res) {
 
 export async function getKpis(req, res) {
   try {
-
     const gymId = req.user?.user_metadata?.gym_id;
     if (!gymId) {
       return res.status(400).json({ error: "Falta gym_id" });
     }
 
-    const dashboardData = await getDashboardData({ gymId });
+    const currentYear = new Date().getFullYear();
+    const year = req.query.year ? Number(req.query.year) : currentYear;
+
+    const dashboardData = year === currentYear
+      ? await getDashboardData({ gymId })
+      : await getDashboardDataByYear({ gymId, year });
 
     return res.json(dashboardData);
   } catch (error) {
@@ -57,7 +71,11 @@ export async function getDemografiaStatsController(req, res) {
       return res.status(400).json({ error: "Falta gym_id" });
     }
 
-    const rawData = await getDemografiaStatsService({ gymId }) || [];
+    const year = req.query.year ? Number(req.query.year) : null;
+
+    const rawData = year
+      ? await getDemografiaByYear({ gymId, year }) || []
+      : await getDemografiaStatsService({ gymId }) || [];
 
     const porSexo = rawData.reduce((acc, item) => {
       const existing = acc.find((s) => s.sexo === item.sexo);
@@ -93,7 +111,11 @@ export async function getPlanesStatsController(req, res) {
       return res.status(400).json({ error: "Falta gym_id" });
     }
 
-    const rawData = await getPlanesStatsService({ gymId });
+    const now = new Date();
+    const year = req.query.year ? Number(req.query.year) : now.getFullYear();
+    const month = req.query.month ? Number(req.query.month) : now.getMonth() + 1;
+
+    const rawData = await getPlanesStatsByPeriodo({ gymId, year, month });
 
     const top5 = rawData.filter((p) => p.is_top5 === true);
     const alumnos = rawData.map((p) => ({
@@ -120,29 +142,56 @@ export const getAlumnosPorOrigenController = async (req, res) => {
   const { gym_id } = req.params;
   const { year, month } = req.query;
 
-  if (!year || !month) {
+  if (!year || month === undefined || month === null) {
     return res.status(400).json({
       error: 'Parámetros requeridos: year y month'
     });
   }
 
-  try {
-    const { data, error } = await supabaseAdmin.rpc(
-      'alumnos_por_origen_por_mes',
-      {
-        gym_id_param: gym_id,
-        year_param: Number(year),
-        month_param: Number(month),
-      }
-    );
+  const yearNum = Number(year);
+  const monthNum = Number(month);
 
-    if (error) throw error;
+  try {
+    let items;
+
+    if (monthNum === 0) {
+      // Todo el año: agrupar alumnos por origen filtrando por año de alta
+      const { data, error } = await supabaseAdmin
+        .from('alumnos')
+        .select('origen')
+        .eq('gym_id', gym_id)
+        .is('deleted_at', null)
+        .gte('fecha_inicio', `${yearNum}-01-01`)
+        .lte('fecha_inicio', `${yearNum}-12-31`);
+
+      if (error) throw error;
+
+      const grouped = {};
+      for (const a of data ?? []) {
+        const origen = a.origen || 'Sin datos';
+        grouped[origen] = (grouped[origen] || 0) + 1;
+      }
+
+      items = Object.entries(grouped).map(([origen, total]) => ({ origen, total }));
+    } else {
+      const { data, error } = await supabaseAdmin.rpc(
+        'alumnos_por_origen_por_mes',
+        {
+          gym_id_param: gym_id,
+          year_param: yearNum,
+          month_param: monthNum,
+        }
+      );
+
+      if (error) throw error;
+      items = data ?? [];
+    }
 
     res.json({
       gym_id,
-      year: Number(year),
-      month: Number(month),
-      items: data ?? [],
+      year: yearNum,
+      month: monthNum,
+      items,
     });
   } catch (err) {
     res.status(500).json({
@@ -150,3 +199,60 @@ export const getAlumnosPorOrigenController = async (req, res) => {
     });
   }
 };
+
+// Facturación por plan: solo el card de facturación (no afecta top5 ni alumnos)
+export async function getFacturacionPorPlanController(req, res) {
+  try {
+    const gymId = req.user?.user_metadata?.gym_id;
+    if (!gymId) return res.status(400).json({ error: 'Falta gym_id' });
+
+    const now = new Date();
+    const year = req.query.year ? Number(req.query.year) : now.getFullYear();
+    const month = req.query.month ? Number(req.query.month) : now.getMonth() + 1;
+
+    const data = await getFacturacionPorPlan({ gymId, year, month });
+    return res.json(data);
+  } catch (error) {
+    console.error('❌ Error en getFacturacionPorPlan:', error);
+    return res.status(500).json({ error: 'Error interno del servidor' });
+  }
+}
+
+// KPI Facturación: mes específico vs mes anterior
+export async function getFacturacionMesController(req, res) {
+  try {
+    const gymId = req.user?.user_metadata?.gym_id;
+    if (!gymId) return res.status(400).json({ error: 'Falta gym_id' });
+
+    const now = new Date();
+    const year = req.query.year ? Number(req.query.year) : now.getFullYear();
+    const month = req.query.month ? Number(req.query.month) : now.getMonth() + 1;
+
+    const result = await getFacturacionMes({ gymId, year, month });
+    return res.json(result);
+  } catch (error) {
+    console.error('❌ Error en getFacturacionMes:', error);
+    return res.status(500).json({ error: 'Error interno del servidor' });
+  }
+}
+
+// PASO 1: Controller para facturación por período
+export async function getFacturacionController(req, res) {
+  try {
+    const { gym_id } = req.params;
+    const { year, range } = req.query;
+
+    const validRanges = ['12m', '30d', '7w', '24h'];
+    if (!range || !validRanges.includes(range)) {
+      return res.status(400).json({ error: 'range debe ser uno de: 12m, 30d, 7w, 24h' });
+    }
+
+    const yearNum = year ? Number(year) : new Date().getFullYear();
+
+    const items = await getFacturacionByPeriodo({ gymId: gym_id, year: yearNum, range });
+    return res.json({ gym_id, year: yearNum, range, items });
+  } catch (error) {
+    console.error('❌ Error en getFacturacion:', error);
+    return res.status(500).json({ error: 'Error interno del servidor' });
+  }
+}

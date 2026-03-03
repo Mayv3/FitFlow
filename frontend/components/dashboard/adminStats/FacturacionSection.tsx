@@ -16,6 +16,7 @@ import { InfoTooltip, RoundedTooltip } from '@/components/ui/tooltip/InfoTooltip
 import moment from 'moment';
 import { useKpis } from '@/hooks/dashboard/useKpis';
 import { useFacturacionChart, type RangoFacturacion } from '@/hooks/dashboard/useFacturacionChart';
+import { YearSelector, useYearState } from './YearSelector';
 import Cookies from 'js-cookie';
 
 type Rango = RangoFacturacion;
@@ -52,14 +53,16 @@ export function FacturacionSection() {
   const { borderRadius } = useGymThemeSettings();
 
   const [range, setRange] = useState<Rango>('12m');
+  const [facYear, setFacYear] = useYearState();
 
   // Donut: siempre muestra estado actual (sin año)
   const { data } = useKpis();
 
-  // Bar: siempre año actual (el rango determina el período)
+  // Bar: año seleccionado solo para 12m; el resto siempre usa año actual
   const gymId = Cookies.get('gym_id') ?? '';
   const currentYear = new Date().getFullYear();
-  const { data: facturacionData, isLoading: loadingBar } = useFacturacionChart(gymId, currentYear, range, {
+  const chartYear = range === '12m' ? facYear : currentYear;
+  const { data: facturacionData, isLoading: loadingBar } = useFacturacionChart(gymId, chartYear, range, {
     enabled: !!gymId,
   });
 
@@ -294,8 +297,16 @@ export function FacturacionSection() {
               flexDirection={{ xs: 'column', sm: 'row' }}
               gap={{ xs: 1, sm: 0 }}
             >
-              <Typography variant="subtitle2" color="text.secondary">Facturación</Typography>
-              <Box>
+              <Box display="flex" alignItems="center" gap={1}>
+                <Typography variant="subtitle2" color="text.secondary">Facturación</Typography>
+                {range === '12m' && isMobile && (
+                  <YearSelector value={facYear} onChange={setFacYear} />
+                )}
+              </Box>
+              <Box display="flex" alignItems="center" gap={1}>
+                {range === '12m' && !isMobile && (
+                  <YearSelector value={facYear} onChange={setFacYear} />
+                )}
                 <ToggleButtonGroup
                   fullWidth={isMobile}
                   size="small"

@@ -4,11 +4,10 @@ import { useState } from 'react';
 import { TextField, MenuItem } from '@mui/material';
 
 export const START_YEAR = 2026;
+export const END_YEAR = 2030;
 
 export function buildYearOptions() {
-  const currentYear = new Date().getFullYear();
-  const max = Math.max(currentYear, START_YEAR);
-  return Array.from({ length: max - START_YEAR + 1 }, (_, i) => START_YEAR + i);
+  return Array.from({ length: END_YEAR - START_YEAR + 1 }, (_, i) => START_YEAR + i);
 }
 
 export function useYearState() {

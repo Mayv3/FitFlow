@@ -171,7 +171,7 @@ export function PlanesSection() {
         <Card sx={{ ...cardSx, position: 'relative', md: { width: '490px' } }}>
           <CardContent
             sx={{
-              height: 360,
+              minHeight: 360,
               display: 'flex',
               flexDirection: 'column',
             }}

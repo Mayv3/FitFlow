@@ -1,7 +1,15 @@
 import { Router } from 'express';
-import { getAlumnosPorOrigenController, getDemografiaStatsController, getGymStatsController, getPlanesStatsController } from '../controllers/stats.controller.js';
-import { getPaymentsStatsController } from '../controllers/stats.controller.js';
-import { getKpis } from "../controllers/stats.controller.js";
+import {
+  getAlumnosPorOrigenController,
+  getDemografiaStatsController,
+  getGymStatsController,
+  getPlanesStatsController,
+  getPaymentsStatsController,
+  getKpis,
+  getFacturacionController,
+  getFacturacionMesController,
+  getFacturacionPorPlanController,
+} from '../controllers/stats.controller.js';
 import { getAsistenciasByGym, getAsistenciasByHora } from '../controllers/attendance.controller.js';
 
 const router = Router();
@@ -23,5 +31,8 @@ router.get(
 );
 
 router.get('/dashboard/gyms/:gym_id/alumnos/origen', getAlumnosPorOrigenController);
+router.get('/dashboard/gyms/:gym_id/facturacion', getFacturacionController);
+router.get('/dashboard/facturacion-mes', getFacturacionMesController);
+router.get('/dashboard/planes/facturacion', getFacturacionPorPlanController);
 
 export default router;

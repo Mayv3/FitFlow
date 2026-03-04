@@ -3,7 +3,6 @@
 import { Container } from '@mui/material';
 import { KpisRow } from './KpiRow';
 import { FacturacionSection } from './FacturacionSection';
-
 import { CustomBreadcrumbs } from '@/components/ui/breadcrums/CustomBreadcrumbs';
 import { DemografiaSection } from './DemografiaSection';
 import { PlanesSection } from './PlanesSection';
@@ -22,10 +21,9 @@ export default function Overview() {
       <KpisRow />
       <FacturacionSection />
       <DemografiaSection />
-      <AlumnosPorOrigenSection/>
-      <PlanesSection/>
-      <AsistenciasSection/>
+      <AlumnosPorOrigenSection />
+      <PlanesSection />
+      <AsistenciasSection />
     </Container>
-
   );
 }

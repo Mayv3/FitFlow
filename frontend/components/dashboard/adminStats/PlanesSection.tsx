@@ -7,6 +7,8 @@ import {
   Box,
   Skeleton,
   useMediaQuery,
+  MenuItem,
+  TextField,
 } from '@mui/material';
 import { useTheme, alpha } from '@mui/material/styles';
 import { GlowingEffect } from '@/components/ui/glowing-effect';
@@ -29,9 +31,33 @@ import {
   RoundedTooltip,
 } from '@/components/ui/tooltip/InfoTooltip';
 import { usePlanes } from '@/hooks/dashboard/usePlanes';
+import { useFacturacionPorPlan } from '@/hooks/dashboard/useFacturacionPorPlan';
+import { useState } from 'react';
+import { YearSelector, useYearState } from './YearSelector';
+
+const MONTHS = [
+  { value: 1, label: 'Enero' },
+  { value: 2, label: 'Febrero' },
+  { value: 3, label: 'Marzo' },
+  { value: 4, label: 'Abril' },
+  { value: 5, label: 'Mayo' },
+  { value: 6, label: 'Junio' },
+  { value: 7, label: 'Julio' },
+  { value: 8, label: 'Agosto' },
+  { value: 9, label: 'Septiembre' },
+  { value: 10, label: 'Octubre' },
+  { value: 11, label: 'Noviembre' },
+  { value: 12, label: 'Diciembre' },
+];
 
 export function PlanesSection() {
+  // Top 5 y distribución de alumnos: siempre mes actual, no cambian con el filtro
   const { data, isLoading, error } = usePlanes();
+
+  // Facturación por plan: filtro independiente
+  const [facYear, setFacYear] = useYearState();
+  const [facMonth, setFacMonth] = useState(new Date().getMonth() + 1);
+  const { data: facData, isLoading: facLoading } = useFacturacionPorPlan(facYear, facMonth);
   const t = useTheme();
   const isMobile = useMediaQuery(t.breakpoints.down('sm'));
   const { borderRadius } = useGymThemeSettings();
@@ -102,7 +128,7 @@ export function PlanesSection() {
 
   const alumnos = data.alumnos ?? [];
 
-  const facturacion = (data.facturacion ?? []).map((f: any) => ({
+  const facturacion = (facData ?? []).map((f: any) => ({
     plan_nombre: f.plan_nombre || '—',
     actual: f.actual !== null ? Number(f.actual) : 0,
     anterior: f.anterior !== null ? Number(f.anterior) : 0,
@@ -145,7 +171,7 @@ export function PlanesSection() {
         <Card sx={{ ...cardSx, position: 'relative', md: { width: '490px' } }}>
           <CardContent
             sx={{
-              height: 360,
+              minHeight: 360,
               display: 'flex',
               flexDirection: 'column',
             }}
@@ -208,7 +234,7 @@ export function PlanesSection() {
         <Card sx={{ ...cardSx, position: 'relative' }}>
           <CardContent>
             <Typography variant="subtitle2" color="text.secondary" mb={2}>
-              Distribución de alumnos por plan
+              Alumnos por plan (activos)
             </Typography>
             <Box sx={{ height: 360 }}>
               <ResponsiveContainer>
@@ -289,10 +315,28 @@ export function PlanesSection() {
         />
         <Card sx={{ ...cardSx, position: 'relative' }}>
           <CardContent>
-            <Typography variant="subtitle2" color="text.secondary" mb={2}>
-              Facturación por plan (mes actual)
-            </Typography>
+            <Box display="flex" justifyContent="space-between" alignItems="center" mb={2} gap={1} flexWrap="wrap">
+              <Typography variant="subtitle2" color="text.secondary">
+                Facturación por plan
+              </Typography>
+              <Box display="flex" gap={1}>
+                <YearSelector value={facYear} onChange={setFacYear} />
+                <TextField
+                  select
+                  size="small"
+                  value={facMonth}
+                  onChange={(e) => setFacMonth(Number(e.target.value))}
+                >
+                  {MONTHS.map((m) => (
+                    <MenuItem key={m.value} value={m.value}>{m.label}</MenuItem>
+                  ))}
+                </TextField>
+              </Box>
+            </Box>
             <Box sx={{ height: 360 }}>
+              {facLoading ? (
+                <Skeleton variant="rectangular" height={360} />
+              ) : (
               <ResponsiveContainer>
                 <BarChart
                   data={facturacion}
@@ -341,6 +385,7 @@ export function PlanesSection() {
                   />
                 </BarChart>
               </ResponsiveContainer>
+              )}
             </Box>
           </CardContent>
         </Card>

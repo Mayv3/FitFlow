@@ -104,6 +104,23 @@ export const useDesinscribirAlumno = (claseId: number) => {
   })
 }
 
+// Toggle fija/temporal de una inscripción
+export const useToggleEsFija = (claseId: number) => {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: async (values: { sesion_id: number; alumno_id: number; es_fija: boolean; gym_id: string }) => {
+      const { data } = await axios.patch(
+        `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/sesiones/toggle-fija`,
+        values
+      )
+      return data
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: sesionesKey(claseId) })
+    },
+  })
+}
+
 // Obtener inscripciones de un alumno
 export const useInscripcionesByAlumno = (alumnoId?: number) => {
   return useQuery({

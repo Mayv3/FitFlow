@@ -1,8 +1,8 @@
 import { useQuery } from "@tanstack/react-query";
 
-export function useKpis() {
+export function useKpis(year: number = new Date().getFullYear()) {
   return useQuery({
-    queryKey: ["kpis"],
+    queryKey: ["kpis", year],
     queryFn: async () => {
       if (typeof window === "undefined") {
         throw new Error("No se puede acceder a las cookies en el servidor");
@@ -18,7 +18,7 @@ export function useKpis() {
       }
 
       const res = await fetch(
-        `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/stats/dashboard/kpis`,
+        `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/stats/dashboard/kpis?year=${year}`,
         {
           headers: {
             Authorization: `Bearer ${token}`,

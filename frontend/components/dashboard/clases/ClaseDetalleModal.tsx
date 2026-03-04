@@ -32,12 +32,17 @@ import BadgeIcon from '@mui/icons-material/Badge'
 import EmailIcon from '@mui/icons-material/Email'
 import PersonIcon from '@mui/icons-material/Person'
 import AutorenewIcon from '@mui/icons-material/Autorenew'
+import DeleteIcon from '@mui/icons-material/Delete'
+import PushPinIcon from '@mui/icons-material/PushPin'
+import PushPinOutlinedIcon from '@mui/icons-material/PushPinOutlined'
+import Tooltip from '@mui/material/Tooltip'
 import { getDiaNombre } from '@/const/inputs/sesiones'
 import { useSesionesByClase } from '@/hooks/sesiones/useSesiones'
 import { InscripcionesModal } from './InscripcionesModal'
 import {
     useInscribirAlumno,
     useDesinscribirAlumno,
+    useToggleEsFija,
 } from '@/hooks/sesiones/useSesiones'
 import { notify } from '@/lib/toast'
 
@@ -73,6 +78,7 @@ export function ClaseDetalleModal({ open, onClose, clase, gymId }: ClaseDetalleM
     const { data: sesiones = [], isLoading, refetch } = useSesionesByClase(clase?.id)
     const inscribirAlumno = useInscribirAlumno(clase?.id)
     const desinscribirAlumno = useDesinscribirAlumno(clase?.id)
+    const toggleEsFija = useToggleEsFija(clase?.id)
 
     // Refrescar sesiones cuando se abre el modal
     useEffect(() => {
@@ -122,10 +128,37 @@ export function ClaseDetalleModal({ open, onClose, clase, gymId }: ClaseDetalleM
                 alumno_id: alumnoId,
                 gym_id: gymId,
             })
-            notify.success('Alumno desinscrito correctamente')
+            notify.success('Alumno eliminado correctamente')
         } catch (error: any) {
-            console.error('Error al desinscribir:', error)
-            notify.error(error.response?.data?.error || 'Error al desinscribir')
+            console.error('Error al eliminar:', error)
+            notify.error(error.response?.data?.error || 'Error al eliminar')
+        }
+    }
+
+    const handleDesinscribirDirect = async (sesionId: number, alumnoId: number) => {
+        try {
+            await desinscribirAlumno.mutateAsync({
+                sesion_id: sesionId,
+                alumno_id: alumnoId,
+                gym_id: gymId,
+            })
+            notify.success('Alumno eliminado correctamente')
+        } catch (error: any) {
+            notify.error(error.response?.data?.error || 'Error al eliminar')
+        }
+    }
+
+    const handleToggleFija = async (sesionId: number, alumnoId: number, esFijaActual: boolean) => {
+        try {
+            await toggleEsFija.mutateAsync({
+                sesion_id: sesionId,
+                alumno_id: alumnoId,
+                es_fija: !esFijaActual,
+                gym_id: gymId,
+            })
+            notify.success(esFijaActual ? 'Cambiado a temporal' : 'Cambiado a fija')
+        } catch (error: any) {
+            notify.error(error.response?.data?.error || 'Error al cambiar tipo')
         }
     }
 
@@ -303,12 +336,45 @@ export function ClaseDetalleModal({ open, onClose, clase, gymId }: ClaseDetalleM
                                                                                         
                                                                                     }}
                                                                                 >
-                                                                                    <ListItem sx={{ py: 1 }}>
+                                                                                    <ListItem
+                                                                                        sx={{ py: 1, pr: 11 }}
+                                                                                        secondaryAction={
+                                                                                            <Stack direction="row" spacing={0.5}>
+                                                                                                <Tooltip title={alumno.es_fija ? 'Cambiar a temporal' : 'Cambiar a fija'}>
+                                                                                                    <IconButton
+                                                                                                        size="small"
+                                                                                                        color={alumno.es_fija ? 'primary' : 'default'}
+                                                                                                        onClick={(e) => {
+                                                                                                            e.stopPropagation()
+                                                                                                            handleToggleFija(sesion.id, alumno.id, alumno.es_fija)
+                                                                                                        }}
+                                                                                                    >
+                                                                                                        {alumno.es_fija
+                                                                                                            ? <PushPinIcon fontSize="small" />
+                                                                                                            : <PushPinOutlinedIcon fontSize="small" />}
+                                                                                                    </IconButton>
+                                                                                                </Tooltip>
+                                                                                                <Tooltip title="Desinscribir">
+                                                                                                    <IconButton
+                                                                                                        edge="end"
+                                                                                                        size="small"
+                                                                                                        color="error"
+                                                                                                        onClick={(e) => {
+                                                                                                            e.stopPropagation()
+                                                                                                            handleDesinscribirDirect(sesion.id, alumno.id)
+                                                                                                        }}
+                                                                                                    >
+                                                                                                        <DeleteIcon fontSize="small" />
+                                                                                                    </IconButton>
+                                                                                                </Tooltip>
+                                                                                            </Stack>
+                                                                                        }
+                                                                                    >
                                                                                         <ListItemAvatar>
-                                                                                            <Avatar sx={{ 
-                                                                                                bgcolor: alumno.es_fija ? (theme) => theme.palette.mode === 'dark' ? '#424242' : 'primary.main' : 'primary.main', 
-                                                                                                width: 32, 
-                                                                                                height: 32 
+                                                                                            <Avatar sx={{
+                                                                                                bgcolor: alumno.es_fija ? (theme) => theme.palette.mode === 'dark' ? '#424242' : 'primary.main' : 'primary.main',
+                                                                                                width: 32,
+                                                                                                height: 32
                                                                                             }}>
                                                                                                 {alumno.es_fija ? <AutorenewIcon sx={{ fontSize: 18 }} /> : (alumno.nombre || 'A')[0].toUpperCase()}
                                                                                             </Avatar>
@@ -517,13 +583,46 @@ export function ClaseDetalleModal({ open, onClose, clase, gymId }: ClaseDetalleM
                                                                                         },
                                                                                     }}
                                                                                 >
-                                                                                    <ListItem>
+                                                                                    <ListItem
+                                                                                        sx={{ pr: 11 }}
+                                                                                        secondaryAction={
+                                                                                            <Stack direction="row" spacing={0.5}>
+                                                                                                <Tooltip title={alumno.es_fija ? 'Cambiar a temporal' : 'Cambiar a fija'}>
+                                                                                                    <IconButton
+                                                                                                        size="small"
+                                                                                                        color={alumno.es_fija ? 'primary' : 'default'}
+                                                                                                        onClick={(e) => {
+                                                                                                            e.stopPropagation()
+                                                                                                            handleToggleFija(sesion.id, alumno.id, alumno.es_fija)
+                                                                                                        }}
+                                                                                                    >
+                                                                                                        {alumno.es_fija
+                                                                                                            ? <PushPinIcon fontSize="small" />
+                                                                                                            : <PushPinOutlinedIcon fontSize="small" />}
+                                                                                                    </IconButton>
+                                                                                                </Tooltip>
+                                                                                                <Tooltip title="Desinscribir">
+                                                                                                    <IconButton
+                                                                                                        edge="end"
+                                                                                                        size="small"
+                                                                                                        color="error"
+                                                                                                        onClick={(e) => {
+                                                                                                            e.stopPropagation()
+                                                                                                            handleDesinscribirDirect(sesion.id, alumno.id)
+                                                                                                        }}
+                                                                                                    >
+                                                                                                        <DeleteIcon fontSize="small" />
+                                                                                                    </IconButton>
+                                                                                                </Tooltip>
+                                                                                            </Stack>
+                                                                                        }
+                                                                                    >
                                                                                         <ListItemAvatar>
-                                                                                            <Avatar sx={{ 
+                                                                                            <Avatar sx={{
                                                                                                 color: '#fff',
-                                                                                                bgcolor: alumno.es_fija ? (theme) => theme.palette.mode === 'dark' ? '#424242' : '#FFD700' : 'primary.main', 
-                                                                                                width: 36, 
-                                                                                                height: 36 
+                                                                                                bgcolor: alumno.es_fija ? (theme) => theme.palette.mode === 'dark' ? '#424242' : '#FFD700' : 'primary.main',
+                                                                                                width: 36,
+                                                                                                height: 36
                                                                                             }}>
                                                                                                 {alumno.es_fija ? <AutorenewIcon sx={{ fontSize: 20 }} /> : (alumno.nombre || 'A')[0].toUpperCase()}
                                                                                             </Avatar>

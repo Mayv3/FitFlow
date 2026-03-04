@@ -52,7 +52,7 @@ export async function getSesionesByClase(claseId) {
       // 3) Traer los alumnos reales
       const { data: alumnosDb, error: alumnosError } = await supabaseAdmin
         .from("alumnos")
-        .select("id, nombre, dni, email")
+        .select("id, nombre, dni, email, fecha_de_vencimiento")
         .in("id", alumnoIds);
 
       if (alumnosError) throw alumnosError;
@@ -64,27 +64,35 @@ export async function getSesionesByClase(claseId) {
         alumnosDb.map((a) => [Number(a.id), a])
       );
 
-      // 5) Construir la lista final alumno por alumno con info de es_fija
-      const alumnosFinal = alumnoIds.map((id) => {
-        const esFija = inscripcionesMap.get(id) || false;
-        if (alumnosMap.has(id)) {
+      // 5) Construir la lista final alumno por alumno con info de es_fija, filtrando fijas vencidas
+      const today = new Date().toISOString().slice(0, 10);
+      const alumnosFinal = alumnoIds
+        .filter((id) => {
+          const esFija = inscripcionesMap.get(id) || false;
+          if (!esFija) return true;
+          const alumno = alumnosMap.get(id);
+          return (alumno?.fecha_de_vencimiento ?? '') >= today;
+        })
+        .map((id) => {
+          const esFija = inscripcionesMap.get(id) || false;
+          if (alumnosMap.has(id)) {
+            return {
+              ...alumnosMap.get(id),
+              es_fija: esFija
+            };
+          }
           return {
-            ...alumnosMap.get(id),
+            id,
+            nombre: `(ID ${id} — no encontrado)`,
             es_fija: esFija
           };
-        }
-        return {
-          id,
-          nombre: `(ID ${id} — no encontrado)`,
-          es_fija: esFija
-        };
-      });
+        });
 
       return {
         ...sesion,
         capacidad_actual: alumnosFinal.length,
         alumnos_inscritos: alumnosFinal,
-        tiene_fijas: tieneFijas
+        tiene_fijas: alumnosFinal.some(a => a.es_fija)
       };
     })
   );
@@ -149,7 +157,7 @@ export async function inscribirAlumnoSesion({ sesion_id, alumno_id, gym_id, es_f
   // Verificar capacidad
   const { data: sesion, error: e1 } = await supabase
     .from('clases_sesiones')
-    .select('capacidad, inscripciones:clases_inscripciones(count)')
+    .select('capacidad')
     .eq('id', sesion_id)
     .is('deleted_at', null)
     .single();
@@ -157,7 +165,18 @@ export async function inscribirAlumnoSesion({ sesion_id, alumno_id, gym_id, es_f
   if (e1) throw e1;
   if (!sesion) throw new Error('Sesión no encontrada');
 
-  const capacidadActual = sesion.inscripciones?.[0]?.count ?? 0;
+  const { data: inscripcionesCapacidad, error: e1b } = await supabase
+    .from('clases_inscripciones')
+    .select('es_fija, alumno:alumnos(fecha_de_vencimiento)')
+    .eq('sesion_id', sesion_id);
+
+  if (e1b) throw e1b;
+
+  const today = new Date().toISOString().slice(0, 10);
+  const capacidadActual = (inscripcionesCapacidad ?? [])
+    .filter(i => !i.es_fija || (i.alumno?.fecha_de_vencimiento ?? '') >= today)
+    .length;
+
   if (capacidadActual >= sesion.capacidad) {
     throw new Error('La sesión está llena');
   }
@@ -177,6 +196,20 @@ export async function inscribirAlumnoSesion({ sesion_id, alumno_id, gym_id, es_f
   const { data, error } = await supabase
     .from('clases_inscripciones')
     .insert({ sesion_id, alumno_id, gym_id, estado: 'inscripto', es_fija })
+    .select('*')
+    .single();
+
+  if (error) throw error;
+  return data;
+}
+
+// Cambiar estado fija/temporal de una inscripción
+export async function toggleEsFijaInscripcion({ sesion_id, alumno_id, es_fija }) {
+  const { data, error } = await supabase
+    .from('clases_inscripciones')
+    .update({ es_fija })
+    .eq('sesion_id', sesion_id)
+    .eq('alumno_id', alumno_id)
     .select('*')
     .single();
 

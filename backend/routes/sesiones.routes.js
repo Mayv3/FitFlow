@@ -6,6 +6,7 @@ import {
   handleRemoveSesion,
   handleInscribirAlumno,
   handleDesinscribirAlumno,
+  handleToggleEsFija,
   handleGetInscripcionesByAlumno,
 } from '../controllers/sesiones.controller.js';
 
@@ -20,6 +21,7 @@ router.delete('/:id', handleRemoveSesion);
 // Inscripciones
 router.post('/inscribir', handleInscribirAlumno);
 router.post('/desinscribir', handleDesinscribirAlumno);
+router.patch('/toggle-fija', handleToggleEsFija);
 router.get('/alumno/:alumnoId', handleGetInscripcionesByAlumno);
 
 export default router;

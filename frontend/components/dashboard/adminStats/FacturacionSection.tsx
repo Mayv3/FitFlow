@@ -15,23 +15,23 @@ import {
 import { InfoTooltip, RoundedTooltip } from '@/components/ui/tooltip/InfoTooltip';
 import moment from 'moment';
 import { useKpis } from '@/hooks/dashboard/useKpis';
+import { useFacturacionChart, type RangoFacturacion } from '@/hooks/dashboard/useFacturacionChart';
+import { YearSelector, useYearState } from './YearSelector';
+import Cookies from 'js-cookie';
 
-type Rango = '12m' | '30d' | '7w' | '24h';
+type Rango = RangoFacturacion;
 
-const fmtARS = (value: number, moneda: 'ARS' | 'USD' = 'ARS') =>
+const fmtARS = (value: number) =>
   new Intl.NumberFormat('es-AR', {
     style: 'currency',
-    currency: moneda,
+    currency: 'ARS',
     minimumFractionDigits: 0,
     maximumFractionDigits: 0,
   }).format(value ?? 0);
 
 const formatMonth = (fecha: string) => {
-  const monthNames = [
-    'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
-    'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'
-  ];
-  const month = new Date(fecha).getMonth();
+  const monthNames = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'];
+  const month = new Date(fecha + 'T12:00:00').getMonth();
   return monthNames[month];
 };
 
@@ -53,8 +53,30 @@ export function FacturacionSection() {
   const { borderRadius } = useGymThemeSettings();
 
   const [range, setRange] = useState<Rango>('12m');
+  const [facYear, setFacYear] = useYearState();
+
+  // Donut: siempre muestra estado actual (sin año)
   const { data } = useKpis();
 
+  // Bar: año seleccionado solo para 12m; el resto siempre usa año actual
+  const gymId = Cookies.get('gym_id') ?? '';
+  const currentYear = new Date().getFullYear();
+  const chartYear = range === '12m' ? facYear : currentYear;
+  const { data: facturacionData, isLoading: loadingBar } = useFacturacionChart(gymId, chartYear, range, {
+    enabled: !!gymId,
+  });
+
+  const CHART_HEIGHT = 280;
+
+  const cardSx = {
+    borderRadius: 1.5,
+    border: `1px solid ${alpha(t.palette.text.primary, 0.06)}`,
+    bgcolor: t.palette.mode === 'dark' ? '#0a0a0a' : t.palette.background.paper,
+    height: '100%',
+    boxShadow: '0 2px 6px rgba(0,0,0,0.04)',
+  } as const;
+
+  // Donut loading/empty state
   if (!data) {
     return (
       <Box display="grid" gridTemplateColumns={{ xs: '1fr', md: '2fr 3fr' }} gap={1.5} mb={1.5}>
@@ -109,26 +131,28 @@ export function FacturacionSection() {
     { key: 'bajas', label: 'Bajas', tooltip: 'Bajas (más de 10 días sin pagar)', value: charts?.bajas ?? 0 },
   ];
 
-  const barsByRange: Record<Rango, { m: string; facturacion: number }[]> = {
-    '12m': (charts?.por_mes ?? []).map((p: any) => ({ m: formatMonth(p.fecha), facturacion: p.monto_centavos })),
-    '30d': (charts?.por_dia ?? []).map((p: any) => ({ m: formatDay(p.fecha), facturacion: p.monto_centavos })),
-    '7w': (charts?.por_semana ?? []).map((p: any) => ({ m: formatWeek(p.fecha), facturacion: p.monto_centavos })),
-    '24h': (charts?.por_hora ?? []).map((p: any) => ({ m: p.fecha.slice(11, 16), facturacion: p.monto_centavos })),
-  };
-
-  const barData = barsByRange[range];
-  const CHART_HEIGHT = 280;
+  // Bar data desde useFacturacionChart
+  const rawItems: any[] = facturacionData?.items ?? [];
+  const barData = rawItems.map((p: any) => {
+    const monto = p.monto_centavos ?? p.monto ?? 0;
+    let label: string;
+    if (range === '12m') {
+      label = formatMonth(p.fecha);
+    } else if (range === '30d') {
+      // Día del mes (número)
+      label = p.fecha ? String(parseInt(p.fecha.slice(8, 10), 10)) : '—';
+    } else if (range === '7w') {
+      // Semana dentro del mes: "DD/MM"
+      label = formatWeek(p.fecha);
+    } else {
+      // 24h: "HH:00"
+      label = p.fecha ? String(p.fecha).slice(11, 16) || String(p.fecha).slice(0, 5) : '—';
+    }
+    return { m: label, facturacion: monto };
+  });
 
   const barSizeBase = barData.length >= 28 ? 12 : barData.length >= 14 ? 18 : 28;
   const barSize = isMobile ? Math.max(10, barSizeBase - 6) : barSizeBase;
-
-  const cardSx = {
-    borderRadius: 1.5,
-    border: `1px solid ${alpha(t.palette.text.primary, 0.06)}`,
-    bgcolor: t.palette.mode === 'dark' ? '#0a0a0a' : t.palette.background.paper,
-    height: '100%',
-    boxShadow: '0 2px 6px rgba(0,0,0,0.04)',
-  } as const;
 
   return (
     <Box display="grid" gridTemplateColumns={{ xs: '1fr', md: '2fr 3fr' }} gap={1.5} alignItems="stretch" mb={1.5}>
@@ -273,8 +297,16 @@ export function FacturacionSection() {
               flexDirection={{ xs: 'column', sm: 'row' }}
               gap={{ xs: 1, sm: 0 }}
             >
-              <Typography variant="subtitle2" color="text.secondary">Facturación</Typography>
-              <Box>
+              <Box display="flex" alignItems="center" gap={1}>
+                <Typography variant="subtitle2" color="text.secondary">Facturación</Typography>
+                {range === '12m' && isMobile && (
+                  <YearSelector value={facYear} onChange={setFacYear} />
+                )}
+              </Box>
+              <Box display="flex" alignItems="center" gap={1}>
+                {range === '12m' && !isMobile && (
+                  <YearSelector value={facYear} onChange={setFacYear} />
+                )}
                 <ToggleButtonGroup
                   fullWidth={isMobile}
                   size="small"
@@ -291,53 +323,57 @@ export function FacturacionSection() {
             </Box>
 
             <Box sx={{ height: CHART_HEIGHT }}>
-              <ResponsiveContainer>
-                <BarChart
-                  data={barData}
-                  barCategoryGap={8}
-                  barGap={4}
-                  margin={{ top: 0, right: 8, bottom: 0, left: isMobile ? 8 : 48 }}
-                >
-                  <defs>
-                    <linearGradient id="revenueGrad" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="0%" stopColor="#FF6A00" />
-                      <stop offset="100%" stopColor="#FF2D55" />
-                    </linearGradient>
-                  </defs>
+              {loadingBar ? (
+                <Skeleton variant="rectangular" height={CHART_HEIGHT} sx={{ mt: 1 }} />
+              ) : (
+                <ResponsiveContainer>
+                  <BarChart
+                    data={barData}
+                    barCategoryGap={8}
+                    barGap={4}
+                    margin={{ top: 0, right: 8, bottom: 0, left: isMobile ? 8 : 48 }}
+                  >
+                    <defs>
+                      <linearGradient id="revenueGrad" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="0%" stopColor="#FF6A00" />
+                        <stop offset="100%" stopColor="#FF2D55" />
+                      </linearGradient>
+                    </defs>
 
-                  <CartesianGrid vertical={false} stroke={alpha(t.palette.text.primary, 0.08)} />
+                    <CartesianGrid vertical={false} stroke={alpha(t.palette.text.primary, 0.08)} />
 
-                  <XAxis dataKey="m" tickLine={false} axisLine={false} tickMargin={8}
-                    tick={{ fontSize: isMobile ? 10 : 12 }} />
+                    <XAxis dataKey="m" tickLine={false} axisLine={false} tickMargin={8}
+                      tick={{ fontSize: isMobile ? 10 : 12 }} />
 
-                  {isMobile ? (
-                    <YAxis hide domain={[0, 'auto']} />
-                  ) : (
-                    <YAxis
-                      tickLine={false}
-                      axisLine={false}
-                      width={80}
-                      tickMargin={8}
-                      tickFormatter={(v) => fmtARS(v as number, data.currency)}
-                      domain={[0, 'auto']}
-                    />
-                  )}
-
-                  <Tooltip
-                    cursor={{ fill: alpha(t.palette.primary.main, 0.06) }}
-                    content={
-                      <RoundedTooltip
-                        formatter={(entry) =>
-                          `${entry.name}: ${fmtARS(entry.value, data.currency)}`
-                        }
+                    {isMobile ? (
+                      <YAxis hide domain={[0, 'auto']} />
+                    ) : (
+                      <YAxis
+                        tickLine={false}
+                        axisLine={false}
+                        width={80}
+                        tickMargin={8}
+                        tickFormatter={(v) => fmtARS(v as number)}
+                        domain={[0, 'auto']}
                       />
-                    }
-                  />
+                    )}
 
-                  <Bar dataKey="facturacion" fill="url(#revenueGrad)" radius={[8, 8, 0, 0]} barSize={barSize} />
+                    <Tooltip
+                      cursor={{ fill: alpha(t.palette.primary.main, 0.06) }}
+                      content={
+                        <RoundedTooltip
+                          formatter={(entry) =>
+                            `${entry.name}: ${fmtARS(entry.value)}`
+                          }
+                        />
+                      }
+                    />
 
-                </BarChart>
-              </ResponsiveContainer>
+                    <Bar dataKey="facturacion" fill="url(#revenueGrad)" radius={[8, 8, 0, 0]} barSize={barSize} />
+
+                  </BarChart>
+                </ResponsiveContainer>
+              )}
             </Box>
           </CardContent>
         </Card>

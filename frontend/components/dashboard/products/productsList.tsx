@@ -64,7 +64,7 @@ export default function ProductsList() {
       notify.success('Producto añadido correctamente')
     } catch (error) {
       console.error('Error al añadir producto:', error)
-      notify.error('❌ Error al añadir el producto')
+      notify.error('Error al añadir el producto')
     }
   }
 

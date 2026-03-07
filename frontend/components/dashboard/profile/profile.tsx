@@ -73,7 +73,7 @@ export function ProfileSection() {
         throw new Error(data.error || "Error al cambiar la contraseña")
       }
 
-      notify.success("Contraseña cambiada correctamente ✅")
+      notify.success("Contraseña cambiada correctamente")
 
       setTimeout(() => {
         window.location.href = "/login"

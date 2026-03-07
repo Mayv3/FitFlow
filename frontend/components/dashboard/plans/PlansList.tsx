@@ -61,7 +61,7 @@ export default function PlansList() {
             notify.success('Plan añadido correctamente')
         } catch (error) {
             console.error('Error al añadir plan:', error)
-            notify.error('❌ Error al añadir el plan')
+            notify.error('Error al añadir el plan')
         }
     }
 

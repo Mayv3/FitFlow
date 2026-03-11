@@ -215,6 +215,30 @@ export async function getAlumnosService({ page, limit, q = '' }, supaClient) {
   };
 }
 
+export async function getExpiredAlumnosService(supaClient) {
+  const today = new Date().toISOString().slice(0, 10);
+
+  const { data, error } = await supaClient
+    .from('alumnos')
+    .select(`
+      id, dni, nombre, email, telefono,
+      fecha_de_vencimiento, plan_id,
+      plan:planes_precios ( id, nombre, precio )
+    `)
+    .is('deleted_at', null)
+    .lt('fecha_de_vencimiento', today)
+    .order('fecha_de_vencimiento', { ascending: true });
+
+  if (error) throw error;
+
+  return (data ?? []).map(r => ({
+    ...r,
+    plan_nombre: r.plan?.nombre ?? null,
+    plan_precio: r.plan?.precio ?? null,
+    plan_id: r.plan?.id ?? null,
+  }));
+}
+
 export async function getAlumnosSimpleService(supaClient) {
   const { data, error } = await supaClient
     .from('alumnos')

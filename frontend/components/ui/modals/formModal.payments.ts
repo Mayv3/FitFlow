@@ -17,9 +17,9 @@ export function getVisibleFields(
     const isPagoForm = fields.some(f => f.name === 'origen_pago');
 
     if (isPagoForm) {
-      if (!origen && (field.name === 'plan_id' || field.name === 'servicio_id' || field.name === 'producto_id')) return false;
-      if (origen === 'plan' && (field.name === 'servicio_id' || field.name === 'producto_id')) return false;
-      if (origen === 'servicio' && (field.name === 'plan_id' || field.name === 'producto_id')) return false;
+      if (!origen && (field.name === 'plan_id' || field.name === 'servicio_id' || field.name === 'producto_id' || field.name === 'cantidad_producto')) return false;
+      if (origen === 'plan' && (field.name === 'servicio_id' || field.name === 'producto_id' || field.name === 'cantidad_producto')) return false;
+      if (origen === 'servicio' && (field.name === 'plan_id' || field.name === 'producto_id' || field.name === 'cantidad_producto')) return false;
       if (origen === 'producto' && (field.name === 'plan_id' || field.name === 'servicio_id')) return false;
       if (field.name === 'fecha_de_venc' && origen && origen !== 'plan') return false;
       if (['monto_efectivo', 'monto_mp', 'monto_tarjeta'].includes(field.name)) {
@@ -97,13 +97,17 @@ export function applyServicioChangeEffects(
 export function applyProductoChangeEffects(
   state: Record<string, any>,
   fields: Field[],
-  metodo: string
+  metodo: string,
+  resetCantidad = false
 ): Record<string, any> {
   const selectedProduct = fields
     .find(f => f.name === 'producto_id')
     ?.options?.find(opt => opt.value === state['producto_id']);
-  const precio = extractPrecioFromLabel(selectedProduct?.label, /\(\$\s?([\d.,]+)\)/);
-  return applyPrecioToMontos({ ...state }, precio, metodo);
+  const precioUnitario = extractPrecioFromLabel(selectedProduct?.label, /\(\$\s?([\d.,]+)\)/);
+  const cantidad = resetCantidad ? 1 : (Number(state['cantidad_producto']) || 1);
+  const precio = precioUnitario * cantidad;
+  const next = resetCantidad ? { ...state, cantidad_producto: 1 } : { ...state };
+  return applyPrecioToMontos(next, precio, metodo);
 }
 
 export function applyMetodoPagoChangeEffects(

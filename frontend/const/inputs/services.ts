@@ -39,7 +39,7 @@ export const inputFieldsServices: Field[] = [
     type: 'number',
     required: true,
     placeholder: 'Ej: 10000',
-    regex: /^$|^(0|[1-9]\d{0,4}|100000)$/,
+    regex: /^$|^(0|[1-9]\d{0,4}|1000000)$/,
   },
   {
     label: 'Color',

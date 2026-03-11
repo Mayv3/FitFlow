@@ -60,6 +60,7 @@ app.use(cors({
 
 app.use(express.json());
 
+app.get('/api/alumnos/active-count', handleGetActiveAlumnosCountByGym);
 app.use('/api/alumnos', verifyToken, supaPerRequest, alumnosRoutes);
 app.use('/api/pagos', verifyToken, supaPerRequest, pagosRoutes);
 app.use('/api/planes', verifyToken, supaPerRequest, planesRoutes);

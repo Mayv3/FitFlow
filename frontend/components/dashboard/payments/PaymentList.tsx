@@ -50,6 +50,7 @@ export default function PaymentList() {
 
     const [openAdd, setOpenAdd] = useState(false);
     const [openEdit, setOpenEdit] = useState(false);
+    const [selectedProductId, setSelectedProductId] = useState<any>(null);
     const [editingPago, setEditingPago] = useState<any | null>(null);
     const [openDelete, setOpenDelete] = useState(false);
     const [deletingId, setDeletingId] = useState<number | null>(null);
@@ -105,12 +106,24 @@ export default function PaymentList() {
         });
     }, [productsData]);
 
+    const cantidadOptions = useMemo(() => {
+        if (!selectedProductId) return [{ label: '1', value: 1 }];
+        const product = productsData?.items?.find((p: any) => p.id === selectedProductId);
+        if (!product || product.stock <= 0) return [{ label: '1', value: 1 }];
+        return Array.from({ length: product.stock }, (_, i) => ({ label: String(i + 1), value: i + 1 }));
+    }, [selectedProductId, productsData]);
+
+    const handleValuesChange = useCallback((values: any) => {
+        setSelectedProductId(values.producto_id ?? null);
+    }, []);
+
     const fields = useMemo(() => getInputFieldsPagos({
         planOptions,
         serviceOptions,
         productOptions,
+        cantidadOptions,
         searchFromCache,
-    }), [planOptions, serviceOptions, productOptions, searchFromCache]);
+    }), [planOptions, serviceOptions, productOptions, cantidadOptions, searchFromCache]);
 
     const handleSearchChange = useMemo(
         () =>
@@ -130,7 +143,7 @@ export default function PaymentList() {
             // 1. Validar método de pago
             const metodoPago = Number(values.metodo_pago);
             if (!metodoPago || ![1, 2, 3, 4].includes(metodoPago)) {
-                notify.error('❌ Debes seleccionar un método de pago válido');
+                notify.error('Debes seleccionar un método de pago válido');
                 return;
             }
 
@@ -148,7 +161,7 @@ export default function PaymentList() {
                 if (montoMp > 0) items.push({ metodo_de_pago_id: 3, monto: montoMp });
 
                 if (items.length === 0) {
-                    notify.error('❌ En pago mixto debes ingresar al menos un monto');
+                    notify.error('En pago mixto debes ingresar al menos un monto');
                     return;
                 }
             } else {
@@ -164,7 +177,7 @@ export default function PaymentList() {
                 }
 
                 if (monto <= 0) {
-                    notify.error('❌ El monto debe ser mayor a 0');
+                    notify.error('El monto debe ser mayor a 0');
                     return;
                 }
 
@@ -173,14 +186,14 @@ export default function PaymentList() {
 
             // 3. Validación final: debe haber al menos un item
             if (items.length === 0) {
-                notify.error('❌ No se pudo crear el pago: no hay items válidos');
+                notify.error('No se pudo crear el pago: no hay items válidos');
                 return;
             }
 
             // 4. Calcular monto total y validar
             const monto_total = items.reduce((acc, i) => acc + i.monto, 0);
             if (monto_total <= 0) {
-                notify.error('❌ El monto total debe ser mayor a 0');
+                notify.error('El monto total debe ser mayor a 0');
                 return;
             }
 
@@ -210,12 +223,18 @@ export default function PaymentList() {
             } else if (isServicio) {
                 payload.service_id = values.servicio_id ?? null;
             } else if (isProducto) {
+                const cantidad_producto = Number(values.cantidad_producto) || 1;
                 payload.producto_id = values.producto_id ?? null;
+                payload.cantidad_producto = cantidad_producto;
 
                 // Verificar stock del producto
                 const selectedProduct = productOptions.find(p => p.value === values.producto_id);
                 if (!selectedProduct || selectedProduct.stock <= 0) {
-                    notify.error('❌ El producto seleccionado no tiene stock disponible');
+                    notify.error('El producto seleccionado no tiene stock disponible');
+                    return;
+                }
+                if (cantidad_producto > selectedProduct.stock) {
+                    notify.error(`Stock insuficiente. Disponible: ${selectedProduct.stock}`);
                     return;
                 }
             }
@@ -227,16 +246,17 @@ export default function PaymentList() {
 
             if (isProducto) {
                 queryClient.invalidateQueries({ queryKey: ['products', gymId] });
-                notify.success("✅ Pago añadido correctamente. Se descontó 1 unidad del stock del producto.");
+                const cant = Number(payload.cantidad_producto) || 1;
+                notify.success(`Pago añadido correctamente. Se descontaron ${cant} unidad${cant > 1 ? 'es' : ''} del stock.`);
             } else {
-                notify.success("✅ Pago añadido correctamente");
+                notify.success("Pago añadido correctamente");
             }
         } catch (error: any) {
             console.error("Error al añadir pago:", error);
             if (error?.response?.data?.error?.includes('sin stock')) {
-                notify.error('❌ El producto seleccionado no tiene stock disponible');
+                notify.error('El producto seleccionado no tiene stock disponible');
             } else {
-                notify.error("❌ Error al añadir el pago");
+                notify.error("Error al añadir el pago");
             }
         }
     };
@@ -314,7 +334,7 @@ export default function PaymentList() {
             notify.success("Pago editado correctamente");
         } catch (error) {
             console.error("Error al editar pago:", error);
-            notify.error("❌ Error al editar el pago");
+            notify.error("Error al editar el pago");
         }
     };
 
@@ -450,7 +470,7 @@ export default function PaymentList() {
                     initialValues={{
                         hora: horaActualArgentinaFunction(),
                     }}
-                    onClose={() => setOpenAdd(false)}
+                    onClose={() => { setOpenAdd(false); setSelectedProductId(null); }}
                     onSubmit={handleAddPayment}
                     confirmText="Guardar"
                     cancelText="Cancelar"
@@ -460,6 +480,7 @@ export default function PaymentList() {
                     layout={layoutPayments}
                     gymId={gymId}
                     lockedFields={['responsable']}
+                    onValuesChange={handleValuesChange}
                 />
             )}
 

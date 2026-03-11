@@ -1,6 +1,11 @@
 'use client';
 import { GenericDataGrid } from '@/components/ui/tables/DataGrid';
-import { Box, Typography, CircularProgress, Button, Stack } from '@mui/material';
+import {
+  Box, Typography, CircularProgress, Button, Stack,
+  Badge, Dialog, DialogTitle, DialogContent, DialogActions,
+  IconButton, Tooltip, Checkbox,
+  Table, TableBody, TableCell, TableHead, TableRow,
+} from '@mui/material';
 import { useUser } from '@/context/UserContext';
 import { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
@@ -16,15 +21,19 @@ import {
   useAlumnosByGym,
   useDeleteAlumnoByDNI,
   useEditAlumnoByDNI,
-  useAddAlumno
+  useAddAlumno,
+  useExpiredAlumnos,
 } from '@/hooks/alumnos/useAlumnosApi';
 import AddIcon from '@mui/icons-material/Add';
+import WarningAmberIcon from '@mui/icons-material/WarningAmber';
+import WhatsAppIcon from '@mui/icons-material/WhatsApp';
 import { useMemberAsyncValidators } from '@/hooks/validatorsInput/UseAsyncValidators';
 import { usePlanesPrecios } from '@/hooks/plans/usePlanesPrecios';
 import { SearchBar } from '@/components/ui/search/SearchBar';
 import { debounce } from '@/utils/debounce/debounce';
 import { CustomBreadcrumbs } from '@/components/ui/breadcrums/CustomBreadcrumbs';
 import { notify } from '@/lib/toast';
+import Cookies from 'js-cookie';
 import tableSize from '@/const/tables/tableSize';
 
 export default function MembersList() {
@@ -48,6 +57,8 @@ export default function MembersList() {
   const [openModal, setOpenModal] = useState(false);
   const [selectedMember, setSelectedMember] = useState<number | null>(null);
   const [openAdd, setOpenAdd] = useState(false);
+  const [openExpired, setOpenExpired] = useState(false);
+  const [waSent, setWaSent] = useState<Set<string>>(new Set());
   const [openEdit, setOpenEdit] = useState(false);
   const [editingMember, setEditingMember] = useState<Member | null>(null);
   const asyncValidators = useMemberAsyncValidators();
@@ -60,7 +71,27 @@ export default function MembersList() {
 
   const gymId = user?.gym_id ?? '';
 
+  useEffect(() => {
+    if (!gymId) return;
+    try {
+      const stored = localStorage.getItem(`fitflow_waSent_${gymId}`);
+      if (stored) setWaSent(new Set(JSON.parse(stored)));
+    } catch {}
+  }, [gymId]);
+
+  const toggleWaSent = (dni: string) => {
+    setWaSent(prev => {
+      const next = new Set(prev);
+      if (next.has(dni)) next.delete(dni); else next.add(dni);
+      localStorage.setItem(`fitflow_waSent_${gymId}`, JSON.stringify([...next]));
+      return next;
+    });
+  };
+
   const { data, isLoading, isError, error, isFetching } = useAlumnosByGym(gymId, page, tableSize, q);
+  const { data: expiredData } = useExpiredAlumnos(gymId);
+  const expiredMembers = expiredData?.items ?? [];
+  const expiredCount = expiredData?.total ?? 0;
   const alumnos = data?.items ?? [];
   const total = data?.total ?? 0;
   const { options: planOptions, byId, isLoading: plansLoading } = usePlanesPrecios(gymId);
@@ -246,7 +277,8 @@ export default function MembersList() {
     setOpenModal(true);
   };
 
-  const columns = columnsMember(triggerEdit, triggerDelete);
+  const gymName = Cookies.get('gym_name') ?? '';
+  const columns = columnsMember(triggerEdit, triggerDelete, gymName, byId, toggleWaSent, waSent);
 
   return (
     <Box sx={{ maxWidth: 'xl', mx: 'auto', py: 2 }}>
@@ -283,6 +315,18 @@ export default function MembersList() {
               placeholder="Buscar miembros (DNI, nombre, email, teléfono)…"
             />
           </Box>
+
+          <Badge badgeContent={expiredCount} color="error" max={999}>
+            <Button
+              variant="outlined"
+              color="warning"
+              startIcon={<WarningAmberIcon />}
+              sx={{ whiteSpace: 'nowrap', height: '56px', minWidth: '180px' }}
+              onClick={() => setOpenExpired(true)}
+            >
+              Vencidos
+            </Button>
+          </Badge>
 
           <Button
             variant="contained"
@@ -360,6 +404,97 @@ export default function MembersList() {
       )}
 
       <ReactQueryDevtools initialIsOpen={true} />
+
+      <Dialog open={openExpired} onClose={() => setOpenExpired(false)} maxWidth="md" fullWidth>
+        <DialogTitle sx={{ py: 1.5, display: 'flex', alignItems: 'center', gap: 1, fontSize: '1rem' }}>
+          <WarningAmberIcon color="warning" fontSize="small" />
+          Miembros vencidos ({expiredCount})
+        </DialogTitle>
+        <DialogContent dividers sx={{ p: 0 }}>
+          {expiredMembers.length === 0 ? (
+            <Typography sx={{ p: 3, textAlign: 'center', color: 'text.secondary', fontSize: '0.875rem' }}>
+              No hay miembros vencidos
+            </Typography>
+          ) : (
+            <Table size="small" stickyHeader>
+              <TableHead>
+                <TableRow>
+                  <TableCell padding="checkbox" />
+                  <TableCell sx={{ fontWeight: 600, fontSize: '0.75rem' }}>Nombre</TableCell>
+                  <TableCell sx={{ fontWeight: 600, fontSize: '0.75rem' }}>Plan</TableCell>
+                  <TableCell sx={{ fontWeight: 600, fontSize: '0.75rem' }}>Venció</TableCell>
+                  <TableCell sx={{ fontWeight: 600, fontSize: '0.75rem' }}>Teléfono</TableCell>
+                  <TableCell align="center" sx={{ fontWeight: 600, fontSize: '0.75rem' }}>WA</TableCell>
+                </TableRow>
+              </TableHead>
+              <TableBody>
+                {expiredMembers.map((m) => {
+                  const dniKey = `${m.dni}_${m.fecha_de_vencimiento ?? 'sin-fecha'}`;
+                  const sent = waSent.has(dniKey);
+                  const phone = (m.telefono ?? '').replace(/\D/g, '');
+                  const planNombre = m.plan_nombre ?? '—';
+                  const precio = m.plan_precio != null ? `$${m.plan_precio}` : 'consultar precio';
+                  const fv = m.fecha_de_vencimiento;
+                  const fechaVenc = fv
+                    ? new Date(fv).toLocaleDateString('es-AR', { day: '2-digit', month: '2-digit', year: 'numeric' })
+                    : '—';
+                  const mensaje =
+                    `¡Hola ${m.nombre}! ¿Cómo estás?\n\n` +
+                    `Te escribimos desde *${gymName}* con un recordatorio rápido\n\n` +
+                    `Tu membresía venció el ${fechaVenc} y te extrañamos por acá!\n\n` +
+                    `*Tu plan*:\n${planNombre}\nPrecio: ${precio}\n\n` +
+                    `¡Renovar es muy fácil, avisanos y te ayudamos!\nTe esperamos con las puertas abiertas`;
+                  const waUrl = phone ? `https://wa.me/${phone}?text=${encodeURIComponent(mensaje)}` : null;
+
+                  return (
+                    <TableRow
+                      key={dniKey}
+                      sx={{ opacity: sent ? 0.45 : 1, transition: 'opacity 0.2s' }}
+                    >
+                      <TableCell padding="checkbox">
+                        <Tooltip title={sent ? 'Marcar como no enviado' : 'Marcar como enviado'}>
+                          <Checkbox
+                            size="small"
+                            checked={sent}
+                            onChange={() => toggleWaSent(dniKey)}
+                            color="success"
+                          />
+                        </Tooltip>
+                      </TableCell>
+                      <TableCell sx={{ fontSize: '0.8rem', fontWeight: sent ? 400 : 500 }}>
+                        {m.nombre}
+                      </TableCell>
+                      <TableCell sx={{ fontSize: '0.8rem', color: 'text.secondary' }}>{planNombre}</TableCell>
+                      <TableCell sx={{ fontSize: '0.8rem', color: 'error.main' }}>{fechaVenc}</TableCell>
+                      <TableCell sx={{ fontSize: '0.8rem', color: 'text.secondary' }}>{m.telefono ?? '—'}</TableCell>
+                      <TableCell align="center" padding="checkbox">
+                        <Tooltip title={waUrl ? 'Enviar por WhatsApp' : 'Sin teléfono registrado'}>
+                          <span>
+                            <IconButton
+                              size="small"
+                              sx={{ color: waUrl ? '#25D366' : 'action.disabled' }}
+                              component={waUrl ? 'a' : 'button'}
+                              href={waUrl ?? undefined}
+                              target={waUrl ? '_blank' : undefined}
+                              rel={waUrl ? 'noopener noreferrer' : undefined}
+                              disabled={!waUrl}
+                            >
+                              <WhatsAppIcon fontSize="small" />
+                            </IconButton>
+                          </span>
+                        </Tooltip>
+                      </TableCell>
+                    </TableRow>
+                  );
+                })}
+              </TableBody>
+            </Table>
+          )}
+        </DialogContent>
+        <DialogActions sx={{ py: 1 }}>
+          <Button size="small" onClick={() => setOpenExpired(false)}>Cerrar</Button>
+        </DialogActions>
+      </Dialog>
 
     </Box>
   );

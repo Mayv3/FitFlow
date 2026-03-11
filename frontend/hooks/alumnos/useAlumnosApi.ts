@@ -107,6 +107,21 @@ export function useAddAlumno() {
   });
 }
 
+export function useExpiredAlumnos(gymId: string) {
+  return useQuery<{ items: any[]; total: number }>({
+    queryKey: ['members-expired', gymId],
+    enabled: Boolean(gymId),
+    staleTime: 1000 * 60 * 5,
+    refetchOnWindowFocus: false,
+    queryFn: async () => {
+      const { data } = await axiosInstance.get('/api/alumnos/expired', {
+        params: { gym_id: gymId },
+      });
+      return data;
+    },
+  });
+}
+
 export function useAlumnosSimpleService(gymId: string) {
   return useQuery({
     queryKey: ['members-simple', gymId],

@@ -6,6 +6,7 @@ import {
   getAlumnosService,
   getAlumnosSimpleService,
   getActiveAlumnosCountByGym,
+  getExpiredAlumnosService,
 } from '../services/alumnos.supabase.js'
 import jwt from 'jsonwebtoken';
 
@@ -176,6 +177,16 @@ export async function handleGetActiveAlumnosCountByGym(req, res) {
   } catch (err) {
     console.error(err);
     res.status(500).json({ message: err.message ?? 'Error obteniendo conteo de alumnos' });
+  }
+}
+
+export async function handleGetExpiredAlumnos(req, res) {
+  try {
+    const items = await getExpiredAlumnosService(req.supa);
+    res.json({ items, total: items.length });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: err.message ?? 'Error obteniendo alumnos vencidos' });
   }
 }
 

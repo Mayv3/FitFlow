@@ -60,7 +60,6 @@ app.use(cors({
 
 app.use(express.json());
 
-app.get('/api/alumnos/active-count', handleGetActiveAlumnosCountByGym);
 app.use('/api/alumnos', verifyToken, supaPerRequest, alumnosRoutes);
 app.use('/api/pagos', verifyToken, supaPerRequest, pagosRoutes);
 app.use('/api/planes', verifyToken, supaPerRequest, planesRoutes);
@@ -69,28 +68,30 @@ app.use('/api/turnos', appointmentsRoutes);
 
 app.use('/api/stats', verifyToken, supaPerRequest, statsRoutes);
 
-app.use('/api/roles', rolesRoutes);
+app.use('/api/roles', verifyToken, rolesRoutes);
 app.use('/api/asistencias', asistenciasRoutes);
 app.use('/api/gyms', gymsRoutes)
 
 app.use('/api/servicios', servicesRoutes);
 
 app.use('/api/public/appointments', appointmentsPublicRoutes);
-app.use("/api/users", usersRoutes)
-app.use('/api/clases', clasesRoutes);
+app.use("/api/users", verifyToken, usersRoutes)
+app.use('/api/clases', verifyToken, clasesRoutes);
 app.use('/api/sesiones', sesionesRoutes);
-app.use('/api/gym-plans', gymPlansRoutes);
-app.use('/api/suscriptions', suscriptionsRoutes);
+app.use('/api/gym-plans', verifyToken, gymPlansRoutes);
+app.use('/api/suscriptions', verifyToken, suscriptionsRoutes);
 app.use('/api/productos', productosRoutes);
 
 app.use('/api/novedades', novedadesRoutes);
 
 app.use('/api/payment-methods', paymentMethodsRoutes);
 app.use('/api/auth', authRoutes);
-app.use('/api/emails', emailsRoutes);
+app.use('/api/emails', verifyToken, emailsRoutes);
 
 app.get('/ping', (req, res) => res.sendStatus(200));
-app.use('/api/test', testRoutes);
+if (process.env.NODE_ENV !== 'production') {
+  app.use('/api/test', testRoutes);
+}
 
 const PORT = process.env.PORT || 3001;
 

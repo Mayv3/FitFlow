@@ -8,7 +8,7 @@ export const getInputFieldsGymUsers: Field[] = [
     type: "string",
     required: true,
     minLength: 3,
-    maxLength: 10,
+    maxLength: 50,
     placeholder: "Ej: Juan Pérez",
     regex: /^[a-zA-ZñÑáéíóúÁÉÍÓÚ\s]*$/,
     inputProps: {

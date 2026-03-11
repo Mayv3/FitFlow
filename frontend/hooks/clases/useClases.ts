@@ -1,6 +1,6 @@
 'use client'
 import { useQuery, useMutation, useQueryClient, keepPreviousData } from '@tanstack/react-query'
-import axios from 'axios'
+import { api } from '@/lib/api'
 import { Clase } from '@/models/Clase/Clase'
 
 const clasesKey = (gymId: string) => ['clases', gymId] as const
@@ -17,8 +17,8 @@ export const useClases = (
     staleTime: 1000 * 60 * 5,
     placeholderData: keepPreviousData,
     queryFn: async (): Promise<{ items: Clase[]; total: number }> => {
-      const { data } = await axios.get(
-        `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/clases`,
+      const { data } = await api.get(
+        '/api/clases',
         { params: { gymId, page, pageSize, q } }
       )
       return data
@@ -52,8 +52,8 @@ export const useAddClase = (gymId: string) => {
   const qc = useQueryClient()
   return useMutation({
     mutationFn: async (values: any) => {
-      const { data } = await axios.post(
-        `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/clases`,
+      const { data } = await api.post(
+        '/api/clases',
         { ...values, gym_id: gymId }
       )
       return data as Clase
@@ -68,8 +68,8 @@ export const useEditClase = (gymId: string) => {
   const qc = useQueryClient()
   return useMutation({
     mutationFn: async ({ id, values }: { id: number; values: any }) => {
-      const { data } = await axios.put(
-        `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/clases/${id}`,
+      const { data } = await api.put(
+        `/api/clases/${id}`,
         values
       )
       return data as Clase
@@ -84,8 +84,8 @@ export const useDeleteClase = (gymId: string) => {
   const qc = useQueryClient()
   return useMutation({
     mutationFn: async (id: number) => {
-      await axios.delete(
-        `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/clases/${id}`
+      await api.delete(
+        `/api/clases/${id}`
       )
       return id
     },
@@ -101,8 +101,8 @@ export const useClasesSimple = (gymId?: string) => {
     enabled: !!gymId,
     staleTime: 1000 * 60 * 5,
     queryFn: async (): Promise<Clase[]> => {
-      const { data } = await axios.get(
-        `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/clases/simple`,
+      const { data } = await api.get(
+        '/api/clases/simple',
         { params: { gymId } }
       )
       return data

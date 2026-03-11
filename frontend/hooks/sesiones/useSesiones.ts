@@ -1,6 +1,6 @@
 'use client'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import axios from 'axios'
+import { api } from '@/lib/api'
 import { Sesion, Inscripcion } from '@/models/Sesion/Sesion'
 
 const sesionesKey = (claseId: number) => ['sesiones', claseId] as const
@@ -12,8 +12,8 @@ export const useSesionesByClase = (claseId?: number) => {
     enabled: !!claseId,
     staleTime: 1000 * 60 * 5,
     queryFn: async (): Promise<Sesion[]> => {
-      const { data } = await axios.get(
-        `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/sesiones/clase/${claseId}`
+      const { data } = await api.get(
+        `/api/sesiones/clase/${claseId}`
       )
       return data
     },
@@ -25,8 +25,8 @@ export const useAddSesion = (claseId: number) => {
   const qc = useQueryClient()
   return useMutation({
     mutationFn: async (values: any) => {
-      const { data } = await axios.post(
-        `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/sesiones`,
+      const { data } = await api.post(
+        `/api/sesiones`,
         { ...values, clase_id: claseId }
       )
       return data as Sesion
@@ -42,8 +42,8 @@ export const useEditSesion = (claseId: number) => {
   const qc = useQueryClient()
   return useMutation({
     mutationFn: async ({ id, values }: { id: number; values: any }) => {
-      const { data } = await axios.put(
-        `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/sesiones/${id}`,
+      const { data } = await api.put(
+        `/api/sesiones/${id}`,
         values
       )
       return data as Sesion
@@ -59,8 +59,8 @@ export const useDeleteSesion = (claseId: number) => {
   const qc = useQueryClient()
   return useMutation({
     mutationFn: async ({ id, gym_id }: { id: number; gym_id: string }) => {
-      await axios.delete(
-        `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/sesiones/${id}`,
+      await api.delete(
+        `/api/sesiones/${id}`,
         { params: { gym_id } }
       )
       return id
@@ -76,8 +76,8 @@ export const useInscribirAlumno = (claseId: number) => {
   const qc = useQueryClient()
   return useMutation({
     mutationFn: async (values: { sesion_id: number; alumno_id: number; gym_id: string }) => {
-      const { data } = await axios.post(
-        `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/sesiones/inscribir`,
+      const { data } = await api.post(
+        `/api/sesiones/inscribir`,
         values
       )
       return data as Inscripcion
@@ -93,8 +93,8 @@ export const useDesinscribirAlumno = (claseId: number) => {
   const qc = useQueryClient()
   return useMutation({
     mutationFn: async (values: { sesion_id: number; alumno_id: number; gym_id: string }) => {
-      await axios.post(
-        `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/sesiones/desinscribir`,
+      await api.post(
+        `/api/sesiones/desinscribir`,
         values
       )
     },
@@ -109,8 +109,8 @@ export const useToggleEsFija = (claseId: number) => {
   const qc = useQueryClient()
   return useMutation({
     mutationFn: async (values: { sesion_id: number; alumno_id: number; es_fija: boolean; gym_id: string }) => {
-      const { data } = await axios.patch(
-        `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/sesiones/toggle-fija`,
+      const { data } = await api.patch(
+        `/api/sesiones/toggle-fija`,
         values
       )
       return data
@@ -128,8 +128,8 @@ export const useInscripcionesByAlumno = (alumnoId?: number) => {
     enabled: !!alumnoId,
     staleTime: 1000 * 60 * 5,
     queryFn: async () => {
-      const { data } = await axios.get(
-        `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/sesiones/alumno/${alumnoId}`
+      const { data } = await api.get(
+        `/api/sesiones/alumno/${alumnoId}`
       )
       return data
     },

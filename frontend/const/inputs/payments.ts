@@ -6,11 +6,13 @@ export const getInputFieldsPagos = ({
     planOptions,
     serviceOptions,
     productOptions,
+    cantidadOptions,
     searchFromCache
 }: {
     planOptions: { label: string; value: number }[];
     serviceOptions: { label: string; value: number }[];
     productOptions: { label: string; value: string }[];
+    cantidadOptions: { label: string; value: number }[];
     searchFromCache: (gymId: string, q: string) => { label: string; value: any }[];
 }): Field[] => [
         {
@@ -57,6 +59,15 @@ export const getInputFieldsPagos = ({
             options: productOptions,
             required: false,
             placeholder: 'Selecciona un producto',
+        },
+        {
+            label: 'Cantidad',
+            name: 'cantidad_producto',
+            type: 'select',
+            options: cantidadOptions,
+            required: false,
+            placeholder: '1',
+            defaultValue: 1,
         },
         {
             label: 'Tipo (obligatorio)',
@@ -144,7 +155,8 @@ export const layoutPayments = {
     tipo: { rowStart: 2, colStart: 7, colSpan: 6 },
     plan_id: { rowStart: 3, colStart: 1, colSpan: 12 },
     servicio_id: { rowStart: 3, colStart: 1, colSpan: 12 },
-    producto_id: { rowStart: 3, colStart: 1, colSpan: 12 },
+    producto_id: { rowStart: 3, colStart: 1, colSpan: 9 },
+    cantidad_producto: { rowStart: 3, colStart: 10, colSpan: 3 },
     monto_efectivo: { rowStart: 4, colStart: 1, colSpan: 4 },
     monto_mp: { rowStart: 4, colStart: 5, colSpan: 4 },
     monto_tarjeta: { rowStart: 4, colStart: 9, colSpan: 4 },

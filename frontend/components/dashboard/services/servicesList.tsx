@@ -64,7 +64,7 @@ export default function ServicesList() {
       notify.success('Servicio añadido correctamente')
     } catch (error) {
       console.error('Error al añadir servicio:', error)
-      notify.error('❌ Error al añadir el servicio')
+      notify.error('Error al añadir el servicio')
     }
   }
 

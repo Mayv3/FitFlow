@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   Dialog, DialogTitle, DialogContent, DialogActions,
   Button, Box, useMediaQuery, CircularProgress,
@@ -55,6 +55,7 @@ export const FormModal = <T extends Record<string, any>>({
   const [searchTerms, setSearchTerms] = useState<Record<string, string>>({});
   const [submitting, setSubmitting] = useState(false);
   const firstInputRef = React.useRef<HTMLInputElement | null>(null);
+  const wasOpenRef = useRef(false);
 
   const metodoSeleccionado = resolveMetodoPago(values['metodo_pago']);
   const visibleFields = getVisibleFields(fields, values['origen_pago'], metodoSeleccionado);
@@ -71,7 +72,12 @@ export const FormModal = <T extends Record<string, any>>({
   const isLockedField = (fieldName: string) => lockedFields.includes(fieldName);
 
   useEffect(() => {
-    if (!open) return;
+    if (!open) {
+      wasOpenRef.current = false;
+      return;
+    }
+    if (wasOpenRef.current) return; // already open — don't re-init on field option updates
+    wasOpenRef.current = true;
     const combined = fields.reduce((acc, f) => {
       let initial: any;
       if (f.type === 'select' && Array.isArray(f.options) && f.options.length > 0) {
@@ -143,7 +149,8 @@ export const FormModal = <T extends Record<string, any>>({
       if (name === 'metodo_pago') return applyMetodoPagoChangeEffects(next, resolveMetodoPago(newVal)) as T;
 
       if (name === 'servicio_id') next = applyServicioChangeEffects(next, fields, metodoSeleccionado);
-      if (name === 'producto_id') next = applyProductoChangeEffects(next, fields, metodoSeleccionado);
+      if (name === 'producto_id') next = applyProductoChangeEffects(next, fields, metodoSeleccionado, true);
+      if (name === 'cantidad_producto') next = applyProductoChangeEffects(next, fields, metodoSeleccionado, false);
 
       if (asyncTrigger === 'change') runAsyncValidation(name, newVal, next as T);
       return next as T;

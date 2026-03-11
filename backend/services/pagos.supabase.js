@@ -214,8 +214,10 @@ export async function createPago(supaClient, pago) {
     if (eUpd) throw eUpd;
   }
 
-  // Si es un pago de producto, descontar 1 del stock
+  // Si es un pago de producto, descontar del stock
   if (pago.producto_id) {
+    const cantidad = Number(pago.cantidad_producto) || 1;
+
     const { data: producto, error: productoError } = await supaClient
       .from('productos')
       .select('stock')
@@ -227,10 +229,13 @@ export async function createPago(supaClient, pago) {
     if (producto.stock <= 0) {
       throw new Error('Producto sin stock disponible');
     }
+    if (producto.stock < cantidad) {
+      throw new Error(`Stock insuficiente. Disponible: ${producto.stock}`);
+    }
 
     const { error: stockError } = await supaClient
       .from('productos')
-      .update({ stock: producto.stock - 1 })
+      .update({ stock: producto.stock - cantidad })
       .eq('id', pago.producto_id);
 
     if (stockError) throw stockError;

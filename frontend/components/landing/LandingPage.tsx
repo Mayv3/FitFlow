@@ -526,7 +526,9 @@ const CSS = `
     .lp-list li { justify-content:flex-start; text-align:left; align-items:flex-start; }
     .lp-grid { grid-template-columns:1fr 1fr; }
     .lp-stats { grid-template-columns:repeat(2,1fr); padding:0 2rem; }
-    .lp-stat { text-align:center; }
+    .lp-stat { text-align:center; border-right:none; border-bottom:1px solid var(--line); padding:1.8rem 1rem; }
+    .lp-stat:nth-child(odd) { border-right:1px solid var(--line); }
+    .lp-stat:nth-last-child(-n+2) { border-bottom:none; }
     .lp-footer { padding:2rem; flex-direction:column; gap:.8rem; text-align:center; }
     .lp-kpis { grid-template-columns:repeat(2,1fr); }
     .lp-head { text-align:center; }
@@ -1248,7 +1250,6 @@ export default function LandingPage() {
             <li>Acceso con DNI, sin contraseña</li>
             <li>Vista de plan activo y fecha de vencimiento</li>
             <li>Inscripción y cancelación de clases</li>
-            <li>Reserva de turnos y servicios disponibles</li>
             <li>Branding personalizado: color y logo del gym</li>
           </ul>
         </div>
@@ -1298,7 +1299,7 @@ export default function LandingPage() {
         <h2 className="lp-rev" style={{transitionDelay:'.1s'}}>Empezá a gestionar<br/>de forma inteligente</h2>
         <p className="lp-rev" style={{transitionDelay:'.2s'}}>Registrá tu gimnasio hoy y descubrí cómo FitFlow simplifica tu operación desde el primer día.</p>
         <div className="lp-rev" style={{transitionDelay:'.3s'}}>
-          <Link href="/login" className="lp-btn-primary">Crear cuenta gratis <span className="lp-arrow">→</span></Link>
+          <Link href="/login" className="lp-btn-primary">Empezar gratis<span className="lp-arrow">→</span></Link>
         </div>
       </div>
 

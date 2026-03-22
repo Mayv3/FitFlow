@@ -715,7 +715,7 @@ export default function LandingPage() {
               <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M12 12c2.7 0 4.8-2.1 4.8-4.8S14.7 2.4 12 2.4 7.2 4.5 7.2 7.2 9.3 12 12 12zm0 2.4c-3.2 0-9.6 1.6-9.6 4.8v2.4h19.2v-2.4c0-3.2-6.4-4.8-9.6-4.8z"/></svg>
             </span>
           </Link>
-          <a href="https://wa.me/5493516978330?text=Hola%20que%20tal%2C%20quiero%20empezar%20a%20contratar%20con%20FitFlow%2C%20podr%C3%ADas%20darme%20m%C3%A1s%20informaci%C3%B3n%3F" target="_blank" rel="noopener noreferrer" className="lp-btn-green">
+          <a href="https://wa.me/5493516978330?text=Hola%20que%20tal%2C%20quiero%20empezar%20a%20contratar%20con%20Fitness%20Flow%2C%20podr%C3%ADas%20darme%20m%C3%A1s%20informaci%C3%B3n%3F" target="_blank" rel="noopener noreferrer" className="lp-btn-green">
             <span className="lp-nav-label">Empezar gratis</span>
             <span className="lp-nav-icon">
               <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M13 3L4 14h7l-1 7 9-11h-7l1-7z"/></svg>
@@ -741,7 +741,7 @@ export default function LandingPage() {
               Miembros, pagos, clases, turnos y analítica avanzada — todo centralizado en una plataforma moderna.
             </p>
             <div className="lp-actions">
-              <a href="https://wa.me/5493516978330?text=Hola%20que%20tal%2C%20quiero%20empezar%20a%20contratar%20con%20FitFlow%2C%20podr%C3%ADas%20darme%20m%C3%A1s%20informaci%C3%B3n%3F" target="_blank" rel="noopener noreferrer" className="lp-btn-primary">Empezar gratis <span className="lp-arrow">→</span></a>
+              <a href="https://wa.me/5493516978330?text=Hola%20que%20tal%2C%20quiero%20empezar%20a%20contratar%20con%20Fitness%20Flow%2C%20podr%C3%ADas%20darme%20m%C3%A1s%20informaci%C3%B3n%3F" target="_blank" rel="noopener noreferrer" className="lp-btn-primary">Empezar gratis <span className="lp-arrow">→</span></a>
               <a href="#lp-features" className="lp-btn-outline">Ver funcionalidades</a>
             </div>
           </div>
@@ -1299,7 +1299,7 @@ export default function LandingPage() {
         <h2 className="lp-rev" style={{transitionDelay:'.1s'}}>Empezá a gestionar<br/>de forma inteligente</h2>
         <p className="lp-rev" style={{transitionDelay:'.2s'}}>Registrá tu gimnasio hoy y descubrí cómo FitFlow simplifica tu operación desde el primer día.</p>
         <div className="lp-rev" style={{transitionDelay:'.3s'}}>
-          <a href="https://wa.me/5493516978330?text=Hola%20que%20tal%2C%20quiero%20empezar%20a%20contratar%20con%20FitFlow%2C%20podr%C3%ADas%20darme%20m%C3%A1s%20informaci%C3%B3n%3F" target="_blank" rel="noopener noreferrer" className="lp-btn-primary">Empezar gratis<span className="lp-arrow">→</span></a>
+          <a href="https://wa.me/5493516978330?text=Hola%20que%20tal%2C%20quiero%20empezar%20a%20contratar%20con%20Fitness%20Flow%2C%20podr%C3%ADas%20darme%20m%C3%A1s%20informaci%C3%B3n%3F" target="_blank" rel="noopener noreferrer" className="lp-btn-primary">Empezar gratis<span className="lp-arrow">→</span></a>
         </div>
       </div>
 

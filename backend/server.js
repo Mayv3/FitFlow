@@ -87,7 +87,7 @@ app.use('/api/novedades', novedadesRoutes);
 
 app.use('/api/payment-methods', paymentMethodsRoutes);
 app.use('/api/auth', authRoutes);
-app.use('/api/emails', verifyToken, emailsRoutes);
+app.use('/api/emails', emailsRoutes);
 
 app.get('/ping', (req, res) => res.sendStatus(200));
 if (process.env.NODE_ENV !== 'production') {

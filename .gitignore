@@ -12,13 +12,8 @@ supabase/
 "Supabase LOCAL.md"
 Supabase LOCAL.md
 
-# Environment secrets
-backend/.env.local
-backend/.env
-.env
-.env.local
-.env*.local
-
 # Test outputs
 frontend/playwright-report/
 frontend/test-results/
+
+env

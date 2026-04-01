@@ -117,13 +117,17 @@ export const getAlumnoCompleteInfo = async (dni, gymId) => {
     let estadoMembresia = 'inactivo';
 
     if (alumno.fecha_de_vencimiento) {
-        const hoy = new Date();
-        const fechaVencimiento = new Date(alumno.fecha_de_vencimiento);
-        const diffTime = fechaVencimiento.getTime() - hoy.getTime();
+        const vencStr = alumno.fecha_de_vencimiento.slice(0, 10); // 'YYYY-MM-DD'
+        // Usar timezone de Argentina (UTC-3, sin horario de verano)
+        const todayStr = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Argentina/Buenos_Aires' }).format(new Date());
+
+        // Fin del día en Argentina para calcular días restantes
+        const fechaVencimiento = new Date(vencStr + 'T23:59:59-03:00');
+        const diffTime = fechaVencimiento.getTime() - new Date().getTime();
         const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
 
-        diasRestantes = diffDays > 0 ? diffDays : 0;
-        estadoMembresia = diffDays > 0 ? 'activo' : 'vencido';
+        diasRestantes = vencStr >= todayStr ? Math.max(diffDays, 0) : 0;
+        estadoMembresia = vencStr >= todayStr ? 'activo' : 'vencido';
     }
 
     const clasesDisponibles = alumno.clases_pagadas

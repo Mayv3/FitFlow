@@ -44,9 +44,8 @@ function getStatus(
   days: number | null,
   isPaymentWarning: boolean
 ): StatusType {
-  if (isPaymentWarning) return 'payment-warning'
   if (!isActive) return 'none'
-  if (days !== null && days <= 0) return 'expired'
+  if (days !== null && days < 0) return 'expired'
   if (isExpiring) return 'expiring'
   return 'active'
 }
@@ -110,7 +109,7 @@ export const SubscriptionStatusBadge = () => {
 
   // Auto-abrir el modal si el plan está vencido, sin plan, o en aviso de pago pendiente
   useEffect(() => {
-    if (!isSubscriptionLoading && (status === 'expired' || status === 'none' || status === 'payment-warning')) {
+    if (!isSubscriptionLoading && (status === 'none' || isPaymentWarning)) {
       setOpen(true)
     }
   }, [isSubscriptionLoading, status])

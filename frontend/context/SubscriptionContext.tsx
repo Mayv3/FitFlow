@@ -76,7 +76,7 @@ const fetchGymSubscription = async (gymId: string): Promise<SubscriptionData> =>
 
 
 const SUSPENDED_PATH = '/dashboard/suspended'
-const PAYMENT_WARNING_START_DAY = 10
+const PAYMENT_WARNING_START_DAY = 5
 const PAYMENT_SUSPENSION_DAY = 16
 
 export const SubscriptionProvider = ({
@@ -125,16 +125,19 @@ export const SubscriptionProvider = ({
 
   const daysUntilExpiration = (() => {
     if (!subscriptionData?.subscription?.end_at) return null
-    const endDate = new Date(subscriptionData.subscription.end_at)
-    const today = new Date()
-    const diffTime = endDate.getTime() - today.getTime()
-    return Math.ceil(diffTime / (1000 * 60 * 60 * 24))
+    const endStr = subscriptionData.subscription.end_at.slice(0, 10)
+    const todayStr = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Argentina/Buenos_Aires' }).format(new Date())
+    // Comparar fechas puras en Argentina (medianoche Argentina) para evitar desfases por timezone
+    const endDate = new Date(endStr + 'T00:00:00-03:00')
+    const todayDate = new Date(todayStr + 'T00:00:00-03:00')
+    const diffTime = endDate.getTime() - todayDate.getTime()
+    return Math.round(diffTime / (1000 * 60 * 60 * 24))
   })()
 
   const isExpiringSoon =
     daysUntilExpiration !== null &&
     daysUntilExpiration <= 7 &&
-    daysUntilExpiration > 0
+    daysUntilExpiration >= 0
 
   const isOwner = userRole === '1'
 

@@ -1,43 +1,28 @@
-import redis from '../db/redis.js'
+const store = new Map()
+
+function memGet(key) {
+  const entry = store.get(key)
+  if (!entry) return null
+  if (Date.now() > entry.exp) { store.delete(key); return null }
+  return entry.val
+}
 
 export async function get(key) {
-  try {
-    const val = await redis.get(key)
-    if (val !== null) {
-      console.log(`[Cache HIT]  ${key}`)
-    } else {
-      console.log(`[Cache MISS] ${key}`)
-    }
-    return val
-  } catch (err) {
-    console.error(`[Cache ERROR] get(${key}):`, err.message)
-    return null
-  }
+  const val = memGet(key)
+  console.log(val !== null ? `[Cache HIT]  ${key}` : `[Cache MISS] ${key}`)
+  return val
 }
 
 export async function set(key, value, ttlSeconds) {
-  try {
-    await redis.set(key, value, { ex: ttlSeconds })
-    console.log(`[Cache SET]  ${key} (${ttlSeconds}s)`)
-  } catch (err) {
-    console.error(`[Cache ERROR] set(${key}):`, err.message)
-  }
+  store.set(key, { val: value, exp: Date.now() + ttlSeconds * 1000 })
+  console.log(`[Cache SET]  ${key} (${ttlSeconds}s)`)
 }
 
 export async function delPattern(pattern) {
-  try {
-    let cursor = 0
-    let total = 0
-    do {
-      const [next, keys] = await redis.scan(cursor, { match: pattern, count: 100 })
-      cursor = Number(next)
-      if (keys.length) {
-        await redis.del(...keys)
-        total += keys.length
-      }
-    } while (cursor !== 0)
-    console.log(`[Cache DEL]  ${pattern} (${total} keys)`)
-  } catch (err) {
-    console.error(`[Cache ERROR] delPattern(${pattern}):`, err.message)
+  const regex = new RegExp('^' + pattern.replace(/\*/g, '.*') + '$')
+  let total = 0
+  for (const key of store.keys()) {
+    if (regex.test(key)) { store.delete(key); total++ }
   }
+  console.log(`[Cache DEL]  ${pattern} (${total} keys)`)
 }

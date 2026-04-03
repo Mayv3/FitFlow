@@ -60,6 +60,14 @@ app.use(cors({
 
 app.use(express.json());
 
+app.use((req, res, next) => {
+  const t0 = performance.now()
+  res.on('finish', () => {
+    console.log(`[${req.method}] ${req.path} → ${res.statusCode} (${Math.round(performance.now() - t0)}ms)`)
+  })
+  next()
+})
+
 app.get('/api/alumnos/active-count', handleGetActiveAlumnosCountByGym);
 app.use('/api/alumnos', verifyToken, supaPerRequest, alumnosRoutes);
 app.use('/api/pagos', verifyToken, supaPerRequest, pagosRoutes);

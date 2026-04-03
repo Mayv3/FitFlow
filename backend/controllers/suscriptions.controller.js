@@ -7,6 +7,7 @@ import {
   updateSuscription,
   deleteSuscription,
 } from '../services/suscriptions.supabase.js'
+import * as cache from '../utilities/cache.js'
 
 export const handleGetSuscriptions = async (req, res) => {
   try {
@@ -55,17 +56,22 @@ export const handleGetActiveSuscriptionByGymId = async (req, res) => {
 export const handleGetGymPlan = async (req, res) => {
   try {
     const { gymId } = req.params
+
+    const key = `suscription:plan:${gymId}`
+    const cached = await cache.get(key)
+    if (cached) return res.json(cached)
+
     const suscription = await getActiveSuscriptionByGymId(gymId)
-    
+
     if (!suscription) {
-      return res.status(404).json({ 
+      return res.status(404).json({
         error: 'El gimnasio no tiene una suscripción activa',
         hasSubscription: false,
         plan: null
       })
     }
 
-    res.json({
+    const result = {
       hasSubscription: true,
       isActive: suscription.is_active,
       plan: suscription.gym_plans,
@@ -75,11 +81,13 @@ export const handleGetGymPlan = async (req, res) => {
         end_at: suscription.end_at,
         is_active: suscription.is_active
       }
-    })
+    }
+    await cache.set(key, result, 3600)
+    res.json(result)
   } catch (err) {
     // Si el error es porque no encontró registro, devolver respuesta limpia
     if (err.code === 'PGRST116') {
-      return res.json({ 
+      return res.json({
         hasSubscription: false,
         plan: null
       })

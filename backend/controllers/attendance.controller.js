@@ -5,6 +5,7 @@ import {
   deleteAsistencia
 } from '../services/asistencias.supabase.js'
 import { supabaseAdmin } from '../db/supabaseClient.js'
+import * as cache from '../utilities/cache.js'
 
 export const listAsistencias = async (req, res) => {
   try {
@@ -22,6 +23,7 @@ export const addAsistencia = async (req, res) => {
   try {
     const { asistencia, summary } = await createAsistencia(req.supa, req.body, req.gymId)
 
+    await cache.delPattern(`asistencias:${req.gymId}:*`)
     req.app.get('io')?.to(`gym:${req.gymId}`)?.emit('attendance:created', { id: asistencia.id })
 
     return res.status(201).json({
@@ -57,10 +59,13 @@ export const getAsistenciasByGym = async (req, res) => {
   const { fecha } = req.query;
 
   // si no viene fecha → hoy
-  const fechaFiltro =
-    fecha ?? new Date().toISOString().slice(0, 10);
+  const fechaFiltro = fecha ?? new Date().toISOString().slice(0, 10);
 
   try {
+    const key = `asistencias:${gym_id}:fecha:${fechaFiltro}`
+    const cached = await cache.get(key)
+    if (cached) return res.json(cached)
+
     const { data, error, count } = await supabaseAdmin
       .from('asistencias')
       .select('id', { count: 'exact', head: true })
@@ -69,11 +74,9 @@ export const getAsistenciasByGym = async (req, res) => {
 
     if (error) throw error;
 
-    res.json({
-      gym_id,
-      fecha: fechaFiltro,
-      total: count ?? 0,
-    });
+    const result = { gym_id, fecha: fechaFiltro, total: count ?? 0 }
+    await cache.set(key, result, 60)
+    res.json(result);
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -83,10 +86,13 @@ export const getAsistenciasByHora = async (req, res) => {
   const { gym_id } = req.params;
   const { fecha } = req.query;
 
-  const fechaFiltro =
-    fecha ?? new Date().toISOString().slice(0, 10);
+  const fechaFiltro = fecha ?? new Date().toISOString().slice(0, 10);
 
   try {
+    const key = `asistencias:${gym_id}:hora:${fechaFiltro}`
+    const cached = await cache.get(key)
+    if (cached) return res.json(cached)
+
     const { data, error } = await supabaseAdmin.rpc(
       'asistencias_hoy_por_hora',
       {
@@ -97,15 +103,10 @@ export const getAsistenciasByHora = async (req, res) => {
 
     if (error) throw error;
 
-    const total =
-      data?.reduce((acc, item) => acc + (item.total || 0), 0) ?? 0;
-
-    res.json({
-      gym_id,
-      fecha: fechaFiltro,
-      items: data,
-      total,
-    });
+    const total = data?.reduce((acc, item) => acc + (item.total || 0), 0) ?? 0;
+    const result = { gym_id, fecha: fechaFiltro, items: data, total }
+    await cache.set(key, result, 60)
+    res.json(result);
   } catch (err) {
     res.status(500).json({ error: err.message });
   }

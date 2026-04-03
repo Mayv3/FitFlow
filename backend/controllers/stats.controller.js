@@ -1,4 +1,5 @@
 import { supabaseAdmin } from '../db/supabaseClient.js';
+import * as cache from '../utilities/cache.js'
 import { getPaymentsStatsService } from '../services/paymentsStats.supabase.js';
 import {
   getDashboardData,
@@ -19,7 +20,12 @@ export async function getGymStatsController(req, res) {
         ? req.query.gymId.trim()
         : undefined;
 
+    const key = `stats:gym:${gymId}`
+    const cached = await cache.get(key)
+    if (cached) return res.status(200).json(cached)
+
     const stats = await getGymStatsService({ gymId });
+    await cache.set(key, stats, 300)
     return res.status(200).json(stats);
   } catch (err) {
     console.error('[GET /stats] Error:', err);

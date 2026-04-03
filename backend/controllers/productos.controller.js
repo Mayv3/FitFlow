@@ -6,6 +6,7 @@ import {
   deleteProductoSvc,
   updateStockProductoSvc
 } from '../services/productos.supabase.js'
+import * as cache from '../utilities/cache.js'
 
 export const getProductos = async (req, res) => {
   try {
@@ -19,6 +20,10 @@ export const getProductos = async (req, res) => {
     const pageNum = page ? parseInt(page, 10) : undefined
     const pageSizeNum = pageSize ? parseInt(pageSize, 10) : undefined
 
+    const key = `productos:${gymId}:p:${pageNum}:ps:${pageSizeNum}:q:${q ?? ''}:cat:${categoria ?? ''}`
+    const cached = await cache.get(key)
+    if (cached) return res.status(200).json(cached)
+
     const { items, total } = await getProductosSvc({
       supa: req.supa,
       gymId,
@@ -28,6 +33,7 @@ export const getProductos = async (req, res) => {
       categoria,
     })
 
+    await cache.set(key, { items, total }, 86400)
     return res.status(200).json({ items, total })
   } catch (error) {
     console.error('Error al obtener productos:', error)
@@ -44,6 +50,10 @@ export const getProductoById = async (req, res) => {
       return res.status(401).json({ message: 'Gym no identificado' })
     }
 
+    const key = `productos:id:${id}`
+    const cached = await cache.get(key)
+    if (cached) return res.status(200).json(cached)
+
     const producto = await getProductoByIdSvc({
       supa: req.supa,
       id
@@ -53,6 +63,7 @@ export const getProductoById = async (req, res) => {
       return res.status(404).json({ message: 'Producto no encontrado' })
     }
 
+    await cache.set(key, producto, 86400)
     return res.status(200).json(producto)
   } catch (error) {
     console.error('Error al obtener producto:', error)
@@ -92,6 +103,7 @@ export const createProducto = async (req, res) => {
       gymId
     })
 
+    await cache.delPattern(`productos:${gymId}:*`)
     return res.status(201).json(nuevoProducto)
   } catch (error) {
     console.error('Error al crear producto:', error)
@@ -128,6 +140,10 @@ export const updateProducto = async (req, res) => {
       activo
     })
 
+    await Promise.all([
+      cache.delPattern(`productos:${gymId}:*`),
+      cache.delPattern(`productos:id:${id}`),
+    ])
     return res.status(200).json(productoActualizado)
   } catch (error) {
     console.error('Error al actualizar producto:', error)
@@ -149,6 +165,10 @@ export const deleteProducto = async (req, res) => {
       id
     })
 
+    await Promise.all([
+      cache.delPattern(`productos:${gymId}:*`),
+      cache.delPattern(`productos:id:${id}`),
+    ])
     return res.status(200).json({ message: 'Producto eliminado correctamente', producto: productoEliminado })
   } catch (error) {
     console.error('Error al eliminar producto:', error)
@@ -177,6 +197,10 @@ export const updateStockProducto = async (req, res) => {
       operacion
     })
 
+    await Promise.all([
+      cache.delPattern(`productos:${gymId}:*`),
+      cache.delPattern(`productos:id:${id}`),
+    ])
     return res.status(200).json(productoActualizado)
   } catch (error) {
     console.error('Error al actualizar stock:', error)

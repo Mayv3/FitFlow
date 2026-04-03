@@ -359,10 +359,6 @@ export default function PaymentList() {
     const columns = useMemo(() => columnsPayments(handleOpenEdit, handleDelete), [handleOpenEdit]);
 
 
-    if (userLoading || isLoading) {
-        return <Box sx={{ textAlign: 'center', mt: 4 }}><CircularProgress /></Box>;
-    }
-
     if (isError) {
         return (
             <Box sx={{ textAlign: 'center', mt: 4, color: 'error.main' }}>
@@ -372,7 +368,7 @@ export default function PaymentList() {
     }
 
     return (
-        <Box sx={{ maxWidth: 'xl', mx: 'auto', py: 2 }}>
+        <Box sx={{ maxWidth: 'xl', mx: 'auto', py: 2 }} className="animate-fade-in">
             <CustomBreadcrumbs
                 items={[
                     { label: 'Dashboard', href: '/dashboard/receptionist' },

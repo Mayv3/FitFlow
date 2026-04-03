@@ -161,14 +161,6 @@ export default function MembersList() {
     }
   }, [user, userLoading, router]);
 
-  if (userLoading || !user) {
-    return <Box sx={{ textAlign: 'center', mt: 4 }}><CircularProgress /></Box>;
-  }
-
-  if (isLoading) {
-    return <Box sx={{ textAlign: 'center', mt: 4 }}><CircularProgress /></Box>;
-  }
-
   if (isError) {
     return (
       <Typography color="error" sx={{ textAlign: 'center', mt: 4 }}>
@@ -281,7 +273,7 @@ export default function MembersList() {
   const columns = columnsMember(triggerEdit, triggerDelete, gymName, byId, toggleWaSent, waSent);
 
   return (
-    <Box sx={{ maxWidth: 'xl', mx: 'auto', py: 2 }}>
+    <Box sx={{ maxWidth: 'xl', mx: 'auto', py: 2 }} className="animate-fade-in">
       <CustomBreadcrumbs
         items={[
           { label: 'Dashboard', href: '/dashboard/receptionist' },
@@ -352,7 +344,7 @@ export default function MembersList() {
         page={page - 1}
         pageSize={tableSize}
         onPaginationModelChange={({ page: newPage }) => setPage(newPage + 1)}
-        loading={isFetching}
+        loading={isLoading}
       />
 
       <GenericModal

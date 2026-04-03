@@ -1,5 +1,5 @@
 import { Member } from '@/models/Member/Member';
-import { useQuery, useMutation, useQueryClient, keepPreviousData } from '@tanstack/react-query';
+import { useQuery, useMutation, keepPreviousData } from '@tanstack/react-query';
 import axios from 'axios';
 import Cookies from 'js-cookie';
 
@@ -40,6 +40,7 @@ export function useAlumnosByGym(
     staleTime: 1000 * 60 * 10,
     gcTime: 1000 * 60 * 30,
     retry: 1,
+    refetchOnMount: false,
     refetchOnWindowFocus: false,
     queryFn: async () => {
       const { data } = await axiosInstance.get('/api/alumnos', {
@@ -51,7 +52,6 @@ export function useAlumnosByGym(
 }
 
 export function useDeleteAlumnoByDNI() {
-  const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async (dni: string) => {
       const gymId = Cookies.get('gym_id');
@@ -67,43 +67,27 @@ export function useDeleteAlumnoByDNI() {
       });
       return dni;
     },
-    onSuccess: () => {
-      const gymId = Cookies.get('gym_id') ?? '';
-      queryClient.invalidateQueries({ queryKey: ['members', gymId] });
-      queryClient.invalidateQueries({ queryKey: ['stats', gymId] });
-    }
+    onSuccess: () => {}
   });
 }
 
 export function useEditAlumnoByDNI() {
-  const queryClient = useQueryClient();
-
   return useMutation<Member, Error, { dni: string; values: Record<string, any> }>({
     mutationFn: async ({ dni, values }) => {
       const res = await axiosInstance.put(`/api/alumnos/${dni}`, values);
       return res.data as Member;
     },
-    onSuccess: () => {
-      const gymId = Cookies.get('gym_id') ?? '';
-      queryClient.invalidateQueries({ queryKey: ['members', gymId] });
-      queryClient.invalidateQueries({ queryKey: ['stats', gymId] });
-    }
+    onSuccess: () => {}
   });
 }
 
 export function useAddAlumno() {
-  const queryClient = useQueryClient();
-
   return useMutation({
     mutationFn: async (values: Record<string, any>) => {
       const res = await axiosInstance.post('/api/alumnos', values);
       return res.data;
     },
-    onSuccess: () => {
-      const gymId = Cookies.get('gym_id') ?? '';
-      queryClient.invalidateQueries({ queryKey: ['members', gymId] });
-      queryClient.invalidateQueries({ queryKey: ['stats', gymId] });
-    }
+    onSuccess: () => {}
   });
 }
 

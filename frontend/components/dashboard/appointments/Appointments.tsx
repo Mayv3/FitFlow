@@ -136,16 +136,8 @@ export default function Appointments() {
     }
   }, [editAppointment])
 
-  if (isLoading || isFetching) {
-    return (
-      <Box sx={{ textAlign: 'center', mt: 4 }}>
-        <CircularProgress />
-      </Box>
-    )
-  }
-
   return (
-    <Box sx={{ maxWidth: 'xl', mx: 'auto' }}>
+    <Box sx={{ maxWidth: 'xl', mx: 'auto' }} className="animate-fade-in">
       <CustomBreadcrumbs
         items={[
           { label: 'Dashboard', href: '/dashboard/receptionist' },

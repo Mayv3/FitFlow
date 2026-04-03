@@ -25,7 +25,7 @@ export async function getGymStatsController(req, res) {
     if (cached) return res.status(200).json(cached)
 
     const stats = await getGymStatsService({ gymId });
-    await cache.set(key, stats, 300)
+    await cache.set(key, stats, 600)
     return res.status(200).json(stats);
   } catch (err) {
     console.error('[GET /stats] Error:', err);
@@ -41,7 +41,12 @@ export async function getPaymentsStatsController(req, res) {
     const fromDate = req.query.fromDate || null;
     const toDate = req.query.toDate || null;
 
+    const key = `stats:payments:${gymId}:${fromDate}:${toDate}`
+    const cached = await cache.get(key)
+    if (cached) return res.json(cached)
+
     const result = await getPaymentsStatsService({ gymId, fromDate, toDate });
+    await cache.set(key, result, 600)
     res.json(result);
   } catch (error) {
     res.status(500).json({ error: error.message });
@@ -58,10 +63,15 @@ export async function getKpis(req, res) {
     const currentYear = new Date().getFullYear();
     const year = req.query.year ? Number(req.query.year) : currentYear;
 
+    const key = `stats:kpis:${gymId}:${year}`
+    const cached = await cache.get(key)
+    if (cached) return res.json(cached)
+
     const dashboardData = year === currentYear
       ? await getDashboardData({ gymId })
       : await getDashboardDataByYear({ gymId, year });
 
+    await cache.set(key, dashboardData, 600)
     return res.json(dashboardData);
   } catch (error) {
     console.error("❌ Error en getKpis:", error);
@@ -78,6 +88,10 @@ export async function getDemografiaStatsController(req, res) {
     }
 
     const year = req.query.year ? Number(req.query.year) : null;
+
+    const key = `stats:demografia:${gymId}:${year}`
+    const cached = await cache.get(key)
+    if (cached) return res.json(cached)
 
     const rawData = year
       ? await getDemografiaByYear({ gymId, year }) || []
@@ -99,10 +113,9 @@ export async function getDemografiaStatsController(req, res) {
       cantidad: item.cantidad,
     }));
 
-    return res.json({
-      porSexo: porSexo || [],
-      porEdad: porEdad || [],
-    });
+    const result = { porSexo: porSexo || [], porEdad: porEdad || [] }
+    await cache.set(key, result, 600)
+    return res.json(result);
   } catch (error) {
     console.error("❌ Error en getDemografiaStats:", error);
     return res.status(500).json({ error: "Error interno del servidor" });
@@ -121,6 +134,10 @@ export async function getPlanesStatsController(req, res) {
     const year = req.query.year ? Number(req.query.year) : now.getFullYear();
     const month = req.query.month ? Number(req.query.month) : now.getMonth() + 1;
 
+    const key = `stats:planes:${gymId}:${year}:${month}`
+    const cached = await cache.get(key)
+    if (cached) return res.json(cached)
+
     const rawData = await getPlanesStatsByPeriodo({ gymId, year, month });
 
     const top5 = rawData.filter((p) => p.is_top5 === true);
@@ -137,7 +154,9 @@ export async function getPlanesStatsController(req, res) {
       variacion: p.variacion,
     }));
 
-    return res.json({ top5, alumnos, facturacion });
+    const result = { top5, alumnos, facturacion }
+    await cache.set(key, result, 600)
+    return res.json(result);
   } catch (error) {
     console.error("❌ Error en getPlanesStats:", error);
     return res.status(500).json({ error: "Error interno del servidor" });
@@ -158,6 +177,10 @@ export const getAlumnosPorOrigenController = async (req, res) => {
   const monthNum = Number(month);
 
   try {
+    const key = `stats:origen:${gym_id}:${yearNum}:${monthNum}`
+    const cached = await cache.get(key)
+    if (cached) return res.json(cached)
+
     let items;
 
     if (monthNum === 0) {
@@ -193,12 +216,9 @@ export const getAlumnosPorOrigenController = async (req, res) => {
       items = data ?? [];
     }
 
-    res.json({
-      gym_id,
-      year: yearNum,
-      month: monthNum,
-      items,
-    });
+    const result = { gym_id, year: yearNum, month: monthNum, items }
+    await cache.set(key, result, 600)
+    res.json(result);
   } catch (err) {
     res.status(500).json({
       error: err.message,
@@ -216,7 +236,12 @@ export async function getFacturacionPorPlanController(req, res) {
     const year = req.query.year ? Number(req.query.year) : now.getFullYear();
     const month = req.query.month ? Number(req.query.month) : now.getMonth() + 1;
 
+    const key = `stats:facturacion-plan:${gymId}:${year}:${month}`
+    const cached = await cache.get(key)
+    if (cached) return res.json(cached)
+
     const data = await getFacturacionPorPlan({ gymId, year, month });
+    await cache.set(key, data, 600)
     return res.json(data);
   } catch (error) {
     console.error('❌ Error en getFacturacionPorPlan:', error);
@@ -234,7 +259,12 @@ export async function getFacturacionMesController(req, res) {
     const year = req.query.year ? Number(req.query.year) : now.getFullYear();
     const month = req.query.month ? Number(req.query.month) : now.getMonth() + 1;
 
+    const key = `stats:facturacion-mes:${gymId}:${year}:${month}`
+    const cached = await cache.get(key)
+    if (cached) return res.json(cached)
+
     const result = await getFacturacionMes({ gymId, year, month });
+    await cache.set(key, result, 600)
     return res.json(result);
   } catch (error) {
     console.error('❌ Error en getFacturacionMes:', error);
@@ -255,8 +285,14 @@ export async function getFacturacionController(req, res) {
 
     const yearNum = year ? Number(year) : new Date().getFullYear();
 
+    const key = `stats:facturacion:${gym_id}:${yearNum}:${range}`
+    const cached = await cache.get(key)
+    if (cached) return res.json(cached)
+
     const items = await getFacturacionByPeriodo({ gymId: gym_id, year: yearNum, range });
-    return res.json({ gym_id, year: yearNum, range, items });
+    const result = { gym_id, year: yearNum, range, items }
+    await cache.set(key, result, 600)
+    return res.json(result);
   } catch (error) {
     console.error('❌ Error en getFacturacion:', error);
     return res.status(500).json({ error: 'Error interno del servidor' });

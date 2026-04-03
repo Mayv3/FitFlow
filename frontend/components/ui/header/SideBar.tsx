@@ -106,6 +106,10 @@ export const SideBar = ({ tabs }: HeaderComponentProps) => {
     router.push(route)
   }
 
+  const handlePrefetch = (route: string, enabled: boolean = true) => {
+    if (enabled) router.prefetch(route)
+  }
+
   const handleBlockedClick = (tabLabel: string) => {
     setBlockedFeatureName(tabLabel)
     setUpgradeModalOpen(true)
@@ -268,6 +272,7 @@ export const SideBar = ({ tabs }: HeaderComponentProps) => {
               key={tab.route}
               selected={selected && enabled}
               disableRipple
+              onMouseEnter={() => handlePrefetch(tab.route, enabled)}
               onClick={() => enabled ? handleNav(tab.route, index, enabled) : handleBlockedClick(tab.label)}
               sx={{
                 borderRadius: 2,

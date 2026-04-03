@@ -9,57 +9,43 @@ import {
   getNovedadesActivasSvc
 } from '../services/novedades.supabase.js'
 import { uploadNovedadImageSvc } from '../services/novedades.upload.service.js'
+import * as cache from '../utilities/cache.js'
+
+const NOVEDADES_TTL = 86400 // 24 horas
 
 export const getNovedades = async (req, res) => {
   try {
     const { page, pageSize, q, tipo, activo } = req.query
 
-    console.log(
-      `Received getNovedades request with params: page=${page}, pageSize=${pageSize}, q=${q}, tipo=${tipo}, activo=${activo}`
-    )
-
     const pageNum = page ? parseInt(page, 10) : undefined
     const pageSizeNum = pageSize ? parseInt(pageSize, 10) : undefined
     const activoBool = activo !== undefined ? activo === 'true' : undefined
 
+    const key = `novedades:p:${pageNum}:ps:${pageSizeNum}:q:${q ?? ''}:tipo:${tipo ?? ''}:activo:${activo ?? ''}`
+    const cached = await cache.get(key)
+    if (cached) return res.status(200).json(cached)
+
+    let result
     if (pageNum && pageSizeNum) {
       const { items, total } = await getNovedadesSvc({
-        supa: req.supa,
-        page: pageNum,
-        pageSize: pageSizeNum,
-        q,
-        tipo,
-        activo: activoBool
+        supa: req.supa, page: pageNum, pageSize: pageSizeNum, q, tipo, activo: activoBool
       })
 
       if (total <= 100) {
-        const allNovedades = await getNovedadesSvc({
-          supa: req.supa,
-          q,
-          tipo,
-          activo: activoBool
-        })
-
-        return res.status(200).json({ items: allNovedades, total })
+        const allNovedades = await getNovedadesSvc({ supa: req.supa, q, tipo, activo: activoBool })
+        result = { items: allNovedades, total }
+      } else {
+        result = { items, total }
       }
-
-      return res.status(200).json({ items, total })
     } else {
-      const novedades = await getNovedadesSvc({
-        supa: req.supa,
-        q,
-        tipo,
-        activo: activoBool
-      })
-
-      return res.status(200).json(novedades)
+      result = await getNovedadesSvc({ supa: req.supa, q, tipo, activo: activoBool })
     }
+
+    await cache.set(key, result, NOVEDADES_TTL)
+    return res.status(200).json(result)
   } catch (error) {
     console.error('Error en getNovedades:', error)
-    res.status(500).json({
-      message: 'Error interno del servidor',
-      error: error.message
-    })
+    res.status(500).json({ message: 'Error interno del servidor', error: error.message })
   }
 }
 
@@ -126,6 +112,7 @@ export const createNovedad = async (req, res) => {
       novedad: novedadData
     })
 
+    await cache.delPattern('novedades:*')
     res.status(201).json(novedad)
   } catch (error) {
     console.error('Error en createNovedad:', error)
@@ -173,6 +160,7 @@ export const updateNovedad = async (req, res) => {
       return res.status(404).json({ message: 'Novedad no encontrada' })
     }
 
+    await cache.delPattern('novedades:*')
     res.status(200).json(novedad)
   } catch (error) {
     console.error('Error en updateNovedad:', error)
@@ -198,6 +186,7 @@ export const deleteNovedad = async (req, res) => {
       return res.status(404).json({ message: 'Novedad no encontrada' })
     }
 
+    await cache.delPattern('novedades:*')
     res.status(200).json({ message: 'Novedad eliminada correctamente', data: novedad })
   } catch (error) {
     console.error('Error en deleteNovedad:', error)
@@ -229,6 +218,7 @@ export const toggleActivoNovedad = async (req, res) => {
       return res.status(404).json({ message: 'Novedad no encontrada' })
     }
 
+    await cache.delPattern('novedades:*')
     res.status(200).json(novedad)
   } catch (error) {
     console.error('Error en toggleActivoNovedad:', error)
@@ -275,25 +265,21 @@ export const getNovedadesActivas = async (req, res) => {
     const { tipo } = req.query
     const gymId = req.gymId
 
-    console.log(`Received getNovedadesActivas request with tipo: ${tipo}, gymId: ${gymId}`)
-
     if (!gymId) {
       return res.status(401).json({ message: 'Gym no identificado' })
     }
 
-    const novedades = await getNovedadesActivasSvc({
-      supa: req.supa,
-      gymId,
-      tipo
-    })
+    const key = `novedades:activas:${gymId}:tipo:${tipo ?? ''}`
+    const cached = await cache.get(key)
+    if (cached) return res.status(200).json(cached)
 
+    const novedades = await getNovedadesActivasSvc({ supa: req.supa, gymId, tipo })
+
+    await cache.set(key, novedades, NOVEDADES_TTL)
     res.status(200).json(novedades)
   } catch (error) {
     console.error('Error en getNovedadesActivas:', error)
-    res.status(500).json({
-      message: 'Error interno del servidor',
-      error: error.message
-    })
+    res.status(500).json({ message: 'Error interno del servidor', error: error.message })
   }
 }
 

@@ -43,8 +43,15 @@ export const listPagos = async (req, res) => {
 export const getPago = async (req, res) => {
   try {
     const includeDeleted = parseBool(req.query.includeDeleted);
+
+    const key = `pagos:id:${req.params.id}:del:${includeDeleted}`
+    const cached = await cache.get(key)
+    if (cached) return res.json(cached)
+
     const pago = await getPagoById(req.params.id, { includeDeleted });
     if (!pago) return res.status(404).json({ error: 'Pago no encontrado' });
+
+    await cache.set(key, pago, PAGOS_TTL)
     res.json(pago);
   } catch (error) {
     res.status(404).json({ error: error.message });
@@ -66,7 +73,10 @@ export const editPago = async (req, res) => {
   try {
     const includeDeleted = parseBool(req.query.includeDeleted);
     const actualizado = await updatePago(req.supa, req.params.id, req.body, { includeDeleted });
-    await cache.delPattern(`pagos:${req.gymId}:*`)
+    await Promise.all([
+      cache.delPattern(`pagos:${req.gymId}:*`),
+      cache.delPattern(`pagos:id:${req.params.id}:*`),
+    ])
     res.json(actualizado);
   } catch (error) {
     res.status(400).json({ error: error.message });
@@ -76,7 +86,10 @@ export const editPago = async (req, res) => {
 export const removePago = async (req, res) => {
   try {
     await deletePago(req.supa, req.params.id); // soft delete
-    await cache.delPattern(`pagos:${req.gymId}:*`)
+    await Promise.all([
+      cache.delPattern(`pagos:${req.gymId}:*`),
+      cache.delPattern(`pagos:id:${req.params.id}:*`),
+    ])
     res.sendStatus(204);
   } catch (error) {
     console.error('[removePago] Error:', error);

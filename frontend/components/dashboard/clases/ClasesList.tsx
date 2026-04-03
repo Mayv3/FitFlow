@@ -191,12 +191,8 @@ export default function ClasesList() {
 
     const columns = useMemo(() => columnsClases(handleOpenEdit, handleDelete, handleVerDetalle), [handleOpenEdit, handleDelete, handleVerDetalle])
 
-    if (userLoading || isLoading) {
-        return <Box sx={{ textAlign: 'center', mt: 4 }}><CircularProgress /></Box>
-    }
-
     return (
-        <Box sx={{ maxWidth: 'xl', mx: 'auto', py: 2 }}>
+        <Box sx={{ maxWidth: 'xl', mx: 'auto', py: 2 }} className="animate-fade-in">
             <CustomBreadcrumbs
                 items={[
                     { label: 'Dashboard', href: `/dashboard/${userRole}` },

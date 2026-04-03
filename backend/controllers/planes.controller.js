@@ -6,7 +6,7 @@ import {
 } from '../services/planes.supabase.js'
 import * as cache from '../utilities/cache.js'
 
-const PLANES_TTL = 1800 // 30 minutos
+const PLANES_TTL = 86400 // 24 horas
 
 export const getPlanes = async (req, res) => {
   try {

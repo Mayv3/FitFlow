@@ -121,6 +121,15 @@ export default function NovedadesList() {
 
     const primaryColor = gymPrimaryColor || theme.palette.primary.main;
 
+    useEffect(() => {
+        novedadesOrdenadas.forEach(n => {
+            if (n.imagen_url) {
+                const img = new window.Image()
+                img.src = n.imagen_url
+            }
+        })
+    }, [novedadesOrdenadas])
+
     const handleOpenModal = (novedad: Novedad) => {
         setSelectedNovedad(novedad);
         setOpenModal(true);
@@ -131,14 +140,6 @@ export default function NovedadesList() {
         setSelectedNovedad(null);
     };
 
-    if (isLoading) {
-        return (
-            <Box sx={{ minHeight: '60vh', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
-                <CircularProgress />
-            </Box>
-        );
-    }
-
     if (isError) {
         return (
             <Typography color="error" align="center">
@@ -148,7 +149,7 @@ export default function NovedadesList() {
     }
 
     return (
-        <Box sx={{ py: { xs: 4, md: 6 } }}>
+        <Box sx={{ py: { xs: 4, md: 6 } }} className="animate-fade-in">
             <Container maxWidth="md">
 
                 <Box sx={{ mb: 5 }}>

@@ -4,6 +4,9 @@ import {
   updatePlanSvc,
   deletePlanSvc,
 } from '../services/planes.supabase.js'
+import * as cache from '../utilities/cache.js'
+
+const PLANES_TTL = 1800 // 30 minutos
 
 export const getPlanes = async (req, res) => {
   try {
@@ -14,9 +17,15 @@ export const getPlanes = async (req, res) => {
       return res.status(401).json({ message: 'Gym no identificado' })
     }
 
-    const planes = await getPlanesSvc({ supa: req.supa, q })
+    const key = `planes:${gymId}:q:${q ?? ''}`
+    const cached = await cache.get(key)
+    if (cached) return res.status(200).json(cached)
 
-    return res.status(200).json({ items: planes, total: planes.length })
+    const planes = await getPlanesSvc({ supa: req.supa, q })
+    const result = { items: planes, total: planes.length }
+    await cache.set(key, result, PLANES_TTL)
+
+    return res.status(200).json(result)
   } catch (err) {
     console.error(err)
     res.status(500).json({
@@ -44,6 +53,7 @@ export const createPlan = async (req, res) => {
       gym_id,
     })
 
+    await cache.delPattern(`planes:${gym_id}:*`)
     res.status(201).json(plan)
   } catch (err) {
     res.status(500).json({
@@ -77,6 +87,7 @@ export const updatePlan = async (req, res) => {
       return res.status(404).json({ message: 'Plan no encontrado' })
     }
 
+    await cache.delPattern(`planes:${gym_id}:*`)
     res.json(plan)
   } catch (err) {
     res.status(500).json({
@@ -104,6 +115,7 @@ export const deletePlan = async (req, res) => {
       return res.status(404).json({ message: 'Plan no encontrado' })
     }
 
+    await cache.delPattern(`planes:${gym_id}:*`)
     res.status(204).end()
   } catch (err) {
     res.status(500).json({

@@ -9,6 +9,9 @@ import {
   getExpiredAlumnosService,
 } from '../services/alumnos.supabase.js'
 import jwt from 'jsonwebtoken';
+import * as cache from '../utilities/cache.js'
+
+const ALUMNOS_TTL = 300 // 5 minutos
 
 function isActiveByDate(dateLike) {
   if (!dateLike) return false;
@@ -24,7 +27,12 @@ export async function handleListAlumnosByGym(req, res) {
     const limit = Number(req.query.limit ?? 20);
     const q = String(req.query.q ?? '');
 
+    const key = `alumnos:${req.gymId}:p:${page}:l:${limit}:q:${q}`
+    const cached = await cache.get(key)
+    if (cached) return res.json(cached)
+
     const result = await getAlumnosService({ page, limit, q }, req.supa);
+    await cache.set(key, result, ALUMNOS_TTL)
     res.json(result);
   } catch (err) {
     console.error(err);
@@ -54,6 +62,7 @@ export const addAlumno = async (req, res) => {
     const hoy = new Date().toISOString().slice(0, 10);
     const activo = !!(nuevo?.fecha_de_vencimiento && nuevo.fecha_de_vencimiento >= hoy);
 
+    await cache.delPattern(`alumnos:${nuevo.gym_id}:*`)
     req.app.get('io')
       .to(`gym:${nuevo.gym_id}`)
       .emit('member:created', { id: nuevo.id, activo, planId: nuevo?.plan_id ?? null });
@@ -71,6 +80,8 @@ export const editAlumno = async (req, res) => {
 
     const actualizado = await updateAlumno(req.params.dni, req.body, req.supa);
 
+    const gymId = actualizado?.gym_id || prev?.gym_id;
+    if (gymId) await cache.delPattern(`alumnos:${gymId}:*`)
     res.json(actualizado);
 
     try {
@@ -135,6 +146,8 @@ export const removeAlumno = async (req, res) => {
 
     const { before } = await deleteAlumno(req.params.dni, req.supa);
 
+    await cache.delPattern(`alumnos:${before.gym_id}:*`)
+
     const prevActivo = isActiveByDate(before.fecha_de_vencimiento);
 
     req.app.get('io')
@@ -182,8 +195,14 @@ export async function handleGetActiveAlumnosCountByGym(req, res) {
 
 export async function handleGetExpiredAlumnos(req, res) {
   try {
+    const key = `alumnos:${req.gymId}:expired`
+    const cached = await cache.get(key)
+    if (cached) return res.json(cached)
+
     const items = await getExpiredAlumnosService(req.supa);
-    res.json({ items, total: items.length });
+    const result = { items, total: items.length }
+    await cache.set(key, result, ALUMNOS_TTL)
+    res.json(result);
   } catch (err) {
     console.error(err);
     res.status(500).json({ message: err.message ?? 'Error obteniendo alumnos vencidos' });
@@ -192,7 +211,12 @@ export async function handleGetExpiredAlumnos(req, res) {
 
 export async function handleListAlumnosSimple(req, res) {
   try {
+    const key = `alumnos:${req.gymId}:simple`
+    const cached = await cache.get(key)
+    if (cached) return res.json(cached)
+
     const alumnos = await getAlumnosSimpleService(req.supa);
+    await cache.set(key, alumnos, ALUMNOS_TTL)
     res.json(alumnos);
   } catch (err) {
     console.error(err);

@@ -11,7 +11,7 @@ import {
 import jwt from 'jsonwebtoken';
 import * as cache from '../utilities/cache.js'
 
-const ALUMNOS_TTL = 600 // 10 minutos
+const ALUMNOS_TTL = 30 // 30 segundos
 
 function isActiveByDate(dateLike) {
   if (!dateLike) return false;

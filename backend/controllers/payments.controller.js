@@ -9,7 +9,7 @@ import {
 } from '../services/pagos.supabase.js';
 import * as cache from '../utilities/cache.js'
 
-const PAGOS_TTL = 300 // 5 minutos
+const PAGOS_TTL = 30 // 30 segundos
 const parseBool = (v) => v === 'true' || v === '1' || v === true;
 
 export const listPagos = async (req, res) => {

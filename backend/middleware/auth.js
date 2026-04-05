@@ -16,7 +16,6 @@ export async function verifyToken(req, res, next) {
 
   const cached = await cache.get(cacheKey)
   if (cached) {
-    console.log(`[Auth] cache hit (${Math.round(performance.now() - t0)}ms)`)
     req.user = cached
     req.gymId = cached.user_metadata?.gym_id
     return next()
@@ -32,7 +31,6 @@ export async function verifyToken(req, res, next) {
   }
 
   await cache.set(cacheKey, user, TOKEN_TTL)
-  console.log(`[Auth] supabase verify (${Math.round(performance.now() - t0)}ms)`)
 
   req.user = user
   req.gymId = user.user_metadata?.gym_id

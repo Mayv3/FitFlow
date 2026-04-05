@@ -27,16 +27,9 @@ export const getNovedades = async (req, res) => {
 
     let result
     if (pageNum && pageSizeNum) {
-      const { items, total } = await getNovedadesSvc({
+      result = await getNovedadesSvc({
         supa: req.supa, page: pageNum, pageSize: pageSizeNum, q, tipo, activo: activoBool
       })
-
-      if (total <= 100) {
-        const allNovedades = await getNovedadesSvc({ supa: req.supa, q, tipo, activo: activoBool })
-        result = { items: allNovedades, total }
-      } else {
-        result = { items, total }
-      }
     } else {
       result = await getNovedadesSvc({ supa: req.supa, q, tipo, activo: activoBool })
     }

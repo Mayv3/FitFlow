@@ -1,14 +1,18 @@
 import crypto from 'crypto';
+import sharp from 'sharp';
 
 export async function uploadNovedadImageSvc({ supa, file }) {
-  const ext = file.originalname.split('.').pop();
-  const fileName = `${crypto.randomUUID()}.${ext}`;
+  const webpBuffer = await sharp(file.buffer)
+    .webp({ quality: 85 })
+    .toBuffer();
+
+  const fileName = `${crypto.randomUUID()}.webp`;
   const filePath = `imagenes/${fileName}`;
 
   const { error } = await supa.storage
     .from('novedades')
-    .upload(filePath, file.buffer, {
-      contentType: file.mimetype,
+    .upload(filePath, webpBuffer, {
+      contentType: 'image/webp',
       upsert: false,
     });
 

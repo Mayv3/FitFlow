@@ -22,7 +22,7 @@ import {
 } from '@mui/material';
 import Grid from '@mui/material/Grid';
 import CloseIcon from '@mui/icons-material/Close';
-import { useNovedades } from '@/hooks/novedades/useNovedadesApi';
+import { useNovedadesPaginadas } from '@/hooks/novedades/useNovedadesApi';
 import AnnouncementIcon from '@mui/icons-material/Announcement';
 import NewReleasesIcon from '@mui/icons-material/NewReleases';
 import LocalOfferIcon from '@mui/icons-material/LocalOffer';
@@ -85,6 +85,8 @@ export default function NovedadesList() {
     const [gymPrimaryColor, setGymPrimaryColor] = useState<string | null>(null);
     const [openModal, setOpenModal] = useState(false);
     const [selectedNovedad, setSelectedNovedad] = useState<Novedad | null>(null);
+    const [page, setPage] = useState(1);
+    const [acumuladas, setAcumuladas] = useState<Novedad[]>([]);
 
     useEffect(() => {
         if (typeof window !== 'undefined') {
@@ -100,35 +102,34 @@ export default function NovedadesList() {
         }
     }, []);
 
-    const { data, isLoading, isError, error } = useNovedades();
+    const PAGE_SIZE = 4;
+    const { data, isLoading, isError, error, isFetching } = useNovedadesPaginadas(page, PAGE_SIZE);
 
-    const novedades = useMemo(() => {
-        if (!data) return [];
-        if (Array.isArray(data)) return data;
-        if ((data as any).items) return (data as any).items;
-        return [];
-    }, [data]) as Novedad[];
+    const total = data?.total ?? 0;
+    const hayMas = acumuladas.length < total;
 
-    const novedadesOrdenadas = useMemo(
-        () =>
-            [...novedades].sort(
-                (a, b) =>
-                    new Date(b.fecha_publicacion).getTime() -
-                    new Date(a.fecha_publicacion).getTime()
-            ),
-        [novedades]
-    );
+    useEffect(() => {
+        if (!data?.items || isFetching) return;
+        setAcumuladas(prev => {
+            const ids = new Set(prev.map(n => n.id));
+            const nuevas = data.items.filter((n: Novedad) => !ids.has(n.id));
+            if (nuevas.length === 0) return prev;
+            return [...prev, ...nuevas];
+        });
+    }, [data, isFetching]);
+
+    const novedadesOrdenadas = acumuladas;
 
     const primaryColor = gymPrimaryColor || theme.palette.primary.main;
 
     useEffect(() => {
-        novedadesOrdenadas.forEach(n => {
+        data?.items?.forEach((n: Novedad) => {
             if (n.imagen_url) {
-                const img = new window.Image()
-                img.src = n.imagen_url
+                const img = new window.Image();
+                img.src = n.imagen_url;
             }
-        })
-    }, [novedadesOrdenadas])
+        });
+    }, [data])
 
     const handleOpenModal = (novedad: Novedad) => {
         setSelectedNovedad(novedad);
@@ -140,7 +141,7 @@ export default function NovedadesList() {
         setSelectedNovedad(null);
     };
 
-    if (isError) {
+    if (isError && acumuladas.length === 0) {
         return (
             <Typography color="error" align="center">
                 {(error as Error).message}
@@ -162,7 +163,11 @@ export default function NovedadesList() {
                     </Typography>
                 </Box>
 
-                {novedadesOrdenadas.length === 0 ? (
+                {isLoading && acumuladas.length === 0 ? (
+                    <Box sx={{ display: 'flex', justifyContent: 'center', py: 8 }}>
+                        <CircularProgress sx={{ color: primaryColor }} />
+                    </Box>
+                ) : novedadesOrdenadas.length === 0 ? (
                     <Paper
                         sx={{
                             p: 6,
@@ -182,11 +187,19 @@ export default function NovedadesList() {
                         </Typography>
                     </Paper>
                 ) : (
+                    <>
                     <div className='grid grid-cols-1 gap-6 md:grid-cols-2 md:gap-4 '>
-                        {novedadesOrdenadas.map((novedad) => (
-                            <Card 
+                        {novedadesOrdenadas.map((novedad, index) => (
+                            <Card
                                 key={novedad.id}
                                 sx={{
+                                    animation: index >= novedadesOrdenadas.length - PAGE_SIZE
+                                        ? 'fadeSlideIn 0.4s ease forwards'
+                                        : undefined,
+                                    '@keyframes fadeSlideIn': {
+                                        from: { opacity: 0, transform: 'translateY(16px)' },
+                                        to: { opacity: 1, transform: 'translateY(0)' },
+                                    },
                                     height: '100%',
                                     display: 'flex',
                                     flexDirection: 'column',
@@ -314,6 +327,32 @@ export default function NovedadesList() {
                             </Card>
                         ))}
                     </div>
+
+                    {hayMas && (
+                        <Box sx={{ display: 'flex', justifyContent: 'center', mt: 5 }}>
+                            <Button
+                                variant="outlined"
+                                disabled={isFetching}
+                                onClick={() => setPage(p => p + 1)}
+                                sx={{
+                                    borderColor: primaryColor,
+                                    color: primaryColor,
+                                    fontWeight: 700,
+                                    px: 4,
+                                    py: 1.2,
+                                    borderRadius: 2,
+                                    textTransform: 'none',
+                                    '&:hover': {
+                                        backgroundColor: alpha(primaryColor, 0.08),
+                                        borderColor: primaryColor,
+                                    },
+                                }}
+                            >
+                                {isFetching ? <CircularProgress size={20} sx={{ color: primaryColor }} /> : 'Ver más'}
+                            </Button>
+                        </Box>
+                    )}
+                    </>
 
                 )}
 

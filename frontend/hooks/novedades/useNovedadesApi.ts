@@ -22,7 +22,7 @@ const getHeaders = () => ({
   'Authorization': `Bearer ${Cookies.get('token')}`,
 });
 
-// GET novedades
+// GET novedades (sin paginar, para admin)
 export const useNovedades = () => {
   return useQuery({
     queryKey: ['novedades'],
@@ -36,6 +36,25 @@ export const useNovedades = () => {
       }
 
       return response.json();
+    },
+  });
+};
+
+// GET novedades paginadas (para el listado público)
+export const useNovedadesPaginadas = (page: number, pageSize = 4) => {
+  return useQuery({
+    queryKey: ['novedades', 'paginated', page, pageSize],
+    queryFn: async () => {
+      const response = await fetch(
+        `${API_BASE}/novedades?page=${page}&pageSize=${pageSize}`,
+        { headers: getHeaders() }
+      );
+
+      if (!response.ok) {
+        throw new Error('Error al obtener novedades');
+      }
+
+      return response.json() as Promise<{ items: Novedad[]; total: number }>;
     },
   });
 };

@@ -8,21 +8,16 @@ function memGet(key) {
 }
 
 export async function get(key) {
-  const val = memGet(key)
-  console.log(val !== null ? `[Cache HIT]  ${key}` : `[Cache MISS] ${key}`)
-  return val
+  return memGet(key)
 }
 
 export async function set(key, value, ttlSeconds) {
   store.set(key, { val: value, exp: Date.now() + ttlSeconds * 1000 })
-  console.log(`[Cache SET]  ${key} (${ttlSeconds}s)`)
 }
 
 export async function delPattern(pattern) {
   const regex = new RegExp('^' + pattern.replace(/\*/g, '.*') + '$')
-  let total = 0
   for (const key of store.keys()) {
-    if (regex.test(key)) { store.delete(key); total++ }
+    if (regex.test(key)) store.delete(key)
   }
-  console.log(`[Cache DEL]  ${pattern} (${total} keys)`)
 }

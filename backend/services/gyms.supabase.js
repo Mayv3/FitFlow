@@ -15,6 +15,42 @@ export async function listGyms() {
   const { data, error } = await supabaseAdmin
     .from('gyms')
     .select('id, name, logo_url, settings')
+    .is('deleted_at', null)
+
+  if (error) throw error
+  return data
+}
+
+export async function listDeletedGyms() {
+  const { data, error } = await supabaseAdmin
+    .from('gyms')
+    .select('id, name, logo_url, settings, deleted_at')
+    .not('deleted_at', 'is', null)
+    .order('deleted_at', { ascending: false })
+
+  if (error) throw error
+  return data
+}
+
+export async function softDeleteGym(gymId) {
+  const { data, error } = await supabaseAdmin
+    .from('gyms')
+    .update({ deleted_at: new Date().toISOString() })
+    .eq('id', gymId)
+    .select('id, name, deleted_at')
+    .single()
+
+  if (error) throw error
+  return data
+}
+
+export async function restoreGym(gymId) {
+  const { data, error } = await supabaseAdmin
+    .from('gyms')
+    .update({ deleted_at: null })
+    .eq('id', gymId)
+    .select('id, name')
+    .single()
 
   if (error) throw error
   return data

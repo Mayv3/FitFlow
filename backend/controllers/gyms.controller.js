@@ -1,5 +1,5 @@
 import { supabaseAdmin } from '../db/supabaseClient.js'
-import { createGym, listGyms, updateGym } from '../services/gyms.supabase.js'
+import { createGym, listGyms, updateGym, softDeleteGym, listDeletedGyms, restoreGym } from '../services/gyms.supabase.js'
 
 export async function handleCreateGym(req, res) {
   try {
@@ -77,6 +77,38 @@ export const handleUpdateGymSettings = async (req, res) => {
   } catch (err) {
     console.error("Error al actualizar settings:", err)
     res.status(500).json({ error: "No se pudo actualizar el tema del gym" })
+  }
+}
+
+export async function handleSoftDeleteGym(req, res) {
+  try {
+    const { id } = req.params
+    const gym = await softDeleteGym(id)
+    res.json(gym)
+  } catch (err) {
+    console.error('Error al eliminar gimnasio:', err)
+    res.status(500).json({ error: err.message })
+  }
+}
+
+export async function handleListDeletedGyms(req, res) {
+  try {
+    const gyms = await listDeletedGyms()
+    res.json(gyms)
+  } catch (err) {
+    console.error('Error al listar gimnasios eliminados:', err)
+    res.status(500).json({ error: err.message })
+  }
+}
+
+export async function handleRestoreGym(req, res) {
+  try {
+    const { id } = req.params
+    const gym = await restoreGym(id)
+    res.json(gym)
+  } catch (err) {
+    console.error('Error al restaurar gimnasio:', err)
+    res.status(500).json({ error: err.message })
   }
 }
 

@@ -24,11 +24,22 @@ import {
   Paper,
   IconButton,
   Tooltip,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  List,
+  ListItem,
+  ListItemText,
+  ListItemSecondaryAction,
 } from "@mui/material"
 import CheckCircleIcon from "@mui/icons-material/CheckCircle"
 import BusinessIcon from "@mui/icons-material/Business"
 import EditIcon from "@mui/icons-material/Edit"
 import WarningIcon from "@mui/icons-material/Warning"
+import DeleteOutlineIcon from "@mui/icons-material/DeleteOutline"
+import RestoreIcon from "@mui/icons-material/Restore"
+import { useSoftDeleteGym, useDeletedGyms, useRestoreGym } from "@/hooks/gyms/useGyms"
 import { useGymPlans } from "@/hooks/gymPlans/useGymPlans"
 import {
   useSuscriptions,
@@ -65,25 +76,32 @@ export function AssignPlanToGym() {
   const [success, setSuccess] = useState("")
   const [alumnosCounts, setAlumnosCounts] = useState<Record<string, number>>({})
 
+  const [deletedModalOpen, setDeletedModalOpen] = useState(false)
+  const [deletingId, setDeletingId] = useState<string | null>(null)
+
   const { data: plans = [], isLoading: loadingPlans } = useGymPlans()
   const { data: suscriptions = [], isLoading: loadingSuscriptions } = useSuscriptions()
   const createSuscription = useCreateSuscription()
   const updateSuscription = useUpdateSuscription()
+  const softDeleteGym = useSoftDeleteGym()
+  const { data: deletedGyms = [], isLoading: loadingDeleted } = useDeletedGyms()
+  const restoreGym = useRestoreGym()
+
+  const fetchGyms = async () => {
+    try {
+      const token = Cookies.get("token")
+      const headers = token ? { Authorization: `Bearer ${token}` } : {}
+      const res = await axios.get(`${process.env.NEXT_PUBLIC_BACKEND_URL}/api/gyms`, { headers })
+      setGyms(Array.isArray(res.data) ? res.data : [])
+    } catch (err: any) {
+      setError(err.response?.data?.error || "Error al cargar gimnasios")
+    } finally {
+      setLoadingGyms(false)
+    }
+  }
 
   // Cargar gimnasios y conteo de alumnos activos
   useEffect(() => {
-    const fetchGyms = async () => {
-      try {
-        const token = Cookies.get("token")
-        const headers = token ? { Authorization: `Bearer ${token}` } : {}
-        const res = await axios.get(`${process.env.NEXT_PUBLIC_BACKEND_URL}/api/gyms`, { headers })
-        setGyms(Array.isArray(res.data) ? res.data : [])
-      } catch (err: any) {
-        setError(err.response?.data?.error || "Error al cargar gimnasios")
-      } finally {
-        setLoadingGyms(false)
-      }
-    }
 
     const fetchCounts = async () => {
       try {
@@ -120,6 +138,17 @@ export function AssignPlanToGym() {
     setSelectedGymId(gymId)
     setSuccess("")
     setError("")
+  }
+
+  const handleSoftDelete = async (gymId: string) => {
+    setDeletingId(gymId)
+    try {
+      await softDeleteGym.mutateAsync(gymId)
+      setGyms(prev => prev.filter(g => g.id !== gymId))
+      if (selectedGymId === gymId) setSelectedGymId("")
+    } finally {
+      setDeletingId(null)
+    }
   }
 
   const handleAssignPlan = async () => {
@@ -240,10 +269,20 @@ export function AssignPlanToGym() {
       <Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", lg: "1.2fr 1fr" }, gap: 3 }}>
         {/* Tabla de gimnasios y suscripciones */}
         <Paper variant="outlined" sx={{ borderRadius: 2, overflow: "hidden", bgcolor: "background.paper" }}>
-          <Box sx={{ p: 2, borderBottom: 1, borderColor: "divider", background: (theme) => theme.palette.mode === "dark" ? "rgba(255,255,255,0.05)" : "rgba(0,0,0,0.03)" }}>
+          <Box sx={{ p: 2, borderBottom: 1, borderColor: "divider", background: (theme) => theme.palette.mode === "dark" ? "rgba(255,255,255,0.05)" : "rgba(0,0,0,0.03)", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
             <Typography variant="subtitle1" fontWeight={600}>
               Gimnasios y Suscripciones
             </Typography>
+            <Button
+              size="small"
+              startIcon={<DeleteOutlineIcon />}
+              onClick={() => setDeletedModalOpen(true)}
+              color="error"
+              variant="outlined"
+              sx={{ textTransform: "none", fontSize: 12 }}
+            >
+              Eliminados {deletedGyms.length > 0 && `(${deletedGyms.length})`}
+            </Button>
           </Box>
           <Table size="small">
             <TableHead>
@@ -253,14 +292,14 @@ export function AssignPlanToGym() {
                 <TableCell sx={{ fontWeight: 600, background: (theme) => theme.palette.mode === "dark" ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.05)" }}>Estado</TableCell>
                 <TableCell sx={{ fontWeight: 600, background: (theme) => theme.palette.mode === "dark" ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.05)" }}>Alumnos Activos</TableCell>
                 <TableCell sx={{ fontWeight: 600, background: (theme) => theme.palette.mode === "dark" ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.05)" }}>Vencimiento</TableCell>
-                <TableCell align="center" sx={{ fontWeight: 600, background: (theme) => theme.palette.mode === "dark" ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.05)" }}>Acción</TableCell>
               </TableRow>
             </TableHead>
             <TableBody>
               {gyms.map((gym) => {
                 const suscription = getGymSuscription(gym.id)
                 const isSelected = selectedGymId === gym.id
-                const isExpiringSoon = suscription?.end_at &&
+                const isExpired = suscription?.end_at && new Date(suscription.end_at) < new Date()
+                const isExpiringSoon = !isExpired && suscription?.end_at &&
                   new Date(suscription.end_at) <= new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)
 
                 return (
@@ -335,12 +374,17 @@ export function AssignPlanToGym() {
                     <TableCell>
                       {suscription?.end_at ? (
                         <Stack direction="row" spacing={0.5} alignItems="center">
+                          {isExpired && (
+                            <Tooltip title="Vencido">
+                              <WarningIcon fontSize="small" color="error" />
+                            </Tooltip>
+                          )}
                           {isExpiringSoon && (
                             <Tooltip title="Próximo a vencer">
                               <WarningIcon fontSize="small" color="warning" />
                             </Tooltip>
                           )}
-                          <Typography variant="body2" color={isExpiringSoon ? "warning.main" : "text.secondary"}>
+                          <Typography variant="body2" color={isExpired ? "error.main" : isExpiringSoon ? "warning.main" : "text.secondary"}>
                             {new Date(suscription.end_at).toLocaleDateString()}
                           </Typography>
                         </Stack>
@@ -349,20 +393,6 @@ export function AssignPlanToGym() {
                           —
                         </Typography>
                       )}
-                    </TableCell>
-                    <TableCell align="center">
-                      <Tooltip title={suscription ? "Editar suscripción" : "Asignar plan"}>
-                        <IconButton
-                          size="small"
-                          color={isSelected ? "primary" : "default"}
-                          onClick={(e) => {
-                            e.stopPropagation()
-                            handleSelectGym(gym.id)
-                          }}
-                        >
-                          <EditIcon fontSize="small" />
-                        </IconButton>
-                      </Tooltip>
                     </TableCell>
                   </TableRow>
                 )
@@ -456,26 +486,93 @@ export function AssignPlanToGym() {
                   </Box>
                 )}
 
-                <Button
-                  variant="contained"
-                  onClick={handleAssignPlan}
-                  disabled={isUpdating || !selectedPlanId}
-                  fullWidth
-                  size="large"
-                >
-                  {isUpdating ? (
-                    <CircularProgress size={22} color="inherit" />
-                  ) : currentSuscription ? (
-                    "Actualizar Suscripción"
-                  ) : (
-                    "Asignar Plan"
-                  )}
-                </Button>
+                <Stack direction="row" spacing={1}>
+                  <Button
+                    variant="contained"
+                    onClick={handleAssignPlan}
+                    disabled={isUpdating || !selectedPlanId}
+                    fullWidth
+                    size="large"
+                  >
+                    {isUpdating ? (
+                      <CircularProgress size={22} color="inherit" />
+                    ) : currentSuscription ? (
+                      "Actualizar Suscripción"
+                    ) : (
+                      "Asignar Plan"
+                    )}
+                  </Button>
+                  <Tooltip title="Eliminar gimnasio">
+                    <span>
+                      <Button
+                        variant="outlined"
+                        color="error"
+                        size="large"
+                        disabled={deletingId === selectedGymId}
+                        onClick={() => handleSoftDelete(selectedGymId)}
+                        sx={{ minWidth: 48, px: 1.5 }}
+                      >
+                        {deletingId === selectedGymId
+                          ? <CircularProgress size={20} color="error" />
+                          : <DeleteOutlineIcon />}
+                      </Button>
+                    </span>
+                  </Tooltip>
+                </Stack>
               </Stack>
             </>
           )}
         </Paper>
       </Box>
+
+      {/* Modal de gimnasios eliminados */}
+      <Dialog open={deletedModalOpen} onClose={() => setDeletedModalOpen(false)} maxWidth="sm" fullWidth PaperProps={{ sx: { borderRadius: 2 } }}>
+        <DialogTitle sx={{ fontWeight: 700 }}>Gimnasios eliminados</DialogTitle>
+        <DialogContent dividers sx={{ p: 0 }}>
+          {loadingDeleted ? (
+            <Box sx={{ display: "flex", justifyContent: "center", py: 4 }}>
+              <CircularProgress size={28} />
+            </Box>
+          ) : deletedGyms.length === 0 ? (
+            <Typography color="text.secondary" sx={{ p: 3, textAlign: "center" }}>
+              No hay gimnasios eliminados
+            </Typography>
+          ) : (
+            <List disablePadding>
+              {deletedGyms.map((gym, i) => (
+                <ListItem
+                  key={gym.id}
+                  divider={i < deletedGyms.length - 1}
+                  sx={{ px: 3, py: 1.5 }}
+                >
+                  <ListItemText
+                    primary={<Typography fontWeight={600}>{gym.name}</Typography>}
+                    secondary={`Eliminado el ${new Date(gym.deleted_at).toLocaleDateString("es-AR", { day: "2-digit", month: "long", year: "numeric" })}`}
+                  />
+                  <ListItemSecondaryAction>
+                    <Tooltip title="Restaurar">
+                      <IconButton
+                        size="small"
+                        color="primary"
+                        disabled={restoreGym.isPending}
+                        onClick={() => restoreGym.mutate(gym.id, { onSuccess: fetchGyms })}
+                      >
+                        <RestoreIcon fontSize="small" />
+                      </IconButton>
+                    </Tooltip>
+                  </ListItemSecondaryAction>
+                </ListItem>
+              ))}
+            </List>
+          )}
+        </DialogContent>
+        <DialogActions sx={{ px: 3, py: 2 }}>
+          <Button onClick={() => setDeletedModalOpen(false)} sx={{ textTransform: "none" }}>
+            Cerrar
+          </Button>
+        </DialogActions>
+      </Dialog>
+
     </Box>
   )
 }

@@ -82,7 +82,7 @@ export const handleGetGymPlan = async (req, res) => {
         is_active: suscription.is_active
       }
     }
-    await cache.set(key, result, 86400)
+    await cache.set(key, result, 600)
     res.json(result)
   } catch (err) {
     // Si el error es porque no encontró registro, devolver respuesta limpia

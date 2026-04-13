@@ -8,7 +8,7 @@ import {
 import WhatsAppIcon from "@mui/icons-material/WhatsApp"
 import SendIcon from "@mui/icons-material/Send"
 import { useListGyms, useUpdateGymWhatsapp } from "@/hooks/gyms/useGyms"
-import api from "@/lib/api"
+import { api } from "@/lib/api"
 
 export default function WhatsappPage() {
   const { data: gyms, isLoading, error } = useListGyms()

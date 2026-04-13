@@ -9,7 +9,7 @@ import WhatsAppIcon from "@mui/icons-material/WhatsApp"
 import QrCodeIcon from "@mui/icons-material/QrCode"
 import CloseIcon from "@mui/icons-material/Close"
 import Cookies from "js-cookie"
-import api from "@/lib/api"
+import { api } from "@/lib/api"
 
 interface QRData {
   qr_base64: string | null

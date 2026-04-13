@@ -1,5 +1,5 @@
 import { supabaseAdmin } from '../db/supabaseClient.js'
-import { createGym, listGyms, updateGym, softDeleteGym, listDeletedGyms, restoreGym } from '../services/gyms.supabase.js'
+import { createGym, listGyms, updateGym, updateGymWhatsapp, softDeleteGym, listDeletedGyms, restoreGym } from '../services/gyms.supabase.js'
 
 export async function handleCreateGym(req, res) {
   try {
@@ -77,6 +77,21 @@ export const handleUpdateGymSettings = async (req, res) => {
   } catch (err) {
     console.error("Error al actualizar settings:", err)
     res.status(500).json({ error: "No se pudo actualizar el tema del gym" })
+  }
+}
+
+export async function handleUpdateGymWhatsapp(req, res) {
+  try {
+    const { id } = req.params
+    const { whatsapp_enabled, evolution_instance_name, evolution_api_url } = req.body
+
+    if (!id) return res.status(400).json({ error: 'ID de gimnasio requerido' })
+
+    const gym = await updateGymWhatsapp(id, { whatsapp_enabled, evolution_instance_name, evolution_api_url })
+    res.json(gym)
+  } catch (err) {
+    console.error('Error al actualizar WhatsApp del gym:', err)
+    res.status(500).json({ error: err.message })
   }
 }
 

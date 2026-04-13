@@ -7,6 +7,7 @@ import AssignmentIcon from '@mui/icons-material/Assignment';
 import AccessibilityNewIcon from '@mui/icons-material/AccessibilityNew';
 import AssignmentTurnedInIcon from '@mui/icons-material/AssignmentTurnedIn';
 import StorefrontIcon from "@mui/icons-material/Storefront"
+import WhatsAppIcon from "@mui/icons-material/WhatsApp"
 import FitnessCenterIcon from '@mui/icons-material/FitnessCenter';
 import LinkIcon from '@mui/icons-material/Link';
 import InventoryIcon from '@mui/icons-material/Inventory';
@@ -44,6 +45,7 @@ export const recepcionistTabs = [
 
 export const ownerTabs = [
   { label: "Onboarding", icon: <StorefrontIcon />, route: "/dashboard/owner/onboarding" },
+  { label: "WhatsApp", icon: <WhatsAppIcon />, route: "/dashboard/owner/whatsapp" },
 ]
 
 export const memberTabs = [

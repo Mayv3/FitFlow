@@ -56,6 +56,23 @@ export async function restoreGym(gymId) {
   return data
 }
 
+export async function updateGymWhatsapp(gymId, { whatsapp_enabled, evolution_instance_name, evolution_api_url }) {
+  const updates = {}
+  if (whatsapp_enabled !== undefined) updates.whatsapp_enabled = whatsapp_enabled
+  if (evolution_instance_name !== undefined) updates.evolution_instance_name = evolution_instance_name
+  if (evolution_api_url !== undefined) updates.evolution_api_url = evolution_api_url
+
+  const { data, error } = await supabaseAdmin
+    .from('gyms')
+    .update(updates)
+    .eq('id', gymId)
+    .select('id, name, whatsapp_enabled, evolution_instance_name, evolution_api_url')
+    .single()
+
+  if (error) throw error
+  return data
+}
+
 export async function updateGym(gymId, updates) {
   const { data, error } = await supabaseAdmin
     .from('gyms')

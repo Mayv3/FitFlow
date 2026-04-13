@@ -177,7 +177,7 @@ export async function handleGetWhatsappStatus(req, res) {
     const { id } = req.params
     const { data: gym, error } = await supabaseAdmin
       .from('gyms')
-      .select('name, whatsapp_enabled')
+      .select('name')
       .eq('id', id)
       .single()
 

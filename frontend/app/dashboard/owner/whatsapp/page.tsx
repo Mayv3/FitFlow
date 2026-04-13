@@ -18,7 +18,11 @@ export default function WhatsappPage() {
   const [triggerMsg, setTriggerMsg] = useState<string | null>(null)
 
   const handleToggle = async (gymId: string, enabled: boolean) => {
-    await updateWhatsapp.mutateAsync({ id: gymId, whatsapp_enabled: enabled })
+    try {
+      await updateWhatsapp.mutateAsync({ id: gymId, whatsapp_enabled: enabled })
+    } catch {
+      // React Query invalida el cache y revierte el estado visual
+    }
   }
 
   const handleTriggerReminders = async () => {

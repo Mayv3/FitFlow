@@ -112,7 +112,7 @@ export function AsistenciasHoyPorHoraCard({ fecha }: Props) {
   const totales = data?.total ?? 0;
 
   return (
-    <Box sx={{ position: 'relative', borderRadius }}>
+    <Box sx={{ position: 'relative', borderRadius, height: '100%' }}>
       <GlowingEffect
         spread={40}
         glow={true}
@@ -221,10 +221,13 @@ export function AsistenciasHoyPorHoraCard({ fecha }: Props) {
                   <Tooltip
                     contentStyle={{
                       borderRadius: 12,
-                      border: 'none',
+                      border: `1px solid ${alpha(t.palette.text.primary, 0.08)}`,
                       boxShadow: t.shadows[3],
+                      backgroundColor: t.palette.mode === 'dark' ? '#1a1a1a' : t.palette.background.paper,
+                      color: t.palette.text.primary,
                     }}
-                    labelStyle={{ fontWeight: 600 }}
+                    labelStyle={{ fontWeight: 600, color: t.palette.text.primary }}
+                    itemStyle={{ color: t.palette.text.secondary }}
                   />
 
                   <Area

@@ -360,9 +360,12 @@ export default function PaymentList() {
 
 
     if (isError) {
+        const is403 = (error as any)?.response?.status === 403
         return (
             <Box sx={{ textAlign: 'center', mt: 4, color: 'error.main' }}>
-                {(error as Error)?.message ?? 'Error al cargar pagos'}
+                {is403
+                    ? 'Tu sesión expiró. Por favor, cerrá sesión y volvé a ingresar.'
+                    : 'Ocurrió un error al cargar los pagos. Intentá recargar la página.'}
             </Box>
         );
     }

@@ -142,9 +142,12 @@ export default function NovedadesList() {
     };
 
     if (isError && acumuladas.length === 0) {
+        const is403 = (error as any)?.response?.status === 403
         return (
             <Typography color="error" align="center">
-                {(error as Error).message}
+                {is403
+                    ? 'Tu sesión expiró. Por favor, cerrá sesión y volvé a ingresar.'
+                    : 'Ocurrió un error al cargar las novedades. Intentá recargar la página.'}
             </Typography>
         );
     }

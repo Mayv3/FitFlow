@@ -16,7 +16,7 @@ export function AsistenciasSection() {
     <Box
       mt={2}
       display="grid"
-      gridTemplateColumns={{ xs: '1fr', md: '1fr 2fr' }}
+      gridTemplateColumns={{ xs: '1fr', md: '1fr 1fr 1fr' }}
       gap={1.5}
       alignItems="stretch"
     >
@@ -26,10 +26,12 @@ export function AsistenciasSection() {
         onFechaChange={setFecha}
       />
 
-      {/* Gráfico por hora */}
-      <AsistenciasHoyPorHoraCard
-        fecha={fecha}
-      />
+      {/* Gráfico por hora — ocupa 2 columnas para alinearse con la fila de arriba */}
+      <Box sx={{ gridColumn: { md: 'span 2' } }}>
+        <AsistenciasHoyPorHoraCard
+          fecha={fecha}
+        />
+      </Box>
     </Box>
   );
 }

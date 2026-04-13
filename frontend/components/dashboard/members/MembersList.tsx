@@ -162,9 +162,12 @@ export default function MembersList() {
   }, [user, userLoading, router]);
 
   if (isError) {
+    const is403 = (error as any)?.response?.status === 403
     return (
       <Typography color="error" sx={{ textAlign: 'center', mt: 4 }}>
-        {(error as Error).message}
+        {is403
+          ? 'Tu sesión expiró. Por favor, cerrá sesión y volvé a ingresar.'
+          : 'Ocurrió un error al cargar los alumnos. Intentá recargar la página.'}
       </Typography>
     );
   }

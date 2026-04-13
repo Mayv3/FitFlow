@@ -1,5 +1,6 @@
 import { supabaseAdmin } from '../db/supabaseClient.js'
 import { createGym, listGyms, updateGym, updateGymWhatsapp, softDeleteGym, listDeletedGyms, restoreGym } from '../services/gyms.supabase.js'
+import { enviarRecordatoriosWhatsApp } from '../jobs/whatsapp.cron.js'
 
 export async function handleCreateGym(req, res) {
   try {
@@ -123,6 +124,62 @@ export async function handleRestoreGym(req, res) {
     res.json(gym)
   } catch (err) {
     console.error('Error al restaurar gimnasio:', err)
+    res.status(500).json({ error: err.message })
+  }
+}
+
+export async function handleGetWhatsappQR(req, res) {
+  try {
+    const { id } = req.params
+    const { data: gym, error } = await supabaseAdmin
+      .from('gyms')
+      .select('evolution_instance_name, evolution_api_url')
+      .eq('id', id)
+      .single()
+
+    if (error || !gym) return res.status(404).json({ error: 'Gimnasio no encontrado' })
+    if (!gym.evolution_instance_name || !gym.evolution_api_url)
+      return res.status(400).json({ error: 'El gym no tiene instancia de Evolution API configurada' })
+
+    const EVOLUTION_API_KEY = process.env.EVOLUTION_API_KEY
+    const evoUrl = gym.evolution_api_url
+    const instanceName = gym.evolution_instance_name
+
+    // Crear instancia si no existe
+    await fetch(`${evoUrl}/instance/create`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', apikey: EVOLUTION_API_KEY },
+      body: JSON.stringify({ instanceName, integration: 'WHATSAPP-BAILEYS' })
+    })
+
+    // Obtener QR
+    const qrRes = await fetch(`${evoUrl}/instance/connect/${instanceName}`, {
+      headers: { apikey: EVOLUTION_API_KEY }
+    })
+    const qrData = await qrRes.json()
+
+    if (qrData.error) return res.status(500).json({ error: 'No se pudo generar el QR' })
+
+    res.json({
+      qr_base64: qrData.base64 ?? null,
+      pairing_code: qrData.pairingCode ?? null,
+      status: qrData.instance?.state ?? 'connecting'
+    })
+  } catch (err) {
+    console.error('Error al obtener QR de WhatsApp:', err)
+    res.status(500).json({ error: err.message })
+  }
+}
+
+export async function handleTriggerWhatsappCron(req, res) {
+  try {
+    const role = req.user?.user_metadata?.role
+    if (role !== 'owner') return res.status(403).json({ error: 'Solo el owner puede disparar este proceso' })
+    res.json({ message: 'Envío iniciado en background' })
+    enviarRecordatoriosWhatsApp().catch(err =>
+      console.error('[WA CRON manual] Error:', err)
+    )
+  } catch (err) {
     res.status(500).json({ error: err.message })
   }
 }

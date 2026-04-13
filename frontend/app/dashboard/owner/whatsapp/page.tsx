@@ -3,48 +3,22 @@
 import { useState } from "react"
 import {
   Box, Paper, Typography, Switch, Button,
-  CircularProgress, Alert, Dialog, DialogContent,
-  DialogTitle, IconButton, Chip,
+  CircularProgress, Alert, Chip,
 } from "@mui/material"
 import WhatsAppIcon from "@mui/icons-material/WhatsApp"
-import QrCodeIcon from "@mui/icons-material/QrCode"
-import CloseIcon from "@mui/icons-material/Close"
 import SendIcon from "@mui/icons-material/Send"
 import { useListGyms, useUpdateGymWhatsapp } from "@/hooks/gyms/useGyms"
 import api from "@/lib/api"
-
-interface QRData {
-  qr_base64: string | null
-  pairing_code: string | null
-  status: string
-}
 
 export default function WhatsappPage() {
   const { data: gyms, isLoading, error } = useListGyms()
   const updateWhatsapp = useUpdateGymWhatsapp()
 
-  const [qrDialog, setQrDialog] = useState<{ gymId: string; gymName: string } | null>(null)
-  const [qrData, setQrData] = useState<QRData | null>(null)
-  const [qrLoading, setQrLoading] = useState(false)
   const [triggerLoading, setTriggerLoading] = useState(false)
   const [triggerMsg, setTriggerMsg] = useState<string | null>(null)
 
   const handleToggle = async (gymId: string, enabled: boolean) => {
     await updateWhatsapp.mutateAsync({ id: gymId, whatsapp_enabled: enabled })
-  }
-
-  const handleConnectQR = async (gymId: string, gymName: string) => {
-    setQrDialog({ gymId, gymName })
-    setQrData(null)
-    setQrLoading(true)
-    try {
-      const res = await api.get(`/api/gyms/${gymId}/whatsapp/qr`)
-      setQrData(res.data)
-    } catch {
-      setQrData({ qr_base64: null, pairing_code: null, status: 'error' })
-    } finally {
-      setQrLoading(false)
-    }
   }
 
   const handleTriggerReminders = async () => {
@@ -110,27 +84,15 @@ export default function WhatsappPage() {
               }
             </Box>
 
-            <Box sx={{ display: "flex", alignItems: "center", gap: 2 }}>
-              <Button
-                variant="outlined"
-                size="small"
-                startIcon={<QrCodeIcon />}
-                onClick={() => handleConnectQR(gym.id, gym.name)}
-                disabled={!gym.whatsapp_enabled}
-                title={!gym.whatsapp_enabled ? "Habilitá el gym primero" : ""}
-              >
-                Conectar WhatsApp
-              </Button>
-              <Switch
-                checked={gym.whatsapp_enabled ?? false}
-                onChange={(e) => handleToggle(gym.id, e.target.checked)}
-                disabled={updateWhatsapp.isPending}
-                sx={{
-                  "& .MuiSwitch-switchBase.Mui-checked": { color: "#25D366" },
-                  "& .MuiSwitch-switchBase.Mui-checked + .MuiSwitch-track": { backgroundColor: "#25D366" },
-                }}
-              />
-            </Box>
+            <Switch
+              checked={gym.whatsapp_enabled ?? false}
+              onChange={(e) => handleToggle(gym.id, e.target.checked)}
+              disabled={updateWhatsapp.isPending}
+              sx={{
+                "& .MuiSwitch-switchBase.Mui-checked": { color: "#25D366" },
+                "& .MuiSwitch-switchBase.Mui-checked + .MuiSwitch-track": { backgroundColor: "#25D366" },
+              }}
+            />
           </Box>
         </Paper>
       ))}

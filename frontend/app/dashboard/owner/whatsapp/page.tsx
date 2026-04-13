@@ -97,45 +97,6 @@ export default function WhatsappPage() {
         </Paper>
       ))}
 
-      {/* Dialog QR */}
-      <Dialog open={!!qrDialog} onClose={() => setQrDialog(null)} maxWidth="xs" fullWidth>
-        <DialogTitle sx={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-          Conectar WhatsApp — {qrDialog?.gymName}
-          <IconButton onClick={() => setQrDialog(null)}><CloseIcon /></IconButton>
-        </DialogTitle>
-        <DialogContent sx={{ textAlign: "center", pb: 3 }}>
-          {qrLoading && <CircularProgress sx={{ my: 4 }} />}
-
-          {!qrLoading && qrData?.status === 'open' && (
-            <Alert severity="success" sx={{ mb: 2 }}>
-              ✓ WhatsApp ya está conectado para este gym
-            </Alert>
-          )}
-
-          {!qrLoading && qrData?.qr_base64 && qrData.status !== 'open' && (
-            <>
-              <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-                Escaneá este código con WhatsApp del gym
-              </Typography>
-              <img src={qrData.qr_base64} alt="QR WhatsApp" style={{ width: "100%", maxWidth: 280 }} />
-              {qrData.pairing_code && (
-                <Typography variant="body2" sx={{ mt: 1 }}>
-                  Código de emparejamiento: <strong>{qrData.pairing_code}</strong>
-                </Typography>
-              )}
-              <Typography variant="caption" color="text.secondary" sx={{ display: "block", mt: 1 }}>
-                El QR expira en ~20 segundos. Si vence, cerrá y volvé a abrir.
-              </Typography>
-            </>
-          )}
-
-          {!qrLoading && qrData?.status === 'error' && (
-            <Alert severity="error">
-              No se pudo generar el QR. Verificá que Evolution API esté corriendo.
-            </Alert>
-          )}
-        </DialogContent>
-      </Dialog>
     </Box>
   )
 }

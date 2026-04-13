@@ -84,16 +84,20 @@ async function enviarRecordatoriosWhatsApp() {
 
   console.log(`[WA CRON] Gyms habilitados: ${gyms.length}`)
   const today = new Date().toISOString().slice(0, 10)
+  const thirtyDaysAgo = new Date()
+  thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30)
+  const cutoffDate = thirtyDaysAgo.toISOString().slice(0, 10)
 
   for (const gym of gyms) {
     const instanceName = toInstanceName(gym.name)
 
-    // 2. Obtener alumnos vencidos del gym
+    // 2. Obtener alumnos vencidos en los últimos 30 días
     const { data: alumnos, error: alumnosError } = await supabaseAdmin
       .from('alumnos')
       .select('id, nombre, telefono, fecha_de_vencimiento, plan:planes_precios(nombre, precio)')
       .eq('gym_id', gym.id)
       .is('deleted_at', null)
+      .gte('fecha_de_vencimiento', cutoffDate)
       .lt('fecha_de_vencimiento', today)
       .order('fecha_de_vencimiento', { ascending: true })
 
@@ -131,9 +135,8 @@ async function enviarRecordatoriosWhatsApp() {
 // ─── Registro del cron ─────────────────────────────────────────────────────────
 
 export function initWhatsappCron() {
-  // Todos los días a las 10:00 AM (hora Argentina UTC-3)
-  // En UTC son las 13:00 → '0 13 * * *'
-  cron.schedule('0 13 * * *', () => {
+  // Todos los días a las 10:00 AM hora Argentina
+  cron.schedule('0 10 * * *', () => {
     enviarRecordatoriosWhatsApp().catch(err =>
       console.error('[WA CRON] Error inesperado:', err)
     )

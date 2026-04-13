@@ -172,6 +172,40 @@ export async function handleGetWhatsappQR(req, res) {
   }
 }
 
+export async function handleGetWhatsappStatus(req, res) {
+  try {
+    const { id } = req.params
+    const { data: gym, error } = await supabaseAdmin
+      .from('gyms')
+      .select('name, whatsapp_enabled')
+      .eq('id', id)
+      .single()
+
+    if (error || !gym) return res.status(404).json({ error: 'Gimnasio no encontrado' })
+    if (!process.env.EVOLUTION_API_URL || !process.env.EVOLUTION_API_KEY)
+      return res.json({ status: 'unconfigured' })
+
+    const EVOLUTION_API_KEY = process.env.EVOLUTION_API_KEY
+    const EVOLUTION_API_URL = process.env.EVOLUTION_API_URL
+    const instanceName = gym.name.toLowerCase().normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '').replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '')
+
+    const stateRes = await fetch(`${EVOLUTION_API_URL}/instance/connectionState/${instanceName}`, {
+      headers: { apikey: EVOLUTION_API_KEY }
+    })
+
+    if (!stateRes.ok) return res.json({ status: 'disconnected' })
+
+    const stateData = await stateRes.json()
+    const state = stateData.instance?.state ?? stateData.state ?? 'disconnected'
+
+    res.json({ status: state === 'open' ? 'connected' : 'disconnected' })
+  } catch (err) {
+    console.error('Error al obtener estado de WhatsApp:', err)
+    res.json({ status: 'disconnected' })
+  }
+}
+
 export async function handleTriggerWhatsappCron(req, res) {
   try {
     const roleId = req.user?.user_metadata?.role_id

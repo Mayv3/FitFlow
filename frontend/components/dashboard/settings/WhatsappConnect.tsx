@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import {
   Box, Paper, Typography, Button, CircularProgress,
   Alert, Dialog, DialogContent, DialogTitle, IconButton, Chip,
@@ -17,12 +17,30 @@ interface QRData {
   status: string
 }
 
+type ConnectionStatus = "connected" | "disconnected" | "unconfigured" | "loading"
+
 export function WhatsappConnect() {
   const gymId = Cookies.get("gym_id")
 
+  const [status, setStatus] = useState<ConnectionStatus>("loading")
   const [qrOpen, setQrOpen] = useState(false)
   const [qrData, setQrData] = useState<QRData | null>(null)
   const [qrLoading, setQrLoading] = useState(false)
+
+  useEffect(() => {
+    if (!gymId) return
+    fetchStatus()
+  }, [gymId])
+
+  const fetchStatus = async () => {
+    setStatus("loading")
+    try {
+      const res = await api.get(`/api/gyms/${gymId}/whatsapp/status`)
+      setStatus(res.data.status === "connected" ? "connected" : "disconnected")
+    } catch {
+      setStatus("disconnected")
+    }
+  }
 
   const handleConnect = async () => {
     setQrOpen(true)
@@ -31,11 +49,17 @@ export function WhatsappConnect() {
     try {
       const res = await api.get(`/api/gyms/${gymId}/whatsapp/qr`)
       setQrData(res.data)
+      if (res.data.status === "open") setStatus("connected")
     } catch {
       setQrData({ qr_base64: null, pairing_code: null, status: "error" })
     } finally {
       setQrLoading(false)
     }
+  }
+
+  const handleClose = () => {
+    setQrOpen(false)
+    fetchStatus()
   }
 
   if (!gymId) return null
@@ -45,31 +69,47 @@ export function WhatsappConnect() {
       <Paper sx={{ p: 3, borderRadius: 1.5 }}>
         <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
           <Box sx={{ display: "flex", alignItems: "center", gap: 1.5 }}>
-            <WhatsAppIcon sx={{ color: "#25D366", fontSize: 28 }} />
+            <WhatsAppIcon sx={{ color: status === "connected" ? "#25D366" : "text.disabled", fontSize: 28 }} />
             <Box>
-              <Typography variant="subtitle1" fontWeight={600}>
-                WhatsApp del gimnasio
-              </Typography>
+              <Box sx={{ display: "flex", alignItems: "center", gap: 1, mb: 0.5 }}>
+                <Typography variant="subtitle1" fontWeight={600}>
+                  WhatsApp del gimnasio
+                </Typography>
+                {status === "loading" && <CircularProgress size={14} />}
+                {status === "connected" && (
+                  <Chip label="Conectado" size="small" sx={{ bgcolor: "#25D36620", color: "#25D366", fontWeight: 600 }} />
+                )}
+                {status === "disconnected" && (
+                  <Chip label="Desconectado" size="small" color="default" />
+                )}
+              </Box>
               <Typography variant="body2" color="text.secondary">
-                Conectá el WhatsApp del gym para recibir recordatorios automáticos de vencimiento
+                {status === "connected"
+                  ? "Los recordatorios automáticos están activos para este gym"
+                  : "Conectá el WhatsApp del gym para enviar recordatorios automáticos"}
               </Typography>
             </Box>
           </Box>
+
           <Button
             variant="outlined"
             startIcon={<QrCodeIcon />}
             onClick={handleConnect}
-            sx={{ borderColor: "#25D366", color: "#25D366", whiteSpace: "nowrap" }}
+            sx={{
+              borderColor: status === "connected" ? "text.disabled" : "#25D366",
+              color: status === "connected" ? "text.secondary" : "#25D366",
+              whiteSpace: "nowrap"
+            }}
           >
-            Conectar WhatsApp
+            {status === "connected" ? "Reconectar" : "Conectar WhatsApp"}
           </Button>
         </Box>
       </Paper>
 
-      <Dialog open={qrOpen} onClose={() => setQrOpen(false)} maxWidth="xs" fullWidth>
+      <Dialog open={qrOpen} onClose={handleClose} maxWidth="xs" fullWidth>
         <DialogTitle sx={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
           Conectar WhatsApp
-          <IconButton onClick={() => setQrOpen(false)}><CloseIcon /></IconButton>
+          <IconButton onClick={handleClose}><CloseIcon /></IconButton>
         </DialogTitle>
         <DialogContent sx={{ textAlign: "center", pb: 3 }}>
           {qrLoading && <CircularProgress sx={{ my: 4 }} />}

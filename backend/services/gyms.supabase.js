@@ -14,7 +14,7 @@ export async function createGym({ name, settings = {}, logo_url = null }) {
 export async function listGyms() {
   const { data, error } = await supabaseAdmin
     .from('gyms')
-    .select('id, name, logo_url, settings')
+    .select('id, name, logo_url, settings, whatsapp_enabled')
     .is('deleted_at', null)
 
   if (error) throw error
@@ -56,17 +56,12 @@ export async function restoreGym(gymId) {
   return data
 }
 
-export async function updateGymWhatsapp(gymId, { whatsapp_enabled, evolution_instance_name, evolution_api_url }) {
-  const updates = {}
-  if (whatsapp_enabled !== undefined) updates.whatsapp_enabled = whatsapp_enabled
-  if (evolution_instance_name !== undefined) updates.evolution_instance_name = evolution_instance_name
-  if (evolution_api_url !== undefined) updates.evolution_api_url = evolution_api_url
-
+export async function updateGymWhatsapp(gymId, { whatsapp_enabled }) {
   const { data, error } = await supabaseAdmin
     .from('gyms')
-    .update(updates)
+    .update({ whatsapp_enabled })
     .eq('id', gymId)
-    .select('id, name, whatsapp_enabled, evolution_instance_name, evolution_api_url')
+    .select('id, name, whatsapp_enabled')
     .single()
 
   if (error) throw error

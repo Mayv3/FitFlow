@@ -3,6 +3,11 @@ import { supabaseAdmin } from '../db/supabaseClient.js'
 
 // ─── Helpers ───────────────────────────────────────────────────────────────────
 
+function toInstanceName(gymName) {
+  return gymName.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+    .replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '')
+}
+
 function normalizePhone(telefono) {
   if (!telefono) return null
   const digits = String(telefono).replace(/\D/g, '')
@@ -52,8 +57,9 @@ async function sendWhatsApp(evolutionUrl, instanceName, apiKey, number, text) {
 
 async function enviarRecordatoriosWhatsApp() {
   const EVOLUTION_API_KEY = process.env.EVOLUTION_API_KEY
-  if (!EVOLUTION_API_KEY) {
-    console.error('[WA CRON] EVOLUTION_API_KEY no configurada — abortando')
+  const EVOLUTION_API_URL = process.env.EVOLUTION_API_URL
+  if (!EVOLUTION_API_KEY || !EVOLUTION_API_URL) {
+    console.error('[WA CRON] EVOLUTION_API_KEY o EVOLUTION_API_URL no configuradas — abortando')
     return
   }
 
@@ -62,7 +68,7 @@ async function enviarRecordatoriosWhatsApp() {
   // 1. Obtener gyms con WhatsApp habilitado
   const { data: gyms, error: gymsError } = await supabaseAdmin
     .from('gyms')
-    .select('id, name, evolution_instance_name, evolution_api_url')
+    .select('id, name')
     .eq('whatsapp_enabled', true)
     .is('deleted_at', null)
 
@@ -80,10 +86,7 @@ async function enviarRecordatoriosWhatsApp() {
   const today = new Date().toISOString().slice(0, 10)
 
   for (const gym of gyms) {
-    if (!gym.evolution_instance_name || !gym.evolution_api_url) {
-      console.warn(`[WA CRON] ${gym.name}: falta instancia o URL de Evolution API — saltando`)
-      continue
-    }
+    const instanceName = toInstanceName(gym.name)
 
     // 2. Obtener alumnos vencidos del gym
     const { data: alumnos, error: alumnosError } = await supabaseAdmin
@@ -107,8 +110,8 @@ async function enviarRecordatoriosWhatsApp() {
       try {
         const mensaje = buildMessage(alumno, gym.name)
         const result = await sendWhatsApp(
-          gym.evolution_api_url,
-          gym.evolution_instance_name,
+          EVOLUTION_API_URL,
+          instanceName,
           EVOLUTION_API_KEY,
           alumno.telefono,
           mensaje

@@ -2,23 +2,16 @@
 
 import { useState } from "react"
 import {
-  Box, Paper, Typography, Switch, TextField, Button,
-  CircularProgress, Alert, Divider, Dialog, DialogContent,
+  Box, Paper, Typography, Switch, Button,
+  CircularProgress, Alert, Dialog, DialogContent,
   DialogTitle, IconButton, Chip,
 } from "@mui/material"
 import WhatsAppIcon from "@mui/icons-material/WhatsApp"
-import SaveIcon from "@mui/icons-material/Save"
 import QrCodeIcon from "@mui/icons-material/QrCode"
 import CloseIcon from "@mui/icons-material/Close"
 import SendIcon from "@mui/icons-material/Send"
 import { useListGyms, useUpdateGymWhatsapp } from "@/hooks/gyms/useGyms"
 import api from "@/lib/api"
-
-interface GymWhatsappForm {
-  whatsapp_enabled: boolean
-  evolution_instance_name: string
-  evolution_api_url: string
-}
 
 interface QRData {
   qr_base64: string | null
@@ -30,38 +23,14 @@ export default function WhatsappPage() {
   const { data: gyms, isLoading, error } = useListGyms()
   const updateWhatsapp = useUpdateGymWhatsapp()
 
-  const [forms, setForms] = useState<Record<string, GymWhatsappForm>>({})
-  const [saved, setSaved] = useState<Record<string, boolean>>({})
   const [qrDialog, setQrDialog] = useState<{ gymId: string; gymName: string } | null>(null)
   const [qrData, setQrData] = useState<QRData | null>(null)
   const [qrLoading, setQrLoading] = useState(false)
   const [triggerLoading, setTriggerLoading] = useState(false)
   const [triggerMsg, setTriggerMsg] = useState<string | null>(null)
 
-  const getForm = (gym: { id: string; whatsapp_enabled: boolean; evolution_instance_name: string | null; evolution_api_url: string | null }): GymWhatsappForm => {
-    return forms[gym.id] ?? {
-      whatsapp_enabled: gym.whatsapp_enabled ?? false,
-      evolution_instance_name: gym.evolution_instance_name ?? "",
-      evolution_api_url: gym.evolution_api_url ?? "",
-    }
-  }
-
-  const updateForm = (gymId: string, field: keyof GymWhatsappForm, value: string | boolean) => {
-    const gym = gyms!.find(g => g.id === gymId)!
-    setForms(prev => ({ ...prev, [gymId]: { ...getForm(gym), ...prev[gymId], [field]: value } }))
-    setSaved(prev => ({ ...prev, [gymId]: false }))
-  }
-
-  const handleSave = async (gymId: string) => {
-    const form = forms[gymId]
-    if (!form) return
-    await updateWhatsapp.mutateAsync({
-      id: gymId,
-      whatsapp_enabled: form.whatsapp_enabled,
-      evolution_instance_name: form.evolution_instance_name || undefined,
-      evolution_api_url: form.evolution_api_url || undefined,
-    })
-    setSaved(prev => ({ ...prev, [gymId]: true }))
+  const handleToggle = async (gymId: string, enabled: boolean) => {
+    await updateWhatsapp.mutateAsync({ id: gymId, whatsapp_enabled: enabled })
   }
 
   const handleConnectQR = async (gymId: string, gymName: string) => {
@@ -106,7 +75,9 @@ export default function WhatsappPage() {
       <Paper sx={{ mb: 3, p: 2, borderRadius: 1.5, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
         <Box>
           <Typography variant="subtitle1" fontWeight={600}>Enviar recordatorios ahora</Typography>
-          <Typography variant="body2" color="text.secondary">Dispara el envío para todos los gyms habilitados (normalmente corre automático a las 10:00 AM)</Typography>
+          <Typography variant="body2" color="text.secondary">
+            Dispara el envío para todos los gyms habilitados (normalmente corre automático a las 10:00 AM)
+          </Typography>
         </Box>
         <Button
           variant="outlined"
@@ -127,87 +98,42 @@ export default function WhatsappPage() {
       {isLoading && <Box sx={{ display: "flex", justifyContent: "center", py: 6 }}><CircularProgress /></Box>}
       {error && <Alert severity="error" sx={{ mb: 2 }}>Error al cargar gimnasios</Alert>}
 
-      {gyms?.map((gym) => {
-        const form = getForm(gym)
-        const isSaving = updateWhatsapp.isPending
-        const wasSaved = saved[gym.id]
-        const hasConfig = !!form.evolution_instance_name && !!form.evolution_api_url
-
-        return (
-          <Paper key={gym.id} sx={{ mb: 2, p: 3, borderRadius: 1.5 }}>
-            <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", mb: 2 }}>
-              <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-                <Typography variant="h6" fontWeight={600}>{gym.name}</Typography>
-                {form.whatsapp_enabled && hasConfig && (
-                  <Chip label="Activo" size="small" sx={{ bgcolor: "#25D36620", color: "#25D366", fontWeight: 600 }} />
-                )}
-                {form.whatsapp_enabled && !hasConfig && (
-                  <Chip label="Sin configurar" size="small" color="warning" />
-                )}
-              </Box>
-              <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-                <WhatsAppIcon sx={{ color: form.whatsapp_enabled ? "#25D366" : "text.disabled" }} />
-                <Typography variant="body2" color="text.secondary">
-                  {form.whatsapp_enabled ? "Habilitado" : "Deshabilitado"}
-                </Typography>
-                <Switch
-                  checked={form.whatsapp_enabled}
-                  onChange={(e) => updateForm(gym.id, "whatsapp_enabled", e.target.checked)}
-                  sx={{
-                    "& .MuiSwitch-switchBase.Mui-checked": { color: "#25D366" },
-                    "& .MuiSwitch-switchBase.Mui-checked + .MuiSwitch-track": { backgroundColor: "#25D366" },
-                  }}
-                />
-              </Box>
+      {gyms?.map((gym) => (
+        <Paper key={gym.id} sx={{ mb: 2, p: 3, borderRadius: 1.5 }}>
+          <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+            <Box sx={{ display: "flex", alignItems: "center", gap: 1.5 }}>
+              <WhatsAppIcon sx={{ color: gym.whatsapp_enabled ? "#25D366" : "text.disabled" }} />
+              <Typography variant="h6" fontWeight={600}>{gym.name}</Typography>
+              {gym.whatsapp_enabled
+                ? <Chip label="Activo" size="small" sx={{ bgcolor: "#25D36620", color: "#25D366", fontWeight: 600 }} />
+                : <Chip label="Inactivo" size="small" color="default" />
+              }
             </Box>
 
-            <Divider sx={{ mb: 2 }} />
-
-            <Box sx={{ display: "flex", flexDirection: { xs: "column", md: "row" }, gap: 2, mb: 2 }}>
-              <TextField
-                label="Nombre de instancia Evolution"
-                placeholder="ej: gym-crossfit-centro"
-                value={form.evolution_instance_name}
-                onChange={(e) => updateForm(gym.id, "evolution_instance_name", e.target.value)}
-                size="small"
-                fullWidth
-                helperText="Nombre único de la instancia en Evolution API"
-              />
-              <TextField
-                label="URL de Evolution API"
-                placeholder="ej: https://evo.onrender.com"
-                value={form.evolution_api_url}
-                onChange={(e) => updateForm(gym.id, "evolution_api_url", e.target.value)}
-                size="small"
-                fullWidth
-                helperText="URL donde está corriendo Evolution API"
-              />
-            </Box>
-
-            <Box sx={{ display: "flex", justifyContent: "flex-end", alignItems: "center", gap: 2 }}>
-              {wasSaved && <Typography variant="body2" color="success.main">Guardado</Typography>}
+            <Box sx={{ display: "flex", alignItems: "center", gap: 2 }}>
               <Button
                 variant="outlined"
+                size="small"
                 startIcon={<QrCodeIcon />}
                 onClick={() => handleConnectQR(gym.id, gym.name)}
-                disabled={!hasConfig}
-                title={!hasConfig ? "Guardá la configuración de Evolution API primero" : ""}
+                disabled={!gym.whatsapp_enabled}
+                title={!gym.whatsapp_enabled ? "Habilitá el gym primero" : ""}
               >
                 Conectar WhatsApp
               </Button>
-              <Button
-                variant="contained"
-                startIcon={isSaving ? <CircularProgress size={16} color="inherit" /> : <SaveIcon />}
-                onClick={() => handleSave(gym.id)}
-                disabled={isSaving || !forms[gym.id]}
-                sx={{ backgroundColor: "#0dc985", "&:hover": { backgroundColor: "#0ab374" } }}
-              >
-                Guardar
-              </Button>
+              <Switch
+                checked={gym.whatsapp_enabled ?? false}
+                onChange={(e) => handleToggle(gym.id, e.target.checked)}
+                disabled={updateWhatsapp.isPending}
+                sx={{
+                  "& .MuiSwitch-switchBase.Mui-checked": { color: "#25D366" },
+                  "& .MuiSwitch-switchBase.Mui-checked + .MuiSwitch-track": { backgroundColor: "#25D366" },
+                }}
+              />
             </Box>
-          </Paper>
-        )
-      })}
+          </Box>
+        </Paper>
+      ))}
 
       {/* Dialog QR */}
       <Dialog open={!!qrDialog} onClose={() => setQrDialog(null)} maxWidth="xs" fullWidth>
@@ -243,7 +169,7 @@ export default function WhatsappPage() {
 
           {!qrLoading && qrData?.status === 'error' && (
             <Alert severity="error">
-              No se pudo generar el QR. Verificá que Evolution API esté corriendo y la instancia configurada.
+              No se pudo generar el QR. Verificá que Evolution API esté corriendo.
             </Alert>
           )}
         </DialogContent>

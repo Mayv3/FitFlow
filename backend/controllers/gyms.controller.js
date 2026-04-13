@@ -84,11 +84,11 @@ export const handleUpdateGymSettings = async (req, res) => {
 export async function handleUpdateGymWhatsapp(req, res) {
   try {
     const { id } = req.params
-    const { whatsapp_enabled, evolution_instance_name, evolution_api_url } = req.body
+    const { whatsapp_enabled } = req.body
 
     if (!id) return res.status(400).json({ error: 'ID de gimnasio requerido' })
 
-    const gym = await updateGymWhatsapp(id, { whatsapp_enabled, evolution_instance_name, evolution_api_url })
+    const gym = await updateGymWhatsapp(id, { whatsapp_enabled })
     res.json(gym)
   } catch (err) {
     console.error('Error al actualizar WhatsApp del gym:', err)
@@ -133,27 +133,28 @@ export async function handleGetWhatsappQR(req, res) {
     const { id } = req.params
     const { data: gym, error } = await supabaseAdmin
       .from('gyms')
-      .select('evolution_instance_name, evolution_api_url')
+      .select('name')
       .eq('id', id)
       .single()
 
     if (error || !gym) return res.status(404).json({ error: 'Gimnasio no encontrado' })
-    if (!gym.evolution_instance_name || !gym.evolution_api_url)
-      return res.status(400).json({ error: 'El gym no tiene instancia de Evolution API configurada' })
+    if (!process.env.EVOLUTION_API_URL || !process.env.EVOLUTION_API_KEY)
+      return res.status(500).json({ error: 'Evolution API no configurada en el servidor' })
 
     const EVOLUTION_API_KEY = process.env.EVOLUTION_API_KEY
-    const evoUrl = gym.evolution_api_url
-    const instanceName = gym.evolution_instance_name
+    const EVOLUTION_API_URL = process.env.EVOLUTION_API_URL
+    const instanceName = gym.name.toLowerCase().normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '').replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '')
 
     // Crear instancia si no existe
-    await fetch(`${evoUrl}/instance/create`, {
+    await fetch(`${EVOLUTION_API_URL}/instance/create`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', apikey: EVOLUTION_API_KEY },
       body: JSON.stringify({ instanceName, integration: 'WHATSAPP-BAILEYS' })
     })
 
     // Obtener QR
-    const qrRes = await fetch(`${evoUrl}/instance/connect/${instanceName}`, {
+    const qrRes = await fetch(`${EVOLUTION_API_URL}/instance/connect/${instanceName}`, {
       headers: { apikey: EVOLUTION_API_KEY }
     })
     const qrData = await qrRes.json()

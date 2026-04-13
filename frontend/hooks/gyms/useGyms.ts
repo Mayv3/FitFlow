@@ -41,18 +41,18 @@ export const useListGyms = () =>
     queryFn: async () => {
       const res = await fetch(`${API_BASE}/gyms`, { headers: getHeaders() })
       if (!res.ok) throw new Error('Error al obtener gimnasios')
-      return res.json() as Promise<{ id: string; name: string; whatsapp_enabled: boolean; evolution_instance_name: string | null; evolution_api_url: string | null }[]>
+      return res.json() as Promise<{ id: string; name: string; whatsapp_enabled: boolean }[]>
     },
   })
 
 export const useUpdateGymWhatsapp = () => {
   const qc = useQueryClient()
   return useMutation({
-    mutationFn: async ({ id, whatsapp_enabled, evolution_instance_name, evolution_api_url }: { id: string; whatsapp_enabled?: boolean; evolution_instance_name?: string; evolution_api_url?: string }) => {
+    mutationFn: async ({ id, whatsapp_enabled }: { id: string; whatsapp_enabled: boolean }) => {
       const res = await fetch(`${API_BASE}/gyms/${id}/whatsapp`, {
         method: 'PATCH',
         headers: getHeaders(),
-        body: JSON.stringify({ whatsapp_enabled, evolution_instance_name, evolution_api_url }),
+        body: JSON.stringify({ whatsapp_enabled }),
       })
       if (!res.ok) throw new Error('Error al actualizar configuración WhatsApp')
       return res.json()

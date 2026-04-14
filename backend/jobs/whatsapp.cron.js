@@ -10,10 +10,12 @@ function toInstanceName(gymName) {
 
 function normalizePhone(telefono) {
   if (!telefono) return null
-  const digits = String(telefono).replace(/\D/g, '')
-  if (digits.startsWith('54')) return digits          // ya tiene código de país
-  if (digits.startsWith('0')) return '54' + digits.slice(1) // quitar el 0 inicial
-  return '54' + digits                                // agregar código de país
+  let digits = String(telefono).replace(/\D/g, '')
+  if (digits.startsWith('549')) return digits                      // ya correcto
+  if (digits.startsWith('54')) return '549' + digits.slice(2)      // falta el 9 de móvil
+  if (digits.startsWith('0')) digits = digits.slice(1)             // quitar 0 inicial (ej: 0351...)
+  if (digits.startsWith('15')) digits = digits.slice(2)            // quitar prefijo viejo 15
+  return '549' + digits                                            // sin código país → agregar 549
 }
 
 function buildMessage(alumno, gymName) {
@@ -45,12 +47,28 @@ async function sendWhatsApp(evolutionUrl, instanceName, apiKey, number, text) {
   const normalizedNumber = normalizePhone(number)
   if (!normalizedNumber) return { error: 'Número inválido' }
 
-  const res = await fetch(`${evolutionUrl}/message/sendText/${instanceName}`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', apikey: apiKey },
-    body: JSON.stringify({ number: normalizedNumber, text })
-  })
-  return res.json()
+  const controller = new AbortController()
+  const timeoutId = setTimeout(() => controller.abort(), 30000)
+
+  try {
+    const res = await fetch(`${evolutionUrl}/message/sendText/${instanceName}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', apikey: apiKey },
+      body: JSON.stringify({ number: normalizedNumber, text }),
+      signal: controller.signal
+    })
+    const contentType = res.headers.get('content-type') ?? ''
+    if (!contentType.includes('application/json')) {
+      return { error: `HTTP ${res.status} (respuesta no-JSON)` }
+    }
+    return res.json()
+  } catch (err) {
+    if (err.name === 'AbortError') return { error: 'Timeout (30s)' }
+    const cause = err.cause?.code ?? err.cause?.message ?? err.message
+    return { error: `fetch failed: ${cause}` }
+  } finally {
+    clearTimeout(timeoutId)
+  }
 }
 
 // ─── Job principal ─────────────────────────────────────────────────────────────

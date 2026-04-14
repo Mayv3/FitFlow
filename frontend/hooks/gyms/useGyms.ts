@@ -35,6 +35,34 @@ export const useSoftDeleteGym = () => {
   })
 }
 
+export const useListGyms = () =>
+  useQuery({
+    queryKey: ['gyms'],
+    queryFn: async () => {
+      const res = await fetch(`${API_BASE}/gyms`, { headers: getHeaders() })
+      if (!res.ok) throw new Error('Error al obtener gimnasios')
+      return res.json() as Promise<{ id: string; name: string; whatsapp_enabled: boolean }[]>
+    },
+  })
+
+export const useUpdateGymWhatsapp = () => {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: async ({ id, whatsapp_enabled }: { id: string; whatsapp_enabled: boolean }) => {
+      const res = await fetch(`${API_BASE}/gyms/${id}/whatsapp`, {
+        method: 'PATCH',
+        headers: getHeaders(),
+        body: JSON.stringify({ whatsapp_enabled }),
+      })
+      if (!res.ok) throw new Error('Error al actualizar configuración WhatsApp')
+      return res.json()
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['gyms'] })
+    },
+  })
+}
+
 export const useRestoreGym = () => {
   const qc = useQueryClient()
   return useMutation({

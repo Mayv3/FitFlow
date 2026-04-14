@@ -226,7 +226,7 @@ export async function handleGetWhatsappStatus(req, res) {
 
 export async function handleTriggerWhatsappCron(req, res) {
   try {
-    const roleId = req.user?.user_metadata?.role_id
+    const roleId = Number(req.user?.user_metadata?.role_id)
     if (roleId !== 1) return res.status(403).json({ error: 'Solo el owner puede disparar este proceso' })
     res.json({ message: 'Envío iniciado en background' })
     enviarRecordatoriosWhatsApp().catch(err =>

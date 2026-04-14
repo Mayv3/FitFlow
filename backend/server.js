@@ -25,7 +25,6 @@ import productosRoutes from "./routes/productos.routes.js"
 import emailsRoutes from "./routes/emails.routes.js"
 import novedadesRoutes from "./routes/novedades.routes.js"
 
-import { initWhatsappCron } from './jobs/whatsapp.cron.js'
 import { verifyToken } from '../backend/middleware/auth.js'
 import { createServer } from 'http';
 import { Server } from 'socket.io';
@@ -122,5 +121,4 @@ export function emitToGym(gymId, event, payload) {
 
 server.listen(PORT, () => {
   console.log(`Servidor corriendo en http://localhost:${PORT}`);
-  initWhatsappCron();
 });

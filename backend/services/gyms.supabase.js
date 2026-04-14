@@ -14,7 +14,7 @@ export async function createGym({ name, settings = {}, logo_url = null }) {
 export async function listGyms() {
   const { data, error } = await supabaseAdmin
     .from('gyms')
-    .select('id, name, logo_url, settings, whatsapp_enabled')
+    .select('id, name, logo_url, settings')
     .is('deleted_at', null)
 
   if (error) throw error
@@ -50,18 +50,6 @@ export async function restoreGym(gymId) {
     .update({ deleted_at: null })
     .eq('id', gymId)
     .select('id, name')
-    .single()
-
-  if (error) throw error
-  return data
-}
-
-export async function updateGymWhatsapp(gymId, { whatsapp_enabled }) {
-  const { data, error } = await supabaseAdmin
-    .from('gyms')
-    .update({ whatsapp_enabled })
-    .eq('id', gymId)
-    .select('id, name, whatsapp_enabled')
     .single()
 
   if (error) throw error

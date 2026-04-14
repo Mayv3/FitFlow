@@ -1,5 +1,5 @@
 import express from 'express'
-import { handleCreateGym, handleListGyms, handleGetGym, handleUpdateGymSettings, handleSoftDeleteGym, handleListDeletedGyms, handleRestoreGym, handleUpdateGymWhatsapp, handleGetWhatsappQR, handleGetWhatsappStatus, handleTriggerWhatsappCron } from '../controllers/gyms.controller.js'
+import { handleCreateGym, handleListGyms, handleGetGym, handleUpdateGymSettings, handleSoftDeleteGym, handleListDeletedGyms, handleRestoreGym } from '../controllers/gyms.controller.js'
 import { verifyToken } from '../middleware/auth.js'
 import { getGymOverview } from '../services/gyms.supabase.js'
 
@@ -10,10 +10,6 @@ router.get('/', handleListGyms)
 router.get('/deleted', verifyToken, handleListDeletedGyms)
 router.get("/:id", handleGetGym)
 router.put("/settings", verifyToken, handleUpdateGymSettings)
-router.patch('/:id/whatsapp', verifyToken, handleUpdateGymWhatsapp)
-router.get('/:id/whatsapp/qr', verifyToken, handleGetWhatsappQR)
-router.get('/:id/whatsapp/status', verifyToken, handleGetWhatsappStatus)
-router.post('/whatsapp/send-reminders', verifyToken, handleTriggerWhatsappCron)
 router.patch('/:id/delete', verifyToken, handleSoftDeleteGym)
 router.patch('/:id/restore', verifyToken, handleRestoreGym)
 router.get("/owner/gyms/:gym_id/overview", getGymOverview)

@@ -17,5 +17,3 @@ frontend/playwright-report/
 frontend/test-results/
 
 env
-# n8n workflows con credenciales
-n8n/

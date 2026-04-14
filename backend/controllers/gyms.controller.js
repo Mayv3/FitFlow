@@ -146,25 +146,40 @@ export async function handleGetWhatsappQR(req, res) {
     const instanceName = gym.name.toLowerCase().normalize('NFD')
       .replace(/[\u0300-\u036f]/g, '').replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '')
 
-    // Crear instancia si no existe
-    await fetch(`${EVOLUTION_API_URL}/instance/create`, {
+    // Crear instancia si no existe (qrcode: true → Baileys emite QR inmediatamente)
+    const createRes = await fetch(`${EVOLUTION_API_URL}/instance/create`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', apikey: EVOLUTION_API_KEY },
-      body: JSON.stringify({ instanceName, integration: 'WHATSAPP-BAILEYS' })
+      body: JSON.stringify({ instanceName, qrcode: true, integration: 'WHATSAPP-BAILEYS' })
     })
+    const createCT = createRes.headers.get('content-type') ?? ''
+    const createData = createCT.includes('application/json') ? await createRes.json() : null
 
-    // Obtener QR
-    const qrRes = await fetch(`${EVOLUTION_API_URL}/instance/connect/${instanceName}`, {
-      headers: { apikey: EVOLUTION_API_KEY }
-    })
-    const qrData = await qrRes.json()
+    // Si el create ya trajo el QR (instancia nueva), usarlo directamente
+    let base64 = createData?.qrcode?.base64 ?? createData?.base64 ?? null
+    let pairingCode = createData?.qrcode?.pairingCode ?? createData?.pairingCode ?? null
+    let state = createData?.instance?.state ?? null
 
-    if (qrData.error) return res.status(500).json({ error: 'No se pudo generar el QR' })
+    // Si no vino en el create (instancia ya existía), pedir /instance/connect
+    if (!base64 && !pairingCode) {
+      const qrRes = await fetch(`${EVOLUTION_API_URL}/instance/connect/${instanceName}`, {
+        headers: { apikey: EVOLUTION_API_KEY }
+      })
+      const qrCT = qrRes.headers.get('content-type') ?? ''
+      if (!qrCT.includes('application/json')) {
+        return res.status(503).json({ error: 'Evolution API está iniciando, reintentá en unos segundos' })
+      }
+      const qrData = await qrRes.json()
+      if (qrData.error) return res.status(500).json({ error: 'No se pudo generar el QR' })
+      base64 = qrData.qrcode?.base64 ?? qrData.base64 ?? null
+      pairingCode = qrData.qrcode?.pairingCode ?? qrData.pairingCode ?? null
+      state = qrData.instance?.state ?? state
+    }
 
     res.json({
-      qr_base64: qrData.base64 ?? null,
-      pairing_code: qrData.pairingCode ?? null,
-      status: qrData.instance?.state ?? 'connecting'
+      qr_base64: base64,
+      pairing_code: pairingCode,
+      status: state ?? 'connecting'
     })
   } catch (err) {
     console.error('Error al obtener QR de WhatsApp:', err)
@@ -195,6 +210,9 @@ export async function handleGetWhatsappStatus(req, res) {
     })
 
     if (!stateRes.ok) return res.json({ status: 'disconnected' })
+
+    const stateCT = stateRes.headers.get('content-type') ?? ''
+    if (!stateCT.includes('application/json')) return res.json({ status: 'disconnected' })
 
     const stateData = await stateRes.json()
     const state = stateData.instance?.state ?? stateData.state ?? 'disconnected'

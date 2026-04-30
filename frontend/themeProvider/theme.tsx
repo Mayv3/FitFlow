@@ -80,7 +80,7 @@ function buildTheme(s: GymSettings, isDarkMode: boolean = false): Theme {
 function readSettingsFromStorage(): GymSettings {
   if (typeof window === "undefined") return DEFAULT_SETTINGS
   try {
-    const raw = localStorage.getItem("gym_settings")
+    const raw = sessionStorage.getItem("gym_settings")
     if (!raw) return DEFAULT_SETTINGS
     const parsed = JSON.parse(raw)
 

@@ -1,4 +1,4 @@
-import { supabase, supabaseAdmin } from '../db/supabaseClient.js'
+import { supabase, supabaseAdmin } from '../config/supabaseClient.js'
 
 export async function getActiveAlumnosCountByGym() {
   const today = new Date().toISOString().slice(0, 10);

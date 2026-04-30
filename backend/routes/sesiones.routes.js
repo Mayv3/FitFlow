@@ -9,8 +9,11 @@ import {
   handleToggleEsFija,
   handleGetInscripcionesByAlumno,
 } from '../controllers/sesiones.controller.js';
+import { verifyToken } from '../middleware/auth.js';
+import { supaPerRequest } from '../middleware/supaPerRequest.js';
 
 const router = express.Router();
+router.use(verifyToken, supaPerRequest);
 
 // Sesiones de una clase
 router.get('/clase/:claseId', handleGetSesionesByClase);

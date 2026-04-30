@@ -90,7 +90,7 @@ export default function NovedadesList() {
 
     useEffect(() => {
         if (typeof window !== 'undefined') {
-            const raw = localStorage.getItem('gym_settings');
+            const raw = sessionStorage.getItem('gym_settings');
             if (raw) {
                 try {
                     const settings = JSON.parse(raw);

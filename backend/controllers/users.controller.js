@@ -2,7 +2,7 @@ import { listUsers, changePasswordService, updateUserRole, deleteUser } from "..
 
 export async function handleListUsers(req, res) {
   try {
-    const gymId = req.query.gym_id || null
+    const gymId = req.gymId
     const users = await listUsers(gymId)
     return res.status(200).json(users)
   } catch (err) {
@@ -35,11 +35,14 @@ export const handleChangePassword = async (req, res) => {
   }
 }
 
+const VALID_ROLE_IDS = [1, 2, 3]
+
 export async function handleUpdateUserRole(req, res) {
   try {
     const { id } = req.params
     const { role_id } = req.body
     if (!id || !role_id) return res.status(400).json({ error: "Faltan datos" })
+    if (!VALID_ROLE_IDS.includes(Number(role_id))) return res.status(400).json({ error: "Rol inválido" })
 
     const updated = await updateUserRole(id, role_id)
     res.json({ message: "Rol actualizado correctamente", user: updated })

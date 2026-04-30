@@ -10,8 +10,13 @@ import {
   handleUpdateSuscription,
   handleDeleteSuscription,
 } from '../controllers/suscriptions.controller.js'
+import { supaPerRequest } from '../middleware/supaPerRequest.js'
+import { requireRole } from '../middleware/requireRole.js'
+
+const adminOnly = requireRole(1, 2)
 
 const router = Router()
+router.use(supaPerRequest)
 
 router.get('/', handleGetSuscriptions)
 

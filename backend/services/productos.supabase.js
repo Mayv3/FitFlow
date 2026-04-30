@@ -1,4 +1,4 @@
-import { supabase } from '../db/supabaseClient.js'
+import { supabase } from '../config/supabaseClient.js'
 
 export const getProductosSvc = async ({ supa, gymId, page, pageSize, q, categoria }) => {
   let query = supa

@@ -5,7 +5,7 @@ import {
   previewVencimientoGymPlans,
   enviarEmailsVencimientoGymPlans,
   enviarTestVencimientoGymPlan
-} from '../emails/mailing.brevo.fitnessflow.js'
+} from '../services/mailing.brevo.fitnessflow.js'
 
 const router = express.Router()
 

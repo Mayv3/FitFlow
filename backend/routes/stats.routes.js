@@ -11,8 +11,13 @@ import {
   getFacturacionPorPlanController,
 } from '../controllers/stats.controller.js';
 import { getAsistenciasByGym, getAsistenciasByHora } from '../controllers/attendance.controller.js';
+import { requireRole } from '../middleware/requireRole.js';
+
+// OWNER=1, ADMINISTRADOR=2
+const adminOnly = requireRole(1, 2);
 
 const router = Router();
+router.use(adminOnly);
 
 router.get('/', getGymStatsController);
 router.get('/payments', getPaymentsStatsController);

@@ -1,8 +1,8 @@
-import { supabase } from '../db/supabaseClient.js'
+import { supabase, supabaseAdmin } from '../config/supabaseClient.js'
 import { fechaArgentina, horaArgentina } from '../utilities/moment.js'
 
 export async function getAllAsistencias(gymId) {
-  const { data, error } = await supabase
+  const { data, error } = await supabaseAdmin
     .from('asistencias')
     .select('*')
     .eq('gym_id', gymId)
@@ -115,7 +115,7 @@ export async function createAsistencia(supa, asistencia, gymId) {
 }
 
 export async function getAsistenciaById(id, gymId) {
-  const { data, error } = await supabase
+  const { data, error } = await supabaseAdmin
     .from('asistencias')
     .select('*')
     .match({ id, gym_id: gymId })
@@ -125,7 +125,7 @@ export async function getAsistenciaById(id, gymId) {
 }
 
 export async function deleteAsistencia(id, gymId) {
-  const { data, error } = await supabase
+  const { data, error } = await supabaseAdmin
     .from('asistencias')
     .delete()
     .match({ id, gym_id: gymId })

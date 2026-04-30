@@ -28,7 +28,7 @@ export function useGymStatsLive(gymId?: string) {
 
   useEffect(() => {
     if (!gymId) return;
-    const socket = getSocket(gymId);
+    const socket = getSocket();
 
     socket.on('attendance:created', (data) => {
       console.log('📡 Evento recibido: attendance:created', data);

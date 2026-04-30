@@ -48,7 +48,7 @@ export const getPago = async (req, res) => {
     const cached = await cache.get(key)
     if (cached) return res.json(cached)
 
-    const pago = await getPagoById(req.params.id, { includeDeleted });
+    const pago = await getPagoById(req.supa, req.params.id);
     if (!pago) return res.status(404).json({ error: 'Pago no encontrado' });
 
     await cache.set(key, pago, PAGOS_TTL)
@@ -61,7 +61,10 @@ export const getPago = async (req, res) => {
 export const addPago = async (req, res) => {
   try {
     const nuevoPago = await createPago(req.supa, req.body);
-    await cache.delPattern(`pagos:${req.gymId}:*`)
+    await Promise.all([
+      cache.delPattern(`pagos:${req.gymId}:*`),
+      cache.delPattern(`alumnos:${req.gymId}:*`),
+    ])
     res.status(201).json(nuevoPago);
   } catch (error) {
     console.error('[addPago] Error:', error);
@@ -72,10 +75,12 @@ export const addPago = async (req, res) => {
 export const editPago = async (req, res) => {
   try {
     const includeDeleted = parseBool(req.query.includeDeleted);
-    const actualizado = await updatePago(req.supa, req.params.id, req.body, { includeDeleted });
+    const { alumno_id, plan_id, tipo, service_id, producto_id, hora, fecha_de_pago, fecha_de_venc, responsable, monto_total, items } = req.body
+    const actualizado = await updatePago(req.supa, req.params.id, { alumno_id, plan_id, tipo, service_id, producto_id, hora, fecha_de_pago, fecha_de_venc, responsable, monto_total, items }, { includeDeleted });
     await Promise.all([
       cache.delPattern(`pagos:${req.gymId}:*`),
       cache.delPattern(`pagos:id:${req.params.id}:*`),
+      cache.delPattern(`alumnos:${req.gymId}:*`),
     ])
     res.json(actualizado);
   } catch (error) {
@@ -99,7 +104,7 @@ export const removePago = async (req, res) => {
 
 export const undeletePago = async (req, res) => {
   try {
-    const restored = await restorePago(req.params.id);
+    const restored = await restorePago(req.supa, req.params.id);
     await cache.delPattern(`pagos:${req.gymId}:*`)
     res.json(restored);
   } catch (error) {
@@ -109,7 +114,7 @@ export const undeletePago = async (req, res) => {
 
 export const hardRemovePago = async (req, res) => {
   try {
-    await hardDeletePago(req.params.id);
+    await hardDeletePago(req.supa, req.params.id);
     await cache.delPattern(`pagos:${req.gymId}:*`)
     res.sendStatus(204);
   } catch (error) {

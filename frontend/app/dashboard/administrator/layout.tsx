@@ -6,8 +6,6 @@ import { adminTabs } from "@/const/headerTabs.tsx/sideBarTabs";
 import { useAuthRole } from "@/hooks/auth/useAuthRole";
 import { ADMINISTRADOR } from "@/const/roles/roles";
 import { useMediaQuery, useTheme } from '@mui/material';
-import { useSubscription } from '@/context/SubscriptionContext';
-
 export default function OwnerLayout({
   children,
 }: {
@@ -16,9 +14,6 @@ export default function OwnerLayout({
   const theme = useTheme();
   const isDesktop = useMediaQuery(theme.breakpoints.up('md'));
   useAuthRole(ADMINISTRADOR);
-  const { isSuspended, isSubscriptionLoading } = useSubscription();
-
-  if (isSuspended) return null;
 
   return (
     <div style={{

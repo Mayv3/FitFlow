@@ -1,4 +1,5 @@
 import { registerUser, loginUser, logoutUser, forgotPasswordService, resetPasswordService } from '../services/auth.supabase.js'
+import { supabaseAdmin } from '../config/supabaseClient.js'
 
 export async function handleRegisterUser(req, res) {
   try {
@@ -56,7 +57,7 @@ export async function handleLoginUser(req, res) {
 
 export async function handleLogoutUser(req, res) {
   try {
-    await logoutUser()
+    await supabaseAdmin.auth.admin.signOut(req.user.id)
     res.json({ message: 'Sesión cerrada correctamente' })
   } catch (err) {
     console.error('Error en logout:', err)

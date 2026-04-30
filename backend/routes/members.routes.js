@@ -10,17 +10,18 @@ import {
   handleGetExpiredAlumnos,
 } from '../controllers/members.controller.js'
 import { verifyToken } from '../middleware/auth.js'
+import { supaPerRequest } from '../middleware/supaPerRequest.js'
 
 const router = Router()
-router.get('/active-count', handleGetActiveAlumnosCountByGym);
-router.get('/expired', verifyToken, handleGetExpiredAlumnos);
-router.get('/simple', verifyToken, handleListAlumnosSimple);
-router.get('/', verifyToken, handleListAlumnosByGym);
-router.get('/:dni', getAlumno);
+router.get('/active-count', verifyToken, handleGetActiveAlumnosCountByGym);
+router.get('/expired', verifyToken, supaPerRequest, handleGetExpiredAlumnos);
+router.get('/simple', verifyToken, supaPerRequest, handleListAlumnosSimple);
+router.get('/', verifyToken, supaPerRequest, handleListAlumnosByGym);
+router.get('/:dni', verifyToken, supaPerRequest, getAlumno);
 
-router.post('/', addAlumno);
-router.put('/:dni', editAlumno);
-router.delete('/:dni', verifyToken, removeAlumno);
+router.post('/', verifyToken, supaPerRequest, addAlumno);
+router.put('/:dni', verifyToken, supaPerRequest, editAlumno);
+router.delete('/:dni', verifyToken, supaPerRequest, removeAlumno);
 
 
 export default router

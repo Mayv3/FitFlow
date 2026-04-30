@@ -1,5 +1,6 @@
 import express from 'express';
 import cors from 'cors';
+import helmet from 'helmet';
 import dotenv from 'dotenv';
 import http from 'http';
 
@@ -58,6 +59,7 @@ app.use(cors({
   credentials: true,
 }));
 
+app.use(helmet());
 app.use(express.json());
 
 
@@ -106,10 +108,20 @@ const io = new Server(server, {
   },
 });
 
-io.on('connection', (socket) => {
-  const gymId = socket.handshake.query.gymId;
-  if (typeof gymId === 'string' && gymId) {
-    socket.join(`gym:${gymId}`);
+io.on('connection', async (socket) => {
+  try {
+    const token = socket.handshake.auth?.token
+    if (!token) return
+
+    const { data: { user }, error } = await supabaseAdmin.auth.getUser(token)
+    if (error || !user) return
+
+    const gymId = user.user_metadata?.gym_id
+    if (typeof gymId === 'string' && gymId) {
+      socket.join(`gym:${gymId}`)
+    }
+  } catch (e) {
+    console.warn('[socket] auth error:', e?.message)
   }
 });
 

@@ -1,4 +1,4 @@
-import { supabaseAdmin } from '../db/supabaseClient.js'
+import { supabaseAdmin } from '../config/supabaseClient.js'
 
 export async function createGym({ name, settings = {}, logo_url = null }) {
   const { data, error } = await supabaseAdmin

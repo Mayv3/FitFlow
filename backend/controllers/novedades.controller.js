@@ -8,6 +8,8 @@ import {
   updateOrdenNovedadSvc,
   getNovedadesActivasSvc
 } from '../services/novedades.supabase.js'
+
+const stripHtml = (str) => str ? String(str).replace(/<[^>]*>/g, '').trim() : str
 import { uploadNovedadImageSvc } from '../services/novedades.upload.service.js'
 import * as cache from '../utilities/cache.js'
 
@@ -92,8 +94,8 @@ export const createNovedad = async (req, res) => {
     }
 
     const novedadData = {
-      titulo: titulo.trim(),
-      descripcion: descripcion?.trim() || null,
+      titulo: stripHtml(titulo),
+      descripcion: stripHtml(descripcion) || null,
       tipo: tipo || 'novedad',
       activo: activo !== undefined ? activo : true,
       fecha_publicacion: fecha_publicacion || new Date().toISOString(),
@@ -135,8 +137,8 @@ export const updateNovedad = async (req, res) => {
     }
 
     const updateData = {
-      titulo: titulo.trim(),
-      descripcion: descripcion?.trim() || null,
+      titulo: stripHtml(titulo),
+      descripcion: stripHtml(descripcion) || null,
       tipo: tipo || 'novedad',
       activo: activo !== undefined ? activo : true,
       fecha_publicacion: fecha_publicacion || null,

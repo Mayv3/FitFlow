@@ -55,7 +55,7 @@ function getFeatureFromRoute(route: string): string | null {
 function readPrimary(): string {
   if (typeof window === 'undefined') return '#0dc985'
   try {
-    const raw = localStorage.getItem('gym_settings')
+    const raw = sessionStorage.getItem('gym_settings')
     const parsed = raw ? JSON.parse(raw) : null
     return parsed?.colors?.primary || '#0dc985'
   } catch {
@@ -124,7 +124,7 @@ export const SideBar = ({ tabs }: HeaderComponentProps) => {
     setUserName(Cookies.get('name') ?? null)
     setUserRole(Cookies.get('rol') ?? null)
     try {
-      setGymLogoUrl(localStorage.getItem('gym_logo_url') || null)
+      setGymLogoUrl(sessionStorage.getItem('gym_logo_url') || null)
       setSidebarBg(readPrimary())
     } catch { }
     setSidebarBg(readPrimary())
@@ -139,12 +139,12 @@ export const SideBar = ({ tabs }: HeaderComponentProps) => {
     const onStorage = (e: StorageEvent) => {
       if (e.key === 'gym_settings' || e.key === 'gym_logo_url') {
         setSidebarBg(readPrimary())
-        setGymLogoUrl(localStorage.getItem('gym_logo_url') || null)
+        setGymLogoUrl(sessionStorage.getItem('gym_logo_url') || null)
       }
     }
     const onCustom = () => {
       setSidebarBg(readPrimary())
-      setGymLogoUrl(localStorage.getItem('gym_logo_url') || null)
+      setGymLogoUrl(sessionStorage.getItem('gym_logo_url') || null)
     }
     window.addEventListener('storage', onStorage)
     window.addEventListener('gym-settings-updated', onCustom as EventListener)

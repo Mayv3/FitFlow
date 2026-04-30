@@ -64,7 +64,7 @@ export function GymThemeEditorSimple({
 
     useEffect(() => {
         try {
-            const saved = localStorage.getItem("gym_settings")
+            const saved = sessionStorage.getItem("gym_settings")
             if (saved) {
                 const parsed = JSON.parse(saved)
                 if (parsed.colors) {
@@ -101,7 +101,7 @@ export function GymThemeEditorSimple({
 
     const handleReiniciar = () => {
         try {
-            const saved = localStorage.getItem("gym_settings")
+            const saved = sessionStorage.getItem("gym_settings")
             if (saved) {
                 const parsed = JSON.parse(saved)
                 if (parsed.colors) {
@@ -154,7 +154,7 @@ export function GymThemeEditorSimple({
                 token ? { headers: { Authorization: `Bearer ${token}` } } : undefined
             )
 
-            localStorage.setItem("gym_settings", JSON.stringify(payload))
+            sessionStorage.setItem("gym_settings", JSON.stringify(payload))
 
             window.location.reload()
 

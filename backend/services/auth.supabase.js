@@ -1,4 +1,4 @@
-import { supabase, supabaseAdmin } from '../db/supabaseClient.js'
+import { supabase, supabaseAdmin } from '../config/supabaseClient.js'
 
 export async function registerUser({ email, password, dni, gym_id, role_id, name }) {
   const { data: authList, error: listError } = await supabaseAdmin.auth.admin.listUsers()

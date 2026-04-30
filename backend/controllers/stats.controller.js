@@ -1,4 +1,4 @@
-import { supabaseAdmin } from '../db/supabaseClient.js';
+import { supabaseAdmin } from '../config/supabaseClient.js';
 import * as cache from '../utilities/cache.js'
 import { getPaymentsStatsService } from '../services/paymentsStats.supabase.js';
 import {
@@ -15,10 +15,7 @@ import {
 
 export async function getGymStatsController(req, res) {
   try {
-    const gymId =
-      typeof req.query.gymId === 'string' && req.query.gymId.trim()
-        ? req.query.gymId.trim()
-        : undefined;
+    const gymId = req.gymId;
 
     const key = `stats:gym:${gymId}`
     const cached = await cache.get(key)
@@ -37,7 +34,7 @@ export async function getGymStatsController(req, res) {
 
 export async function getPaymentsStatsController(req, res) {
   try {
-    const gymId = req.query.gymId || null;
+    const gymId = req.gymId;
     const fromDate = req.query.fromDate || null;
     const toDate = req.query.toDate || null;
 
@@ -164,7 +161,7 @@ export async function getPlanesStatsController(req, res) {
 }
 
 export const getAlumnosPorOrigenController = async (req, res) => {
-  const { gym_id } = req.params;
+  const gym_id = req.gymId;
   const { year, month } = req.query;
 
   if (!year || month === undefined || month === null) {
@@ -275,7 +272,7 @@ export async function getFacturacionMesController(req, res) {
 // PASO 1: Controller para facturación por período
 export async function getFacturacionController(req, res) {
   try {
-    const { gym_id } = req.params;
+    const gym_id = req.gymId;
     const { year, range } = req.query;
 
     const validRanges = ['12m', '30d', '7w', '24h'];

@@ -16,9 +16,8 @@ export const useLogout = () => {
     document.cookie = 'email=; path=/; expires=Thu, 01 Jan 1970 00:00:00 UTC;'
 
     if (typeof window !== 'undefined') {
-      localStorage.removeItem('gym_settings')
-      localStorage.removeItem('gym_logo_url')
       localStorage.clear()
+      sessionStorage.clear()
     }
 
     router.replace('/login')

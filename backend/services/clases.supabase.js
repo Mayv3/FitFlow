@@ -1,4 +1,4 @@
-import { supabase, supabaseAdmin } from '../db/supabaseClient.js';
+import { supabase, supabaseAdmin } from '../config/supabaseClient.js';
 
 // Obtener todas las clases de un gimnasio
 export async function getClasesService({ gymId, page, limit, q = '' }) {

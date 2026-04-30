@@ -1,4 +1,4 @@
-import { supabase, supabaseAdmin } from '../db/supabaseClient.js';
+import { supabase, supabaseAdmin } from '../config/supabaseClient.js';
 import { getAlumnoById } from './alumnos.supabase.js';
 
 // ==================== SESIONES ====================

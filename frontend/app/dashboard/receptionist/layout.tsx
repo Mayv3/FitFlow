@@ -6,8 +6,6 @@ import { recepcionistTabs } from "@/const/headerTabs.tsx/sideBarTabs";
 import { useAuthRole } from "@/hooks/auth/useAuthRole";
 import { RECEPCIONISTA } from "@/const/roles/roles";
 import { useMediaQuery, useTheme } from '@mui/material';
-import { useSubscription } from '@/context/SubscriptionContext';
-
 export default function ReceptionistLayout({
   children,
 }: {
@@ -16,9 +14,6 @@ export default function ReceptionistLayout({
   const theme = useTheme();
   const isDesktop = useMediaQuery(theme.breakpoints.up('md'));
   useAuthRole(RECEPCIONISTA);
-  const { isSuspended, isSubscriptionLoading } = useSubscription();
-
-  if (isSuspended) return null;
 
   return (
     <div style={{

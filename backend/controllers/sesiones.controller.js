@@ -24,11 +24,11 @@ export async function handleGetSesionesByClase(req, res) {
 // Crear sesión
 export async function handleAddSesion(req, res) {
   try {
-    const payload = { ...req.body };
+    const payload = { ...req.body, gym_id: req.gymId };
     const nueva = await createSesion(payload);
 
     req.app.get('io')
-      ?.to(`gym:${req.body.gym_id}`)
+      ?.to(`gym:${req.gymId}`)
       .emit('sesion:created', { sesion: nueva });
 
     return res.status(201).json(nueva);
@@ -45,7 +45,7 @@ export async function handleEditSesion(req, res) {
     res.json(actualizada);
 
     req.app.get('io')
-      ?.to(`gym:${req.body.gym_id}`)
+      ?.to(`gym:${req.gymId}`)
       .emit('sesion:updated', { sesion: actualizada });
   } catch (error) {
     console.error('[handleEditSesion] Error:', error);
@@ -59,7 +59,7 @@ export async function handleRemoveSesion(req, res) {
     const { before } = await deleteSesion(req.params.id);
 
     req.app.get('io')
-      ?.to(`gym:${req.query.gym_id}`)
+      ?.to(`gym:${req.gymId}`)
       .emit('sesion:deleted', { id: before.id });
 
     res.sendStatus(204);
@@ -72,11 +72,11 @@ export async function handleRemoveSesion(req, res) {
 // Inscribir alumno
 export async function handleInscribirAlumno(req, res) {
   try {
-    const { sesion_id, alumno_id, gym_id, es_fija = false } = req.body;
-    const inscripcion = await inscribirAlumnoSesion({ sesion_id, alumno_id, gym_id, es_fija });
+    const { sesion_id, alumno_id, es_fija = false } = req.body;
+    const inscripcion = await inscribirAlumnoSesion({ sesion_id, alumno_id, gym_id: req.gymId, es_fija });
 
     req.app.get('io')
-      ?.to(`gym:${gym_id}`)
+      ?.to(`gym:${req.gymId}`)
       .emit('inscripcion:created', { inscripcion });
 
     res.status(201).json(inscripcion);
@@ -93,7 +93,7 @@ export async function handleDesinscribirAlumno(req, res) {
     await desinscribirAlumnoSesion({ sesion_id, alumno_id });
 
     req.app.get('io')
-      ?.to(`gym:${req.body.gym_id}`)
+      ?.to(`gym:${req.gymId}`)
       .emit('inscripcion:deleted', { sesion_id, alumno_id });
 
     res.sendStatus(204);
@@ -106,11 +106,11 @@ export async function handleDesinscribirAlumno(req, res) {
 // Cambiar estado fija/temporal
 export async function handleToggleEsFija(req, res) {
   try {
-    const { sesion_id, alumno_id, es_fija, gym_id } = req.body;
+    const { sesion_id, alumno_id, es_fija } = req.body;
     const inscripcion = await toggleEsFijaInscripcion({ sesion_id, alumno_id, es_fija });
 
     req.app.get('io')
-      ?.to(`gym:${gym_id}`)
+      ?.to(`gym:${req.gymId}`)
       .emit('inscripcion:updated', { inscripcion });
 
     res.json(inscripcion);

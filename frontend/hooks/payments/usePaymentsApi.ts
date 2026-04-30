@@ -74,6 +74,7 @@ export function useAddPago(gymId: string, filters?: { fromDate?: string | null; 
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['payments', gymId] });
       qc.invalidateQueries({ queryKey: ['paymentsStats', gymId] });
+      qc.invalidateQueries({ queryKey: ['members', gymId] });
     }
   });
 }
@@ -92,6 +93,7 @@ export function useEditPago(
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['payments', gymId] });
       qc.invalidateQueries({ queryKey: ['paymentsStats', gymId] });
+      qc.invalidateQueries({ queryKey: ['members', gymId] });
     }
   });
 }

@@ -10,7 +10,7 @@ import {
 // Listar clases con paginación
 export async function handleListClases(req, res) {
   try {
-    const gymId = req.query.gymId || req.query.gym_id;
+    const gymId = req.gymId;
     if (!gymId) {
       return res.status(400).json({ message: 'gym_id es requerido' });
     }
@@ -44,7 +44,7 @@ export async function handleGetClase(req, res) {
 // Crear una nueva clase
 export async function handleAddClase(req, res) {
   try {
-    const payload = { ...req.body };
+    const payload = { ...req.body, gym_id: req.gymId };
 
     const nueva = await createClase(payload);
 
@@ -110,7 +110,7 @@ export async function handleRemoveClase(req, res) {
 // Listado simple de clases
 export async function handleListClasesSimple(req, res) {
   try {
-    const gymId = req.query.gymId || req.query.gym_id;
+    const gymId = req.gymId;
     if (!gymId) {
       return res.status(400).json({ message: 'gym_id es requerido' });
     }

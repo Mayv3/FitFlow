@@ -1,7 +1,7 @@
 import { Router } from 'express';
 import { verifyToken } from '../middleware/auth.js';
 import { supaPerRequest } from '../middleware/supaPerRequest.js';
-import { createAppointment, deleteAppointmentController, getAppointments, updateAppointment } from '../controllers/appointmentsController.js';
+import { createAppointment, deleteAppointmentController, getAppointments, updateAppointment } from '../controllers/appointments.controller.js';
 
 const router = Router();
 

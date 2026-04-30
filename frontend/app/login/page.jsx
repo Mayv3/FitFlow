@@ -57,8 +57,8 @@ const LoginPage = () => {
       Cookies.set("email", String(session.user.email))
       if (profile?.gyms?.name) Cookies.set("gym_name", String(profile.gyms.name))
 
-      localStorage.setItem("gym_settings", JSON.stringify(profile?.gyms?.settings || {}))
-      localStorage.setItem("gym_logo_url", profile?.gyms?.logo_url || "")
+      sessionStorage.setItem("gym_settings", JSON.stringify(profile?.gyms?.settings || {}))
+      sessionStorage.setItem("gym_logo_url", profile?.gyms?.logo_url || "")
       window.dispatchEvent(new Event("gym-settings-updated"))
 
       setUser({

@@ -1,4 +1,4 @@
-import { supabaseAdmin, supabase } from "../db/supabaseClient.js"
+import { supabaseAdmin, supabase } from "../config/supabaseClient.js"
 
 export async function listUsers(gymId) {
   let query = supabaseAdmin

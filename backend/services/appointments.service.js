@@ -1,4 +1,4 @@
-import { supabase } from '../db/supabaseClient.js'
+import { supabase } from '../config/supabaseClient.js'
 
 export const getAppointments = async (supa, { page, pageSize, q }) => {
     let query = supa

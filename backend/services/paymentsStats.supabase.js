@@ -1,4 +1,4 @@
-import { supabaseAdmin } from '../db/supabaseClient.js';
+import { supabaseAdmin } from '../config/supabaseClient.js';
 import moment from 'moment-timezone';
 
 async function getAllPayments(gymId) {

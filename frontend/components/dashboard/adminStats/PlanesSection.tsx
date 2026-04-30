@@ -128,19 +128,23 @@ export function PlanesSection() {
 
   const alumnos = data.alumnos ?? [];
 
-  const facturacion = (facData ?? []).map((f: any) => ({
-    plan_nombre: f.plan_nombre || '—',
-    actual: f.actual !== null ? Number(f.actual) : 0,
-    anterior: f.anterior !== null ? Number(f.anterior) : 0,
-    variacion: f.variacion !== null ? Number(f.variacion) : 0,
-  }));
+  const facturacion = (facData ?? [])
+    .map((f: any) => ({
+      plan_nombre: f.plan_nombre || '—',
+      actual: f.actual !== null ? Number(f.actual) : 0,
+      anterior: f.anterior !== null ? Number(f.anterior) : 0,
+      variacion: f.variacion !== null ? Number(f.variacion) : 0,
+    }))
+    .sort((a: any, b: any) => b.actual - a.actual);
 
   // Donut Data
-  const donutData = alumnos.map((p: any) => ({
-    key: p.plan_id,
-    label: p.plan_nombre,
-    value: p.cantidad_alumnos,
-  }));
+  const donutData = alumnos
+    .map((p: any) => ({
+      key: p.plan_id,
+      label: p.plan_nombre,
+      value: p.cantidad_alumnos,
+    }))
+    .sort((a: any, b: any) => b.value - a.value);
 
   const gradients = [
     ['#FFA45B', '#FF6CA3'],

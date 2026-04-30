@@ -1,4 +1,4 @@
-import { supabaseAdmin } from '../db/supabaseClient.js';
+import { supabaseAdmin } from '../config/supabaseClient.js';
 
 export const loginByDniAndGym = async (dni, gymId) => {
     console.log(`[loginByDniAndGym] Buscando alumno con DNI ${dni} en gym ${gymId}`);

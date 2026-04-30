@@ -1,4 +1,4 @@
-import { supabaseAdmin } from '../db/supabaseClient.js'
+import { supabaseAdmin } from '../config/supabaseClient.js'
 
 export const getGymPlans = async () => {
   const { data, error } = await supabaseAdmin

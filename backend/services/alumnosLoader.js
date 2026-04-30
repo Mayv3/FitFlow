@@ -1,5 +1,5 @@
 import DataLoader from 'dataloader'
-import { supabase } from '../db/supabaseClient.js'
+import { supabase } from '../config/supabaseClient.js'
 
 /**
  * Función de batch que recibe un array de DNIs y devuelve

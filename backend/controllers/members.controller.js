@@ -55,7 +55,8 @@ export const getAlumno = async (req, res) => {
 
 export const addAlumno = async (req, res) => {
   try {
-    const payload = { ...req.body };
+    const { nombre, dni, telefono, email, fecha_nacimiento, fecha_de_vencimiento, fecha_inicio, plan_id, sexo, origen } = req.body
+    const payload = { nombre, dni, telefono, email, fecha_nacimiento, fecha_de_vencimiento, fecha_inicio, plan_id, sexo, origen, gym_id: req.gymId };
 
     const nuevo = await createAlumno(payload, req.supa);
 
@@ -78,7 +79,8 @@ export const editAlumno = async (req, res) => {
   try {
     const prev = await getAlumnoByDNI(req.params.dni, req.supa).catch(() => null);
 
-    const actualizado = await updateAlumno(req.params.dni, req.body, req.supa);
+    const { nombre, telefono, email, fecha_nacimiento, fecha_de_vencimiento, fecha_inicio, plan_id, sexo, origen, clases_pagadas, clases_realizadas } = req.body
+    const actualizado = await updateAlumno(req.params.dni, { nombre, telefono, email, fecha_nacimiento, fecha_de_vencimiento, fecha_inicio, plan_id, sexo, origen, clases_pagadas, clases_realizadas }, req.supa);
 
     const gymId = actualizado?.gym_id || prev?.gym_id;
     if (gymId) await cache.delPattern(`alumnos:${gymId}:*`)

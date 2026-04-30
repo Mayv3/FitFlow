@@ -22,7 +22,7 @@ export function useGymThemeSettings() {
 
   useEffect(() => {
     try {
-      const gymSettingsStr = localStorage.getItem('gym_settings');
+      const gymSettingsStr = sessionStorage.getItem('gym_settings');
       if (gymSettingsStr) {
         const gymSettings = JSON.parse(gymSettingsStr) as GymThemeSettings;
         if (gymSettings.shape?.borderRadius) {

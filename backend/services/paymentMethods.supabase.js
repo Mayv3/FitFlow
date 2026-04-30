@@ -1,4 +1,4 @@
-import { supabase } from '../db/supabaseClient.js';
+import { supabase } from '../config/supabaseClient.js';
 
 export async function getPaymentMethodsService() {
   const { data, error } = await supabase

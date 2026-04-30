@@ -1,5 +1,5 @@
 
-import { supabaseAdmin } from "../db/supabaseClient.js"
+import { supabaseAdmin } from "../config/supabaseClient.js"
 import * as cache from "../utilities/cache.js"
 
 const TOKEN_TTL = 300 // 5 minutos

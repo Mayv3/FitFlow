@@ -4,7 +4,7 @@ import {
   getAsistenciaById,
   deleteAsistencia
 } from '../services/asistencias.supabase.js'
-import { supabaseAdmin } from '../db/supabaseClient.js'
+import { supabaseAdmin } from '../config/supabaseClient.js'
 import * as cache from '../utilities/cache.js'
 
 export const listAsistencias = async (req, res) => {
@@ -55,7 +55,7 @@ export const removeAsistencia = async (req, res) => {
 }
 
 export const getAsistenciasByGym = async (req, res) => {
-  const { gym_id } = req.params;
+  const gym_id = req.gymId;
   const { fecha } = req.query;
 
   // si no viene fecha → hoy
@@ -83,7 +83,7 @@ export const getAsistenciasByGym = async (req, res) => {
 };
 
 export const getAsistenciasByHora = async (req, res) => {
-  const { gym_id } = req.params;
+  const gym_id = req.gymId;
   const { fecha } = req.query;
 
   const fechaFiltro = fecha ?? new Date().toISOString().slice(0, 10);

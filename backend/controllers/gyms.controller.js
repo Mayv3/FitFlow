@@ -1,4 +1,4 @@
-import { supabaseAdmin } from '../db/supabaseClient.js'
+import { supabaseAdmin } from '../config/supabaseClient.js'
 import { createGym, listGyms, updateGym, softDeleteGym, listDeletedGyms, restoreGym } from '../services/gyms.supabase.js'
 
 export async function handleCreateGym(req, res) {

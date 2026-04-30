@@ -1,4 +1,4 @@
-import { supabase } from '../db/supabaseClient.js';
+import { supabase } from '../config/supabaseClient.js';
 
 const nowISO = () => new Date().toISOString();
 
@@ -338,8 +338,8 @@ export async function deletePago(supaClient, id) {
   return data;
 }
 
-export async function restorePago(id) {
-  const { data, error } = await supabase
+export async function restorePago(supaClient, id) {
+  const { data, error } = await supaClient
     .from('pagos')
     .update({ deleted_at: null })
     .eq('id', id)
@@ -349,8 +349,8 @@ export async function restorePago(id) {
   return data;
 }
 
-export async function hardDeletePago(id) {
-  const { data, error } = await supabase.from('pagos').delete().eq('id', id).single();
+export async function hardDeletePago(supaClient, id) {
+  const { data, error } = await supaClient.from('pagos').delete().eq('id', id).single();
   if (error) throw error;
   return data;
 }

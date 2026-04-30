@@ -1,4 +1,4 @@
-import { supabase } from '../db/supabaseClient.js'
+import { supabase } from '../config/supabaseClient.js'
 
 export async function getAllRoles() {
   const { data, error } = await supabase

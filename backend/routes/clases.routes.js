@@ -7,8 +7,11 @@ import {
   handleRemoveClase,
   handleListClasesSimple,
 } from '../controllers/clases.controller.js';
+import { verifyToken } from '../middleware/auth.js';
+import { supaPerRequest } from '../middleware/supaPerRequest.js';
 
 const router = express.Router();
+router.use(verifyToken, supaPerRequest);
 
 router.get('/', handleListClases);
 

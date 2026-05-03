@@ -11,6 +11,14 @@ import {
   getFacturacionByPeriodo,
   getFacturacionPorPlan,
   getFacturacionMes,
+  countActiveMembersByMonthPayment,
+  getActiveMembersPaymentDetails,
+  countAbandonosByMonth,
+  getAbandonosDetails,
+  countAltasByMonth,
+  getAltasDetails,
+  getPagosByDateRange,
+
 } from '../services/stats.supabase.js';
 
 export async function getGymStatsController(req, res) {
@@ -59,19 +67,94 @@ export async function getKpis(req, res) {
 
     const currentYear = new Date().getFullYear();
     const year = req.query.year ? Number(req.query.year) : currentYear;
+    const month = req.query.month ? Number(req.query.month) : null;
 
-    const key = `stats:kpis:${gymId}:${year}`
+    const key = `stats:kpis:${gymId}:${year}:${month ?? 'all'}`
     const cached = await cache.get(key)
     if (cached) return res.json(cached)
 
-    const dashboardData = year === currentYear
+    const dashboardData = !month || year === currentYear
       ? await getDashboardData({ gymId })
       : await getDashboardDataByYear({ gymId, year });
+
+    if (month && month >= 1 && month <= 12) {
+      const [activosPorPago, abandonos, altas] = await Promise.all([
+        countActiveMembersByMonthPayment({ gymId, year, month }),
+        countAbandonosByMonth({ gymId, year, month }),
+        countAltasByMonth({ gymId, year, month }),
+      ]);
+      dashboardData.charts = {
+        ...dashboardData.charts,
+        activos: activosPorPago,
+        bajas: abandonos,
+        altas_mes: altas,
+      };
+    }
 
     await cache.set(key, dashboardData, 600)
     return res.json(dashboardData);
   } catch (error) {
     console.error("❌ Error en getKpis:", error);
+    return res.status(500).json({ error: "Error interno del servidor" });
+  }
+}
+
+export async function getActiveMembersPaymentDetailsController(req, res) {
+  try {
+    const gymId = req.user?.user_metadata?.gym_id;
+    if (!gymId) return res.status(400).json({ error: "Falta gym_id" });
+
+    const year = req.query.year ? Number(req.query.year) : new Date().getFullYear();
+    const month = req.query.month ? Number(req.query.month) : null;
+
+    if (!month || month < 1 || month > 12) {
+      return res.status(400).json({ error: "month es requerido (1-12)" });
+    }
+
+    const items = await getActiveMembersPaymentDetails({ gymId, year, month });
+    return res.json({ gym_id: gymId, year, month, total: items.length, items });
+  } catch (error) {
+    console.error("❌ Error en getActiveMembersPaymentDetails:", error);
+    return res.status(500).json({ error: "Error interno del servidor" });
+  }
+}
+
+export async function getAbandonosDetailsController(req, res) {
+  try {
+    const gymId = req.user?.user_metadata?.gym_id;
+    if (!gymId) return res.status(400).json({ error: "Falta gym_id" });
+
+    const year = req.query.year ? Number(req.query.year) : new Date().getFullYear();
+    const month = req.query.month ? Number(req.query.month) : null;
+
+    if (!month || month < 1 || month > 12) {
+      return res.status(400).json({ error: "month es requerido (1-12)" });
+    }
+
+    const items = await getAbandonosDetails({ gymId, year, month });
+    return res.json({ gym_id: gymId, year, month, total: items.length, items });
+  } catch (error) {
+    console.error("❌ Error en getAbandonosDetails:", error);
+    return res.status(500).json({ error: "Error interno del servidor" });
+  }
+}
+
+export async function getAltasDetailsController(req, res) {
+  try {
+    const gymId = req.user?.user_metadata?.gym_id;
+    if (!gymId) return res.status(400).json({ error: "Falta gym_id" });
+
+    const year = req.query.year ? Number(req.query.year) : new Date().getFullYear();
+    const month = req.query.month ? Number(req.query.month) : null;
+
+    if (!month || month < 1 || month > 12) {
+      return res.status(400).json({ error: "month es requerido (1-12)" });
+    }
+
+    const items = await getAltasDetails({ gymId, year, month });
+    return res.json({ gym_id: gymId, year, month, total: items.length, items });
+  } catch (error) {
+    console.error("❌ Error en getAltasDetails:", error);
     return res.status(500).json({ error: "Error interno del servidor" });
   }
 }
@@ -282,7 +365,7 @@ export async function getFacturacionController(req, res) {
 
     const yearNum = year ? Number(year) : new Date().getFullYear();
 
-    const key = `stats:facturacion:${gym_id}:${yearNum}:${range}`
+    const key = `stats:facturacion:v2:${gym_id}:${yearNum}:${range}`
     const cached = await cache.get(key)
     if (cached) return res.json(cached)
 
@@ -292,6 +375,24 @@ export async function getFacturacionController(req, res) {
     return res.json(result);
   } catch (error) {
     console.error('❌ Error en getFacturacion:', error);
+    return res.status(500).json({ error: 'Error interno del servidor' });
+  }
+}
+
+export async function getPagosByDateRangeController(req, res) {
+  try {
+    const gym_id = req.gymId;
+    if (!gym_id) return res.status(400).json({ error: 'Falta gym_id' });
+
+    const { startDate, endDate } = req.query;
+    if (!startDate || !endDate) {
+      return res.status(400).json({ error: 'startDate y endDate son requeridos' });
+    }
+
+    const items = await getPagosByDateRange({ gymId: gym_id, startDate, endDate });
+    return res.json({ gym_id, startDate, endDate, total: items.length, items });
+  } catch (error) {
+    console.error('❌ Error en getPagosByDateRange:', error);
     return res.status(500).json({ error: 'Error interno del servidor' });
   }
 }

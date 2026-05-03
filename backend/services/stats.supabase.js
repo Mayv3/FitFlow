@@ -40,6 +40,25 @@ async function countMembersWithPlan(gymId) {
 }
 
 
+async function countMonthRenewals(gymId) {
+  const now = moment().tz('America/Argentina/Buenos_Aires');
+  const start = now.clone().startOf('month').format('YYYY-MM-DD');
+  const end = now.format('YYYY-MM-DD');
+
+  const { data, error } = await supabaseAdmin
+    .from('pagos')
+    .select('alumno_id')
+    .eq('gym_id', gymId)
+    .is('deleted_at', null)
+    .gte('fecha_de_pago', start)
+    .lte('fecha_de_pago', end);
+
+  if (error) throw error;
+
+  const uniqueIds = new Set((data ?? []).map(p => p.alumno_id));
+  return uniqueIds.size;
+}
+
 async function countTodaysAttendance(gymId, today) {
   let q = supabaseAdmin
     .from('asistencias')
@@ -235,27 +254,32 @@ export async function getGymStatsService({ gymId } = {}) {
     withPlanCount,
     todaysAttendance,
     plansDistribution,
+    monthRenewals,
   ] = await Promise.all([
     countTotalMembers(gymId),
     countActiveMembers(gymId, today),
     countMembersWithPlan(gymId),
     countTodaysAttendance(gymId, today),
     getPlansDistribution(gymId),
+    countMonthRenewals(gymId),
   ]);
 
   const activePct = Math.floor((activeMembers / totalMembers) * 100);
   const withPlanPct = Math.floor((withPlanCount / totalMembers) * 100);
   const attendancePct = Math.floor((todaysAttendance / activeMembers) * 100);
+  const renewalsPct = totalMembers > 0 ? Math.floor((monthRenewals / totalMembers) * 100) : 0;
 
   return {
     totalMembers,
     activeMembers,
     withPlanCount,
+    monthRenewals,
     todaysAttendance,
     plansDistribution,
     activePct,
     withPlanPct,
     attendancePct,
+    renewalsPct,
   };
 }
 
@@ -277,10 +301,44 @@ export async function getPlanesStatsService({ gymId }) {
 export async function getFacturacionByPeriodo({ gymId, year, range }) {
   const now = moment().tz('America/Argentina/Buenos_Aires');
 
+  async function countMethodsByPeriod(idsByPeriod) {
+    if (!idsByPeriod || Object.keys(idsByPeriod).length === 0) return {};
+    const allIds = [...new Set(Object.values(idsByPeriod).flatMap(v => v.pagoIds))];
+    if (allIds.length === 0) return {};
+    const { data: items, error } = await supabaseAdmin
+      .from('pago_items')
+      .select('pago_id, monto, metodo_de_pago_id, metodo:metodos_de_pago(nombre)')
+      .in('pago_id', allIds);
+    if (error) throw error;
+    const methodByPagoId = {};
+    for (const item of items ?? []) {
+      if (!methodByPagoId[item.pago_id]) methodByPagoId[item.pago_id] = {};
+      const name = item.metodo?.nombre ?? 'Otro';
+      if (!methodByPagoId[item.pago_id][name]) methodByPagoId[item.pago_id][name] = { count: 0, total: 0 };
+      methodByPagoId[item.pago_id][name].count += 1;
+      methodByPagoId[item.pago_id][name].total += Number(item.monto || 0);
+    }
+    for (const key of Object.keys(idsByPeriod)) {
+      const metodos = {};
+      for (const pid of idsByPeriod[key].pagoIds) {
+        if (methodByPagoId[pid]) {
+          for (const [name, data] of Object.entries(methodByPagoId[pid])) {
+            if (!metodos[name]) metodos[name] = { count: 0, total: 0 };
+            metodos[name].count += data.count;
+            metodos[name].total += data.total;
+          }
+        }
+      }
+      if (Object.keys(metodos).length === 0) metodos['Sin método'] = { count: 0, total: 0 };
+      idsByPeriod[key].metodos = metodos;
+    }
+    return idsByPeriod;
+  }
+
   if (range === '12m') {
     const { data, error } = await supabaseAdmin
       .from('pagos')
-      .select('fecha_de_pago, monto_total')
+      .select('id, fecha_de_pago, monto_total')
       .eq('gym_id', gymId)
       .is('deleted_at', null)
       .gte('fecha_de_pago', `${year}-01-01`)
@@ -289,22 +347,25 @@ export async function getFacturacionByPeriodo({ gymId, year, range }) {
 
     const byMonth = {};
     for (let m = 1; m <= 12; m++) {
-      byMonth[m] = { fecha: `${year}-${String(m).padStart(2, '0')}-01`, monto_centavos: 0 };
+      byMonth[m] = { fecha: `${year}-${String(m).padStart(2, '0')}-01`, monto_centavos: 0, pagoIds: [] };
     }
     for (const p of data ?? []) {
       const m = parseInt(p.fecha_de_pago.slice(5, 7), 10);
-      if (byMonth[m]) byMonth[m].monto_centavos += Number(p.monto_total || 0);
+      if (byMonth[m]) {
+        byMonth[m].monto_centavos += Number(p.monto_total || 0);
+        byMonth[m].pagoIds.push(p.id);
+      }
     }
-    return Object.values(byMonth);
+    const result = await countMethodsByPeriod(byMonth);
+    return Object.values(result).map((r) => ({ fecha: r.fecha, monto_centavos: r.monto_centavos, metodos: r.metodos }));
   }
 
   if (range === '30d') {
-    // Días del mes actual que tuvieron facturación (sin ceros)
     const startOfMonth = now.clone().startOf('month').format('YYYY-MM-DD');
-    const endOfMonth = now.format('YYYY-MM-DD'); // hasta hoy, no fin de mes futuro
+    const endOfMonth = now.format('YYYY-MM-DD');
     const { data, error } = await supabaseAdmin
       .from('pagos')
-      .select('fecha_de_pago, monto_total')
+      .select('id, fecha_de_pago, monto_total')
       .eq('gym_id', gymId)
       .is('deleted_at', null)
       .gte('fecha_de_pago', startOfMonth)
@@ -314,19 +375,21 @@ export async function getFacturacionByPeriodo({ gymId, year, range }) {
     const byDay = {};
     for (const p of data ?? []) {
       const d = p.fecha_de_pago;
-      if (!byDay[d]) byDay[d] = { fecha: d, monto_centavos: 0 };
+      if (!byDay[d]) byDay[d] = { fecha: d, monto_centavos: 0, pagoIds: [] };
       byDay[d].monto_centavos += Number(p.monto_total || 0);
+      byDay[d].pagoIds.push(p.id);
     }
-    return Object.values(byDay).sort((a, b) => a.fecha.localeCompare(b.fecha));
+    const result = await countMethodsByPeriod(byDay);
+    return Object.values(result).map((r) => ({ fecha: r.fecha, monto_centavos: r.monto_centavos, metodos: r.metodos }))
+      .sort((a, b) => a.fecha.localeCompare(b.fecha));
   }
 
   if (range === '7w') {
-    // Semanas del mes actual (agrupadas por inicio de semana ISO)
     const startOfMonth = now.clone().startOf('month').format('YYYY-MM-DD');
     const endOfMonth = now.format('YYYY-MM-DD');
     const { data, error } = await supabaseAdmin
       .from('pagos')
-      .select('fecha_de_pago, monto_total')
+      .select('id, fecha_de_pago, monto_total')
       .eq('gym_id', gymId)
       .is('deleted_at', null)
       .gte('fecha_de_pago', startOfMonth)
@@ -336,17 +399,20 @@ export async function getFacturacionByPeriodo({ gymId, year, range }) {
     const byWeek = {};
     for (const p of data ?? []) {
       const ws = moment.tz(p.fecha_de_pago, 'America/Argentina/Buenos_Aires').startOf('isoWeek').format('YYYY-MM-DD');
-      if (!byWeek[ws]) byWeek[ws] = { fecha: ws, monto_centavos: 0 };
+      if (!byWeek[ws]) byWeek[ws] = { fecha: ws, monto_centavos: 0, pagoIds: [] };
       byWeek[ws].monto_centavos += Number(p.monto_total || 0);
+      byWeek[ws].pagoIds.push(p.id);
     }
-    return Object.values(byWeek).sort((a, b) => a.fecha.localeCompare(b.fecha));
+    const result = await countMethodsByPeriod(byWeek);
+    return Object.values(result).map((r) => ({ fecha: r.fecha, monto_centavos: r.monto_centavos, metodos: r.metodos }))
+      .sort((a, b) => a.fecha.localeCompare(b.fecha));
   }
 
   if (range === '24h') {
     const today = now.format('YYYY-MM-DD');
     const { data, error } = await supabaseAdmin
       .from('pagos')
-      .select('hora, monto_total')
+      .select('id, hora, monto_total')
       .eq('gym_id', gymId)
       .is('deleted_at', null)
       .eq('fecha_de_pago', today);
@@ -355,15 +421,19 @@ export async function getFacturacionByPeriodo({ gymId, year, range }) {
     const byHour = {};
     for (let h = 0; h < 24; h++) {
       const hStr = String(h).padStart(2, '0');
-      byHour[h] = { fecha: `${today}T${hStr}:00:00`, monto_centavos: 0 };
+      byHour[h] = { fecha: `${today}T${hStr}:00:00`, monto_centavos: 0, pagoIds: [] };
     }
     for (const p of data ?? []) {
       if (p.hora) {
         const h = parseInt(String(p.hora).slice(0, 2), 10);
-        if (byHour[h] !== undefined) byHour[h].monto_centavos += Number(p.monto_total || 0);
+        if (byHour[h] !== undefined) {
+          byHour[h].monto_centavos += Number(p.monto_total || 0);
+          byHour[h].pagoIds.push(p.id);
+        }
       }
     }
-    return Object.values(byHour);
+    const result = await countMethodsByPeriod(byHour);
+    return Object.values(result).map((r) => ({ fecha: r.fecha, monto_centavos: r.monto_centavos, metodos: r.metodos }));
   }
 
   return [];
@@ -527,6 +597,145 @@ export async function getFacturacionPorPlan({ gymId, year, month }) {
   });
 }
 
+export async function countActiveMembersByMonthPayment({ gymId, year, month }) {
+  const startDate = `${year}-${String(month).padStart(2, '0')}-01`;
+  const endDate = new Date(year, month, 0).toISOString().split('T')[0];
+
+  const { data, error } = await supabaseAdmin
+    .from('pagos')
+    .select('alumno_id')
+    .eq('gym_id', gymId)
+    .is('deleted_at', null)
+    .gte('fecha_de_pago', startDate)
+    .lte('fecha_de_pago', endDate);
+
+  if (error) throw error;
+
+  const uniqueIds = new Set((data ?? []).map(p => p.alumno_id));
+  return uniqueIds.size;
+}
+
+function getMonthRange(year, month) {
+  const start = `${year}-${String(month).padStart(2, '0')}-01`;
+  const end = new Date(year, month, 0).toISOString().split('T')[0];
+  return { startDate: start, endDate: end };
+}
+
+const todayStr = () => new Date().toISOString().split('T')[0];
+
+export async function countAbandonosByMonth({ gymId, year, month }) {
+  const { startDate, endDate } = getMonthRange(year, month);
+
+  const { data, error } = await supabaseAdmin
+    .from('alumnos')
+    .select('id')
+    .eq('gym_id', gymId)
+    .is('deleted_at', null)
+    .gte('fecha_de_vencimiento', startDate)
+    .lte('fecha_de_vencimiento', endDate)
+    .lte('fecha_de_vencimiento', todayStr());
+
+  if (error) throw error;
+  return data?.length ?? 0;
+}
+
+export async function getAbandonosDetails({ gymId, year, month }) {
+  const { startDate, endDate } = getMonthRange(year, month);
+
+  const { data, error } = await supabaseAdmin
+    .from('alumnos')
+    .select('id, nombre, fecha_de_vencimiento, plan_id, planes_precios(nombre)')
+    .eq('gym_id', gymId)
+    .is('deleted_at', null)
+    .gte('fecha_de_vencimiento', startDate)
+    .lte('fecha_de_vencimiento', endDate)
+    .lte('fecha_de_vencimiento', todayStr())
+    .order('fecha_de_vencimiento', { ascending: false });
+
+  if (error) throw error;
+
+  return (data ?? []).map((a) => ({
+    id: a.id,
+    alumno_nombre: a.nombre ?? 'Sin nombre',
+    fecha_de_vencimiento: a.fecha_de_vencimiento,
+    plan_actual: a.planes_precios?.nombre ?? 'Sin plan',
+  }));
+}
+
+export async function getActiveMembersPaymentDetails({ gymId, year, month }) {
+  const startDate = `${year}-${String(month).padStart(2, '0')}-01`;
+  const endDate = new Date(year, month, 0).toISOString().split('T')[0];
+
+  const { data, error } = await supabaseAdmin
+    .from('pagos')
+    .select(`
+      id,
+      alumno_id,
+      fecha_de_pago,
+      monto_total,
+      hora,
+      plan_id,
+      alumnos!inner(id, nombre),
+      planes_precios(nombre)
+    `)
+    .eq('gym_id', gymId)
+    .is('deleted_at', null)
+    .gte('fecha_de_pago', startDate)
+    .lte('fecha_de_pago', endDate)
+    .order('fecha_de_pago', { ascending: false })
+    .order('hora', { ascending: false });
+
+  if (error) throw error;
+
+  return (data ?? []).map((p) => ({
+    id: p.id,
+    alumno_id: p.alumno_id,
+    alumno_nombre: p.alumnos?.nombre ?? 'Sin nombre',
+    fecha_de_pago: p.fecha_de_pago,
+    monto_total: p.monto_total,
+    hora: p.hora,
+    plan_id: p.plan_id,
+    plan_nombre: p.planes_precios?.nombre ?? '—',
+  }));
+}
+
+export async function countAltasByMonth({ gymId, year, month }) {
+  const { startDate, endDate } = getMonthRange(year, month);
+
+  const { count, error } = await supabaseAdmin
+    .from('alumnos')
+    .select('id', { count: 'exact', head: true })
+    .eq('gym_id', gymId)
+    .is('deleted_at', null)
+    .gte('fecha_inicio', startDate)
+    .lte('fecha_inicio', endDate);
+
+  if (error) throw error;
+  return count ?? 0;
+}
+
+export async function getAltasDetails({ gymId, year, month }) {
+  const { startDate, endDate } = getMonthRange(year, month);
+
+  const { data, error } = await supabaseAdmin
+    .from('alumnos')
+    .select('id, nombre, fecha_inicio, planes_precios(nombre)')
+    .eq('gym_id', gymId)
+    .is('deleted_at', null)
+    .gte('fecha_inicio', startDate)
+    .lte('fecha_inicio', endDate)
+    .order('fecha_inicio', { ascending: false });
+
+  if (error) throw error;
+
+  return (data ?? []).map((a) => ({
+    id: a.id,
+    alumno_nombre: a.nombre ?? 'Sin nombre',
+    fecha_inicio: a.fecha_inicio,
+    plan: a.planes_precios?.nombre ?? 'Sin plan',
+  }));
+}
+
 // Facturación de un mes específico vs mes anterior (para KPI card)
 export async function getFacturacionMes({ gymId, year, month }) {
   const prevMonth = month === 1 ? 12 : month - 1;
@@ -550,4 +759,36 @@ export async function getFacturacionMes({ gymId, year, month }) {
   const deltaPct = anterior > 0 ? Math.round(((actual - anterior) / anterior) * 100) : 0;
 
   return { actual, anterior, deltaPct };
+}
+
+export async function getPagosByDateRange({ gymId, startDate, endDate }) {
+  const { data, error } = await supabaseAdmin
+    .from('pagos')
+    .select(`
+      id, fecha_de_pago, hora, monto_total,
+      alumno:alumnos!inner(nombre),
+      plan:planes_precios!left(nombre),
+      items:pago_items(monto, metodo_id:metodo_de_pago_id, metodo:metodos_de_pago(nombre))
+    `)
+    .eq('gym_id', gymId)
+    .is('deleted_at', null)
+    .gte('fecha_de_pago', startDate)
+    .lte('fecha_de_pago', endDate)
+    .order('fecha_de_pago', { ascending: false })
+    .order('hora', { ascending: false });
+
+  if (error) throw error;
+
+  return (data ?? []).map((p) => ({
+    id: p.id,
+    fecha_de_pago: p.fecha_de_pago,
+    hora: p.hora,
+    monto_total: p.monto_total,
+    alumno_nombre: p.alumno?.nombre ?? '',
+    plan_nombre: p.plan?.nombre ?? null,
+    items: (p.items ?? []).map((item) => ({
+      monto: item.monto,
+      metodo: item.metodo?.nombre ?? 'Sin método',
+    })),
+  }));
 }

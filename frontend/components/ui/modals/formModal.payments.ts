@@ -3,7 +3,7 @@ import { Field } from '@/models/Fields/Field';
 export function resolveMetodoPago(raw: any): string {
   if (raw === 1 || raw === '1' || raw === 'Efectivo') return 'Efectivo';
   if (raw === 2 || raw === '2' || raw === 'Tarjeta') return 'Tarjeta';
-  if (raw === 3 || raw === '3' || raw === 'Mercado Pago') return 'Mercado Pago';
+  if (raw === 3 || raw === '3' || raw === 'MP') return 'MP';
   if (raw === 4 || raw === '4' || raw === 'Mixto') return 'Mixto';
   return '';
 }
@@ -24,7 +24,7 @@ export function getVisibleFields(
       if (field.name === 'fecha_de_venc' && origen && origen !== 'plan') return false;
       if (['monto_efectivo', 'monto_mp', 'monto_tarjeta'].includes(field.name)) {
         if (metodo === 'Efectivo') return field.name === 'monto_efectivo';
-        if (metodo === 'Mercado Pago') return field.name === 'monto_mp';
+        if (metodo === 'MP') return field.name === 'monto_mp';
         if (metodo === 'Tarjeta') return field.name === 'monto_tarjeta';
         if (metodo === 'Mixto') return true;
         return false;
@@ -50,7 +50,7 @@ export function applyPrecioToMontos(
   if (precio <= 0) return state;
   const next = { ...state };
   if (metodo === 'Efectivo') next['monto_efectivo'] = String(precio);
-  else if (metodo === 'Mercado Pago') next['monto_mp'] = String(precio);
+  else if (metodo === 'MP') next['monto_mp'] = String(precio);
   else if (metodo === 'Tarjeta') next['monto_tarjeta'] = String(precio);
   else if (metodo === 'Mixto') {
     next['monto_efectivo'] = '';
@@ -124,7 +124,7 @@ export function applyMetodoPagoChangeEffects(
     next['monto_efectivo'] = total ? String(total) : '';
     next['monto_mp'] = '';
     next['monto_tarjeta'] = '';
-  } else if (newMetodo === 'Mercado Pago') {
+  } else if (newMetodo === 'MP') {
     next['monto_mp'] = total ? String(total) : '';
     next['monto_efectivo'] = '';
     next['monto_tarjeta'] = '';

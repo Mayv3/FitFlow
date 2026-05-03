@@ -87,7 +87,7 @@ export function computeCellStyle(
 
   if (
     ['monto_efectivo', 'monto_mp', 'monto_tarjeta'].includes(fieldName) &&
-    (metodo === 'Efectivo' || metodo === 'Mercado Pago' || metodo === 'Tarjeta')
+    (metodo === 'Efectivo' || metodo === 'MP' || metodo === 'Tarjeta')
   ) {
     return { gridColumn: '1 / span 12', minWidth: 0 };
   }

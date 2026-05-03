@@ -151,7 +151,7 @@ export default function PaymentList() {
             const items: { metodo_de_pago_id: number; monto: number }[] = [];
 
             if (metodoPago === 4) {
-                // Mixto: puede tener efectivo, tarjeta y/o mercado pago
+                // Mixto: puede tener efectivo, tarjeta y/o MP
                 const montoEfectivo = Number(values.monto_efectivo) || 0;
                 const montoTarjeta = Number(values.monto_tarjeta) || 0;
                 const montoMp = Number(values.monto_mp) || 0;
@@ -165,7 +165,7 @@ export default function PaymentList() {
                     return;
                 }
             } else {
-                // Efectivo (1), Tarjeta (2) o Mercado Pago (3)
+                // Efectivo (1), Tarjeta (2) o MP (3)
                 let monto = 0;
 
                 if (metodoPago === 1) {
@@ -270,7 +270,7 @@ export default function PaymentList() {
 
         let metodo_pago = 'Mixto';
         if (efectivo && !mp && !tarjeta) metodo_pago = 'Efectivo';
-        else if (mp && !efectivo && !tarjeta) metodo_pago = 'Mercado Pago';
+        else if (mp && !efectivo && !tarjeta) metodo_pago = 'MP';
         else if (tarjeta && !efectivo && !mp) metodo_pago = 'Tarjeta';
 
         const origen_pago = payment.plan_id ? 'plan' : payment.servicio_id ? 'servicio' : '';

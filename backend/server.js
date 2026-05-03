@@ -26,6 +26,7 @@ import productosRoutes from "./routes/productos.routes.js"
 import emailsRoutes from "./routes/emails.routes.js"
 import novedadesRoutes from "./routes/novedades.routes.js"
 
+import { supabaseAdmin } from './config/supabaseClient.js'
 import { verifyToken } from '../backend/middleware/auth.js'
 import { createServer } from 'http';
 import { Server } from 'socket.io';

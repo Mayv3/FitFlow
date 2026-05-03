@@ -90,7 +90,7 @@ export const getInputFieldsPagos = ({
             options: [
                 { label: 'Efectivo', value: 1 },
                 { label: 'Tarjeta', value: 2 },
-                { label: 'Mercado Pago', value: 3 },
+                { label: 'MP', value: 3 },
                 { label: 'Mixto', value: 4 },
             ],
             placeholder: 'Selecciona un método de pago',
@@ -103,7 +103,7 @@ export const getInputFieldsPagos = ({
             regex: /^$|^\d+$/,
         },
         {
-            label: 'Monto en Mercado Pago',
+            label: 'Monto en MP',
             name: 'monto_mp',
             type: 'string',
             placeholder: 'Ej: 2000',

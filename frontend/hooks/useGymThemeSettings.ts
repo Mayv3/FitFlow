@@ -18,7 +18,8 @@ export interface GymThemeSettings {
 }
 
 export function useGymThemeSettings() {
-  const [borderRadius, setBorderRadius] = useState<number>(1.5); // default Material-UI value (12px / 8)
+  const [borderRadius, setBorderRadius] = useState<number>(1.5);
+  const [primaryColor, setPrimaryColor] = useState<string>('#FF6A00');
 
   useEffect(() => {
     try {
@@ -26,9 +27,11 @@ export function useGymThemeSettings() {
       if (gymSettingsStr) {
         const gymSettings = JSON.parse(gymSettingsStr) as GymThemeSettings;
         if (gymSettings.shape?.borderRadius) {
-          // Convert from pixels to Material-UI units (divide by 8)
           const muBorderRadius = gymSettings.shape.borderRadius / 8;
           setBorderRadius(muBorderRadius);
+        }
+        if (gymSettings.colors?.primary) {
+          setPrimaryColor(gymSettings.colors.primary);
         }
       }
     } catch (error) {
@@ -38,5 +41,6 @@ export function useGymThemeSettings() {
 
   return {
     borderRadius,
+    primaryColor,
   };
 }

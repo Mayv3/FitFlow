@@ -2,7 +2,7 @@
 import { GenericDataGrid } from '@/components/ui/tables/DataGrid';
 import {
   Box, Typography, CircularProgress, Button, Stack,
-  Badge, Dialog, DialogTitle, DialogContent, DialogActions,
+  Badge, Dialog, DialogContent,
   IconButton, Tooltip, Checkbox,
   Table, TableBody, TableCell, TableHead, TableRow,
 } from '@mui/material';
@@ -27,6 +27,8 @@ import {
 import AddIcon from '@mui/icons-material/Add';
 import WarningAmberIcon from '@mui/icons-material/WarningAmber';
 import WhatsAppIcon from '@mui/icons-material/WhatsApp';
+import { darken } from '@mui/material/styles';
+import { useGymThemeSettings } from '@/hooks/useGymThemeSettings';
 import { useMemberAsyncValidators } from '@/hooks/validatorsInput/UseAsyncValidators';
 import { usePlanesPrecios } from '@/hooks/plans/usePlanesPrecios';
 import { SearchBar } from '@/components/ui/search/SearchBar';
@@ -70,6 +72,7 @@ export default function MembersList() {
   const { changeItem } = useChangeItem<Member>();
 
   const gymId = user?.gym_id ?? '';
+  const { primaryColor } = useGymThemeSettings();
 
   useEffect(() => {
     if (!gymId) return;
@@ -400,12 +403,28 @@ export default function MembersList() {
 
       <ReactQueryDevtools initialIsOpen={true} />
 
-      <Dialog open={openExpired} onClose={() => setOpenExpired(false)} maxWidth="md" fullWidth>
-        <DialogTitle sx={{ py: 1.5, display: 'flex', alignItems: 'center', gap: 1, fontSize: '1rem' }}>
-          <WarningAmberIcon color="warning" fontSize="small" />
-          Miembros vencidos ({expiredCount})
-        </DialogTitle>
-        <DialogContent dividers sx={{ p: 0 }}>
+      <Dialog open={openExpired} onClose={() => setOpenExpired(false)} maxWidth="sm" fullWidth
+        PaperProps={{ sx: { borderRadius: 3, overflow: 'hidden' } }}
+      >
+        <Box sx={{ bgcolor: primaryColor, color: '#fff', px: 2, py: 1.5, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          <Box display="flex" alignItems="center" gap={1}>
+            <WarningAmberIcon fontSize="small" sx={{ opacity: 0.9 }} />
+            <Typography variant="h6" fontWeight={600} fontSize="0.95rem">
+              Miembros vencidos ({expiredCount})
+            </Typography>
+          </Box>
+          <Box component="button" onClick={() => setOpenExpired(false)}
+            sx={{ bgcolor: 'rgba(255,255,255,0.2)', border: 'none', borderRadius: '50%', width: 28, height: 28, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: '#fff', fontSize: 16, lineHeight: 1, '&:hover': { bgcolor: 'rgba(255,255,255,0.35)' } }}>✕</Box>
+        </Box>
+        <DialogContent sx={{
+          p: 0, maxHeight: '70vh',
+          scrollbarWidth: 'thin',
+          scrollbarColor: `${primaryColor} transparent`,
+          '&::-webkit-scrollbar': { width: 6 },
+          '&::-webkit-scrollbar-track': { bgcolor: 'transparent' },
+          '&::-webkit-scrollbar-thumb': { bgcolor: primaryColor, borderRadius: 3 },
+          '&::-webkit-scrollbar-thumb:hover': { bgcolor: darken(primaryColor, 0.3) },
+        }}>
           {expiredMembers.length === 0 ? (
             <Typography sx={{ p: 3, textAlign: 'center', color: 'text.secondary', fontSize: '0.875rem' }}>
               No hay miembros vencidos
@@ -413,13 +432,12 @@ export default function MembersList() {
           ) : (
             <Table size="small" stickyHeader>
               <TableHead>
-                <TableRow>
-                  <TableCell padding="checkbox" />
-                  <TableCell sx={{ fontWeight: 600, fontSize: '0.75rem' }}>Nombre</TableCell>
-                  <TableCell sx={{ fontWeight: 600, fontSize: '0.75rem' }}>Plan</TableCell>
-                  <TableCell sx={{ fontWeight: 600, fontSize: '0.75rem' }}>Venció</TableCell>
-                  <TableCell sx={{ fontWeight: 600, fontSize: '0.75rem' }}>Teléfono</TableCell>
-                  <TableCell align="center" sx={{ fontWeight: 600, fontSize: '0.75rem' }}>WA</TableCell>
+                <TableRow sx={{ bgcolor: primaryColor, '& th': { border: 0 } }}>
+                  <TableCell padding="checkbox" sx={{ width: 48, bgcolor: primaryColor, border: 0 }} />
+                  <TableCell sx={{ fontWeight: 600, fontSize: '0.75rem', color: '#fff', border: 0 }}>Nombre</TableCell>
+                  <TableCell sx={{ fontWeight: 600, fontSize: '0.75rem', color: '#fff', border: 0 }}>Venció</TableCell>
+                  <TableCell sx={{ fontWeight: 600, fontSize: '0.75rem', color: '#fff', border: 0 }}>Teléfono</TableCell>
+                  <TableCell align="center" sx={{ fontWeight: 600, fontSize: '0.75rem', width: 56, color: '#fff', border: 0 }}>WA</TableCell>
                 </TableRow>
               </TableHead>
               <TableBody>
@@ -446,27 +464,25 @@ export default function MembersList() {
                       key={dniKey}
                       sx={{ opacity: sent ? 0.45 : 1, transition: 'opacity 0.2s' }}
                     >
-                      <TableCell padding="checkbox">
+                      <TableCell padding="checkbox" sx={{ width: 48 }}>
                         <Tooltip title={sent ? 'Marcar como no enviado' : 'Marcar como enviado'}>
                           <Checkbox
-                            size="small"
                             checked={sent}
                             onChange={() => toggleWaSent(dniKey)}
                             color="success"
+                            sx={{ '& .MuiSvgIcon-root': { fontSize: 22 } }}
                           />
                         </Tooltip>
                       </TableCell>
-                      <TableCell sx={{ fontSize: '0.8rem', fontWeight: sent ? 400 : 500 }}>
+                      <TableCell sx={{ fontSize: '0.875rem', fontWeight: sent ? 400 : 600 }}>
                         {m.nombre}
                       </TableCell>
-                      <TableCell sx={{ fontSize: '0.8rem', color: 'text.secondary' }}>{planNombre}</TableCell>
-                      <TableCell sx={{ fontSize: '0.8rem', color: 'error.main' }}>{fechaVenc}</TableCell>
-                      <TableCell sx={{ fontSize: '0.8rem', color: 'text.secondary' }}>{m.telefono ?? '—'}</TableCell>
-                      <TableCell align="center" padding="checkbox">
+                      <TableCell sx={{ fontSize: '0.875rem', color: 'error.main', fontWeight: 500 }}>{fechaVenc}</TableCell>
+                      <TableCell sx={{ fontSize: '0.875rem', color: 'text.secondary' }}>{m.telefono ?? '—'}</TableCell>
+                      <TableCell align="center" padding="checkbox" sx={{ width: 56 }}>
                         <Tooltip title={waUrl ? 'Enviar por WhatsApp' : 'Sin teléfono registrado'}>
                           <span>
                             <IconButton
-                              size="small"
                               sx={{ color: waUrl ? '#25D366' : 'action.disabled' }}
                               component={waUrl ? 'a' : 'button'}
                               href={waUrl ?? undefined}
@@ -474,7 +490,7 @@ export default function MembersList() {
                               rel={waUrl ? 'noopener noreferrer' : undefined}
                               disabled={!waUrl}
                             >
-                              <WhatsAppIcon fontSize="small" />
+                              <WhatsAppIcon sx={{ fontSize: 24 }} />
                             </IconButton>
                           </span>
                         </Tooltip>
@@ -486,9 +502,6 @@ export default function MembersList() {
             </Table>
           )}
         </DialogContent>
-        <DialogActions sx={{ py: 1 }}>
-          <Button size="small" onClick={() => setOpenExpired(false)}>Cerrar</Button>
-        </DialogActions>
       </Dialog>
 
     </Box>

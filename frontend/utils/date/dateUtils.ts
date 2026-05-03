@@ -34,6 +34,7 @@ export const estadoVencimiento = (
   const diff = vence.diff(hoy, 'days');
 
   if (diff < 0) return { label: 'Vencido', code: 'expired', daysDiff: diff };
+  if (diff === 0) return { label: 'Vence hoy', code: 'expiring', daysDiff: diff };
   if (diff <= diasAviso) return { label: `Por vencer`, code: 'expiring', daysDiff: diff };
   return { label: 'Activo', code: 'active', daysDiff: diff };
 };

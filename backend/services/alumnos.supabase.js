@@ -227,7 +227,7 @@ export async function getExpiredAlumnosService(supaClient) {
     `)
     .is('deleted_at', null)
     .lt('fecha_de_vencimiento', today)
-    .order('fecha_de_vencimiento', { ascending: true });
+    .order('fecha_de_vencimiento', { ascending: false });
 
   if (error) throw error;
 

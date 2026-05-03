@@ -410,7 +410,7 @@ function plantillaVencimientoGymPlan({ gymName, planName, planPrice, endAt, gymL
           ⚠️ <strong>El pago debe realizarse del 1 al 15 de cada mes</strong> para mantener tu acceso activo.
         </div>
 
-        <!-- Mercado Pago -->
+        <!-- MP -->
         <div class="payment-box">
           <h3>Datos de pago</h3>
           <table class="payment-table">

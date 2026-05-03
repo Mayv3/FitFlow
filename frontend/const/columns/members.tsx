@@ -132,7 +132,21 @@ export const columnsMember = (
 ): GridColDef[] => [
     { field: 'nombre', headerName: 'Nombre', flex: 0.18, align: 'center', headerAlign: 'center' },
     { field: 'dni', headerName: 'DNI', flex: 0.10, align: 'center', headerAlign: 'center' },
-    { field: 'email', headerName: 'Email', flex: 0.20, align: 'center', headerAlign: 'center' },
+    {
+      field: 'email',
+      headerName: 'Email',
+      flex: 0.20,
+      align: 'center',
+      headerAlign: 'center',
+      renderCell: (params) =>
+        params.value ? (
+          params.value.toLowerCase()
+        ) : (
+          <Box component="span" sx={{ color: 'grey.600', fontStyle: 'italic' }}>
+            Sin email
+          </Box>
+        ),
+    },
     { field: 'telefono', headerName: 'Teléfono', flex: 0.12, align: 'center', headerAlign: 'center' },
     {
       field: 'plan_nombre',

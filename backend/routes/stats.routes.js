@@ -9,6 +9,10 @@ import {
   getFacturacionController,
   getFacturacionMesController,
   getFacturacionPorPlanController,
+  getActiveMembersPaymentDetailsController,
+  getAbandonosDetailsController,
+  getAltasDetailsController,
+  getPagosByDateRangeController,
 } from '../controllers/stats.controller.js';
 import { getAsistenciasByGym, getAsistenciasByHora } from '../controllers/attendance.controller.js';
 import { requireRole } from '../middleware/requireRole.js';
@@ -39,5 +43,9 @@ router.get('/dashboard/gyms/:gym_id/alumnos/origen', getAlumnosPorOrigenControll
 router.get('/dashboard/gyms/:gym_id/facturacion', getFacturacionController);
 router.get('/dashboard/facturacion-mes', getFacturacionMesController);
 router.get('/dashboard/planes/facturacion', getFacturacionPorPlanController);
+router.get('/dashboard/activos-mes', getActiveMembersPaymentDetailsController);
+router.get('/dashboard/abandonos-mes', getAbandonosDetailsController);
+router.get('/dashboard/altas-mes', getAltasDetailsController);
+router.get('/dashboard/gyms/:gym_id/facturacion/pagos', getPagosByDateRangeController);
 
 export default router;

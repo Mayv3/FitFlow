@@ -2,7 +2,7 @@ import { listUsers, changePasswordService, updateUserRole, deleteUser } from "..
 
 export async function handleListUsers(req, res) {
   try {
-    const gymId = req.gymId
+    const gymId = req.query.gym_id || req.gymId
     const users = await listUsers(gymId)
     return res.status(200).json(users)
   } catch (err) {

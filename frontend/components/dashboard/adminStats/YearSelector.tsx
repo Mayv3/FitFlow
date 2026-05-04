@@ -29,7 +29,7 @@ export function YearSelector({ value, onChange }: Props) {
       value={value}
       onChange={(e) => onChange(Number(e.target.value))}
       label="Año"
-      sx={{ minWidth: 90 }}
+      sx={{ minWidth: 110 }}
     >
       {years.map((y) => (
         <MenuItem key={y} value={y}>{y}</MenuItem>

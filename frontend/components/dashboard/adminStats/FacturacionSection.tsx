@@ -214,7 +214,7 @@ export function FacturacionSection() {
   // Donut loading/empty state
   if (!data) {
     return (
-      <Box display="grid" gridTemplateColumns={{ xs: '1fr', md: '2fr 3fr' }} gap={1.5} mb={1.5}>
+      <Box display="grid" gridTemplateColumns="repeat(auto-fit, minmax(300px, 1fr))" gap={1.5} mb={1.5}>
         <Card>
           <CardContent>
             <Box display="flex" alignItems="center" gap={1} mb={1}>
@@ -296,7 +296,7 @@ export function FacturacionSection() {
   const barSize = isMobile ? Math.max(10, barSizeBase - 6) : barSizeBase;
 
   return (
-    <><Box display="grid" gridTemplateColumns={{ xs: '1fr', md: '2fr 3fr' }} gap={1.5} alignItems="stretch" mb={1.5}>
+    <><Box display="grid" gridTemplateColumns="repeat(auto-fit, minmax(300px, 1fr))" gap={1.5} alignItems="stretch" mb={1.5}>
       <Box sx={{ position: 'relative', borderRadius }}>
         <GlowingEffect
           spread={40}
@@ -316,14 +316,15 @@ export function FacturacionSection() {
                 title="Este gráfico muestra los alumnos que pagaron (activos), las nuevas altas y los abandonos del mes seleccionado."
                 placement="right"
               />
-              <Box flex={1} />
+            </Box>
+            <Box display="flex" alignItems="center" justifyContent={{ xs: 'center', sm: 'flex-start' }} gap={1} mb={1}>
               <YearSelector value={donutYear} onChange={(y) => { setDonutYear(y); const newMax = y < currentYear ? 12 : currentMonth; if (donutMonth > newMax) setDonutMonth(newMax); }} />
               <TextField
                 select
                 size="small"
                 value={safeMonth}
                 onChange={(e) => setDonutMonth(Number(e.target.value))}
-                sx={{ minWidth: 100 }}
+                sx={{ minWidth: 110 }}
               >
                 {availableMonths.map((m) => (
                   <MenuItem key={m.value} value={m.value}>{m.label}</MenuItem>
@@ -484,10 +485,9 @@ export function FacturacionSection() {
                   exclusive
                   onChange={(_, v) => v && setRange(v)}
                 >
-                  <ToggleButton value="12m"><Chip label="12 meses" size="small" /></ToggleButton>
-                  <ToggleButton value="7w">Por semana</ToggleButton>
-                  <ToggleButton value="30d">Por día</ToggleButton>
-                  <ToggleButton value="24h">24 horas</ToggleButton>
+                  <ToggleButton value="12m" sx={{ fontSize: '0.9rem', px: 2, py: 0.5 }}>12m</ToggleButton>
+                  <ToggleButton value="7w" sx={{ fontSize: '0.9rem', px: 2, py: 0.5 }}>Semana</ToggleButton>
+                  <ToggleButton value="30d" sx={{ fontSize: '0.9rem', px: 2, py: 0.5 }}>Día</ToggleButton>
                 </ToggleButtonGroup>
               </Box>
             </Box>

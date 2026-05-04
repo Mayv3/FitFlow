@@ -62,7 +62,7 @@ export function RenovacionesModal({
                         Renovaciones del mes
                     </Typography>
                     <Typography variant="h6" fontWeight={600}>
-                        {total} renovacione{total !== 1 ? 's' : ''}
+                        {total} renovaciones este mes
                     </Typography>
                 </Box>
                 <Box component="button" onClick={onClose}

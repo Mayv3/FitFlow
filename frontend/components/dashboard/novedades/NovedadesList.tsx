@@ -79,6 +79,25 @@ const getTipoColor = (tipo: string, theme: any) => {
     return colors[tipo as keyof typeof colors] || theme.palette.primary.main;
 };
 
+const READ_KEY = 'readNovedades';
+
+function getReadIds(): Set<number> {
+    if (typeof window === 'undefined') return new Set();
+    try {
+        const raw = sessionStorage.getItem(READ_KEY);
+        return new Set(raw ? JSON.parse(raw) : []);
+    } catch { return new Set(); }
+}
+
+function markAsRead(id: number) {
+    if (typeof window === 'undefined') return;
+    try {
+        const ids = getReadIds();
+        ids.add(id);
+        sessionStorage.setItem(READ_KEY, JSON.stringify([...ids]));
+    } catch {}
+}
+
 export default function NovedadesList() {
     const theme = useTheme();
     const { isDarkMode } = useDarkMode();
@@ -87,6 +106,7 @@ export default function NovedadesList() {
     const [selectedNovedad, setSelectedNovedad] = useState<Novedad | null>(null);
     const [page, setPage] = useState(1);
     const [acumuladas, setAcumuladas] = useState<Novedad[]>([]);
+    const [readIds, setReadIds] = useState<Set<number>>(getReadIds);
 
     useEffect(() => {
         if (typeof window !== 'undefined') {
@@ -122,16 +142,13 @@ export default function NovedadesList() {
 
     const primaryColor = gymPrimaryColor || theme.palette.primary.main;
 
-    useEffect(() => {
-        data?.items?.forEach((n: Novedad) => {
-            if (n.imagen_url) {
-                const img = new window.Image();
-                img.src = n.imagen_url;
-            }
-        });
-    }, [data])
+
+
+    const unreadCount = novedadesOrdenadas.filter(n => !readIds.has(n.id)).length;
 
     const handleOpenModal = (novedad: Novedad) => {
+        markAsRead(novedad.id);
+        setReadIds(prev => new Set(prev).add(novedad.id));
         setSelectedNovedad(novedad);
         setOpenModal(true);
     };
@@ -156,14 +173,30 @@ export default function NovedadesList() {
         <Box sx={{ py: { xs: 4, md: 6 } }} className="animate-fade-in">
             <Container maxWidth="md">
 
-                <Box sx={{ mb: 5 }}>
-                    <Typography variant="h4" fontWeight={800} color={primaryColor} gutterBottom>
-                        Novedades
-                    </Typography>
-                    <Typography color="text.secondary">
-                        Acá se publican anuncios, nuevas funcionalidades, actualizaciones, correcciones de errores
-                        y avisos sobre incidencias, para que estés siempre al tanto de lo que pasa en la plataforma.
-                    </Typography>
+                <Box sx={{ mb: 5, display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 1 }}>
+                    <Box>
+                        <Typography variant="h4" fontWeight={800} color={primaryColor} gutterBottom>
+                            Novedades
+                        </Typography>
+                        <Typography color="text.secondary">
+                            Acá se publican anuncios, nuevas funcionalidades, actualizaciones, correcciones de errores
+                            y avisos sobre incidencias, para que estés siempre al tanto de lo que pasa en la plataforma.
+                        </Typography>
+                    </Box>
+                    {unreadCount > 0 && (
+                        <Box sx={{
+                            px: 1.5,
+                            py: 0.5,
+                            borderRadius: 20,
+                            bgcolor: alpha(primaryColor, 0.12),
+                            color: primaryColor,
+                            fontWeight: 700,
+                            fontSize: 13,
+                            whiteSpace: 'nowrap',
+                        }}>
+                            {unreadCount} sin leer
+                        </Box>
+                    )}
                 </Box>
 
                 {isLoading && acumuladas.length === 0 ? (
@@ -192,7 +225,9 @@ export default function NovedadesList() {
                 ) : (
                     <>
                     <div className='grid grid-cols-1 gap-6 md:grid-cols-2 md:gap-4 '>
-                        {novedadesOrdenadas.map((novedad, index) => (
+                        {novedadesOrdenadas.map((novedad, index) => {
+                            const isUnread = !readIds.has(novedad.id);
+                            return (
                             <Card
                                 key={novedad.id}
                                 sx={{
@@ -210,26 +245,34 @@ export default function NovedadesList() {
                                     border: '1px solid',
                                     width: '100%',
                                     borderColor: isDarkMode ? alpha(primaryColor, 0.2) : 'divider',
-                                    backgroundColor: isDarkMode
-                                        ? theme.palette.background.paper
-                                        : '#fff',
+                                    backgroundColor: isUnread
+                                        ? alpha(primaryColor, 0.06)
+                                        : isDarkMode ? theme.palette.background.paper : '#fff',
+                                    animation: isUnread ? 'pulseGlow 3s ease-in-out infinite' : undefined,
+                                    '@keyframes pulseGlow': {
+                                        '0%, 100%': { boxShadow: `0 0 0 0 ${alpha(primaryColor, 0)}` },
+                                        '50%': { boxShadow: `0 0 20px 2px ${alpha(primaryColor, 0.15)}` },
+                                    },
                                     transition: 'all 0.25s ease',
+                                    cursor: 'pointer',
                                     '&:hover': {
                                         transform: 'translateY(-2px)',
                                         boxShadow: isDarkMode
                                             ? `0 8px 24px ${alpha(primaryColor, 0.2)}`
                                             : 4,
-                                        borderColor: isDarkMode
-                                            ? alpha(primaryColor, 0.4)
-                                            : 'divider',
+                                        borderColor: isUnread
+                                            ? alpha(primaryColor, 0.6)
+                                            : isDarkMode ? alpha(primaryColor, 0.4) : 'divider',
                                     },
                                 }}
+                                onClick={() => handleOpenModal(novedad)}
                             >
                                 {novedad.imagen_url && (
                                     <CardMedia
                                         component="img"
                                         image={novedad.imagen_url}
                                         alt={novedad.titulo}
+                                        loading="lazy"
                                         sx={{
                                             height: 200,
                                             objectFit: 'cover',
@@ -307,28 +350,25 @@ export default function NovedadesList() {
                                             </Typography>
                                         )}
 
-                                        <Button
-                                            size="small"
-                                            onClick={() => handleOpenModal(novedad)}
-                                            sx={{
+                                        {isUnread && (
+                                            <Box sx={{
                                                 alignSelf: 'flex-start',
-                                                color: isDarkMode
-                                                    ? theme.palette.primary.light
-                                                    : primaryColor,
+                                                px: 1.2,
+                                                py: 0.3,
+                                                borderRadius: 1,
+                                                bgcolor: alpha(primaryColor, 0.12),
+                                                color: primaryColor,
                                                 fontWeight: 700,
-                                                px: 0,
-                                                '&:hover': {
-                                                    background: 'transparent',
-                                                    textDecoration: 'underline',
-                                                },
-                                            }}
-                                        >
-                                            Leer más →
-                                        </Button>
+                                                fontSize: 11,
+                                                letterSpacing: '0.3px',
+                                            }}>
+                                                Sin leer
+                                            </Box>
+                                        )}
                                     </Stack>
                                 </CardContent>
                             </Card>
-                        ))}
+                        );})}
                     </div>
 
                     {hayMas && (
@@ -362,12 +402,12 @@ export default function NovedadesList() {
                 <Dialog
                     open={openModal}
                     onClose={handleCloseModal}
-                    maxWidth="md"
+                    maxWidth="sm"
                     fullWidth
                     PaperProps={{
                         sx: {
                             borderRadius: 3,
-                            bgcolor: isDarkMode ? theme.palette.background.paper : '#fff',
+                            bgcolor: '#0a0a0a',
                             '& .MuiDialogContent-root': {
                                 '&::-webkit-scrollbar': {
                                     display: 'none',
@@ -417,7 +457,7 @@ export default function NovedadesList() {
                                                 },
                                             }}
                                         />
-                                        <Typography variant="body2" color="text.secondary" fontWeight={600}>
+                                        <Typography variant="body2" color="rgba(255,255,255,0.5)" fontWeight={600}>
                                             {format(
                                                 new Date(selectedNovedad.fecha_publicacion),
                                                 "d 'de' MMMM 'de' yyyy",
@@ -447,17 +487,17 @@ export default function NovedadesList() {
                                             component="img"
                                             src={selectedNovedad.imagen_url}
                                             alt={selectedNovedad.titulo}
+                                            loading="lazy"
                                             sx={{
-                                                maxHeight: 500,
+                                                maxHeight: 250,
+                                                width: '100%',
                                                 objectFit: 'cover',
-                                                borderBottomLeftRadius: 30,
-                                                borderBottomRightRadius: 30,
                                                 boxShadow: `0 4px 20px ${alpha(getTipoColor(selectedNovedad.tipo, theme), 0.15)}`,
                                             }}
                                         />
                                     )}
 
-                                    <Box p={5}>
+                                    <Box p={3}>
                                         {/* Título */}
                                         <Typography
                                             variant="h4"
@@ -470,7 +510,7 @@ export default function NovedadesList() {
                                         {selectedNovedad.descripcion && (
                                             <Typography
                                                 variant="body1"
-                                                color="text.secondary"
+                                                color={'rgba(255,255,255,0.75)'}
                                                 sx={{
                                                     lineHeight: 1.8,
                                                     whiteSpace: 'pre-wrap',

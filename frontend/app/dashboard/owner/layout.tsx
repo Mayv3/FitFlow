@@ -6,6 +6,7 @@ import { ownerTabs } from "@/const/headerTabs.tsx/sideBarTabs";
 import { useAuthRole } from "@/hooks/auth/useAuthRole";
 import { OWNER } from "@/const/roles/roles";
 import { useMediaQuery, useTheme } from '@mui/material';
+import NovedadesModal from "@/components/dashboard/novedades/NovedadesBanner";
 export default function OwnerLayout({
   children,
 }: {
@@ -30,6 +31,7 @@ export default function OwnerLayout({
         marginLeft: isDesktop ? '80px' : '0px',
         width: isDesktop ? '20px' : '100%'
       }}>
+        <NovedadesModal />
         {children}
       </main>
     </div>

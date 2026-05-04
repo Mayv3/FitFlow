@@ -1,5 +1,61 @@
 # FitFlow — Memory de cambios
 
+## RLS (Row Level Security)
+
+### ✅ Completadas (RLS habilitado)
+
+| Tabla | Estado | Notas |
+|---|---|---|
+| `asistencias` | ✅ RLS + policy | Policy usa `user_metadata.gym_id`. Recién activado. |
+| `alumnos` | ✅ RLS + policies | SELECT/INSERT/UPDATE por gym, pero usa `user_metadata` (editable por usuario) |
+| `pagos` | ✅ RLS + policies | Por gym mediante subquery a `users` |
+| `planes_precios` | ✅ RLS + policies | Por gym mediante subquery a `users` |
+| `productos` | ✅ RLS + policies | Policies permisivas (`USING true` para DELETE/UPDATE — **riesgo**) |
+| `servicios` | ✅ RLS + policies | Por gym mediante subquery a `users` |
+| `turnos` | ✅ RLS + policies | Usa `user_metadata.gym_id` (**vulnerable**) |
+
+### ❌ Pendientes — ordenadas de menor a mayor peligro
+
+#### 🟢 Bajo riesgo
+| Tabla | Riesgo | Motivo |
+|---|---|---|
+| `roles` | Bajo | Tabla lookup global. Solo lectura. |
+| `gym_plans` | Bajo | Planes del SaaS. Solo lectura para gyms, escritura solo FitFlow admin. |
+| `novedades` | Bajo | Blog del sistema. Tiene policies con `USING true` pero RLS **deshabilitado**. Ya debería funcionar igual. |
+| `metodos_de_pago` | Bajo | Lista de métodos de pago. Baja sensibilidad. |
+
+#### 🟡 Riesgo medio
+| Tabla | Riesgo | Motivo |
+|---|---|---|
+| `clases` | Medio | Datos multi-tenant sin barrera entre gimnasios. |
+| `clases_inscripciones` | Medio | Inscripciones a clases multi-tenant. |
+| `clases_sesiones` | Medio | Sesiones de clases multi-tenant. |
+| `pago_items` | Medio | Items de pagos. Datos financieros. |
+
+#### 🟠 Riesgo alto
+| Tabla | Riesgo | Motivo |
+|---|---|---|
+| `users` | **Alto** | Tiene 5 policies creadas pero RLS **deshabilitado**. Cualquier usuario autenticado puede leer/modificar todos los usuarios del sistema. |
+| `gyms` | **Alto** | Datos de todos los gimnasios visibles a cualquier usuario autenticado. |
+| `suscriptions` | **Alto** | Suscripciones activas de los gyms expuestas. |
+| `productos` | **Alto** | DELETE y UPDATE con `USING true` — cualquier usuario autenticado puede borrar/modificar productos de cualquier gym. |
+
+#### 🔴 Crítico — `user_metadata` editable
+| Tabla | Riesgo | Motivo |
+|---|---|---|
+| `turnos` | 🔴 Crítico | Las policies usan `auth.jwt() -> 'user_metadata'` que **el usuario puede editar**. Un usuario malicioso cambia su metadata y accede a turnos de otros gyms. |
+| `alumnos` | 🔴 Crítico | La policy `alumnos_select_by_gym_from_jwt` usa `user_metadata`. Misma vulnerabilidad. |
+| `asistencias` | 🔴 Crítico | Policy usa `user_metadata`. Misma vulnerabilidad. |
+| `servicios` | 🔴 Crítico | Algunas policies usan `auth.jwt() ->> 'gym_id'` (lectura directa del claim raíz) — más seguro que `user_metadata` pero hay que verificar que funcione. |
+
+### ⚠️ Notas importantes
+- `deudas` y `egresos` no se usan → se omitieron adrede.
+- Las policies de `users` ya están creadas, solo falta ejecutar `ALTER TABLE users ENABLE ROW LEVEL SECURITY;`.
+- `novedades` igual: policies listas, solo falta habilitar RLS.
+- **Solución para `user_metadata`**: migrar las policies a `app_metadata` (solo editable por admin de Supabase). Requiere cambiar cómo se crean los usuarios (usar `app_metadata` en vez de `user_metadata` en `auth.supabase.js`).
+
+## Gráfico de torta (Dashboard admin)
+
 ## Gráfico de torta (Dashboard admin)
 
 ### Filtro por mes y año

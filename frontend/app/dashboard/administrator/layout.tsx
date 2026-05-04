@@ -6,7 +6,8 @@ import { adminTabs } from "@/const/headerTabs.tsx/sideBarTabs";
 import { useAuthRole } from "@/hooks/auth/useAuthRole";
 import { ADMINISTRADOR } from "@/const/roles/roles";
 import { useMediaQuery, useTheme } from '@mui/material';
-export default function OwnerLayout({
+import NovedadesModal from "@/components/dashboard/novedades/NovedadesBanner";
+export default function AdminLayout({
   children,
 }: {
   children: React.ReactNode;
@@ -30,6 +31,7 @@ export default function OwnerLayout({
         marginLeft: isDesktop ? '80px' : '0px',
         width: isDesktop ? '20px' : '100%'
       }}>
+        <NovedadesModal />
         {children}
       </main>
     </div>

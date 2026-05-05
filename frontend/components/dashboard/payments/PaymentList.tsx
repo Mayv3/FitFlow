@@ -8,7 +8,7 @@ import { SearchBar } from '@/components/ui/search/SearchBar';
 import { GenericDataGrid } from '@/components/ui/tables/DataGrid';
 import { columnsPayments } from '@/const/columns/payments';
 import { useUser } from '@/context/UserContext';
-import { DatePicker } from '@mui/x-date-pickers-pro';
+import { DatePicker } from '@mui/x-date-pickers';
 
 import { ReactQueryDevtools } from '@tanstack/react-query-devtools';
 import { FormModal } from '@/components/ui/modals/FormModal';
@@ -55,14 +55,16 @@ export default function PaymentList() {
     const [openDelete, setOpenDelete] = useState(false);
     const [deletingId, setDeletingId] = useState<number | null>(null);
 
-    const [fromDate, setFromDate] = useState<moment.Moment | null>(fechaHoyArgentinaSinFormato);
-    const [toDate, setToDate] = useState<moment.Moment | null>(fechaHoyArgentinaSinFormato);
+    const [dateRange, setDateRange] = useState<[moment.Moment | null, moment.Moment | null]>([
+        fechaHoyArgentinaSinFormato,
+        fechaHoyArgentinaSinFormato,
+    ]);
 
     const [page, setPage] = useState(1);
     const [q, setQ] = useState('');
 
-    const fromDateISO = fromDate?.format('YYYY-MM-DD') ?? null;
-    const toDateISO = toDate?.format('YYYY-MM-DD') ?? null;
+    const fromDateISO = dateRange[0]?.format('YYYY-MM-DD') ?? null;
+    const toDateISO = dateRange[1]?.format('YYYY-MM-DD') ?? null;
 
     const { data, isLoading, isError, error, isFetching } = usePagosByGym(gymId, page, tableSize, q, { fromDate: fromDateISO, toDate: toDateISO });
     const { data: stats, isLoading: statsLoading } = usePaymentsStats(gymId, { fromDate: fromDateISO, toDate: toDateISO, })
@@ -413,22 +415,36 @@ export default function PaymentList() {
                                     flex: 1,
                                 }}
                             >
-                                <DatePicker
-                                    label="Desde"
-                                    value={fromDate}
-                                    onChange={(newValue) => setFromDate(newValue)}
-                                    minDate={moment().startOf('year')}
-                                    maxDate={moment()}
-                                    slotProps={{ textField: { fullWidth: true } }}
-                                />
-                                <DatePicker
-                                    label="Hasta"
-                                    value={toDate}
-                                    onChange={(newValue) => setToDate(newValue)}
-                                    minDate={moment().startOf('year')}
-                                    maxDate={moment()}
-                                    slotProps={{ textField: { fullWidth: true } }}
-                                />
+                                <Box
+                                    sx={{
+                                        display: 'flex',
+                                        gap: 1,
+                                    }}
+                                >
+                                    <DatePicker
+                                        label="Desde"
+                                        value={dateRange[0]}
+                                        onChange={(newValue) =>
+                                            setDateRange([newValue, dateRange[1]])
+                                        }
+                                        minDate={moment().startOf('year')}
+                                        maxDate={dateRange[1] || moment()}
+                                        slotProps={{ textField: { fullWidth: true } }}
+                                    />
+                                    <DatePicker
+                                        label="Hasta"
+                                        value={dateRange[1]}
+                                        onChange={(newValue) =>
+                                            setDateRange([dateRange[0], newValue])
+                                        }
+                                        minDate={dateRange[0] || moment().startOf('year')}
+                                        maxDate={moment()}
+                                        slotProps={{
+                                            textField: { fullWidth: true },
+                                            field: { clearable: true },
+                                        }}
+                                    />
+                                </Box>
                             </Box>
                         </Box>
 

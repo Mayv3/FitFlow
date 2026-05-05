@@ -1,4 +1,4 @@
-import { supabase } from '../config/supabaseClient.js';
+import { supabase, supabaseAdmin } from '../config/supabaseClient.js';
 
 const nowISO = () => new Date().toISOString();
 
@@ -80,6 +80,26 @@ export async function getPagosPaged({
   const { data, error, count } = await query;
   if (error) throw error;
 
+  // Detectar alumnos eliminados (alumno_id existe pero el join no devuelve nada)
+  const deletedAlumnoIds = [
+    ...new Set(
+      (data ?? [])
+        .filter(p => p.alumno_id && !p.alumno?.nombre)
+        .map(p => p.alumno_id)
+    ),
+  ];
+
+  let deletedAlumnosMap = {};
+  if (deletedAlumnoIds.length > 0) {
+    const { data: deletedRows } = await supabaseAdmin
+      .from('alumnos')
+      .select('id, nombre, dni')
+      .in('id', deletedAlumnoIds);
+    deletedAlumnosMap = Object.fromEntries(
+      (deletedRows ?? []).map(a => [a.id, a])
+    );
+  }
+
   const items = (data ?? []).map(p => {
     const metodos = (p?.items ?? []).map(i => i?.metodo?.nombre).filter(Boolean);
 
@@ -90,9 +110,12 @@ export async function getPagosPaged({
       metodo_legible = 'Mixto';
     }
 
+    const alumnoEliminado = !!(p.alumno_id && !p.alumno?.nombre && deletedAlumnosMap[p.alumno_id]);
+
     return {
       ...p,
-      alumno_nombre: p?.alumno?.nombre ?? null,
+      alumno_nombre: p?.alumno?.nombre ?? deletedAlumnosMap[p?.alumno_id]?.nombre ?? null,
+      alumno_eliminado: alumnoEliminado,
       plan_nombre: p?.plan?.nombre ?? null,
       servicio_nombre: p?.servicio?.nombre ?? null,
       producto_nombre: p?.producto?.nombre ?? null,

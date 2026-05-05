@@ -1,4 +1,4 @@
-import { Box, IconButton } from '@mui/material';
+import { Box, IconButton, Tooltip } from '@mui/material';
 import { GridColDef } from '@mui/x-data-grid';
 import React from 'react';
 import EditIcon from '@mui/icons-material/Edit';
@@ -23,7 +23,20 @@ export const columnsPayments = (
       headerName: 'Alumno',
       flex: 0.12,
       ...center,
-      renderCell: (p) => p.row?.alumno_nombre ?? '—',
+      renderCell: (p) => {
+        const nombre = p.row?.alumno_nombre;
+        const eliminado = p.row?.alumno_eliminado;
+        if (nombre && eliminado) {
+          return (
+            <Tooltip title="Este alumno fue eliminado" arrow>
+              <span style={{ color: '#d32f2f' }}>{nombre}</span>
+            </Tooltip>
+          );
+        }
+        if (nombre) return nombre;
+        if (p.row?.alumno_id) return 'Alumno eliminado';
+        return '—';
+      },
     },
     {
       field: 'monto_total',

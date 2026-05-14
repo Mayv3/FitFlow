@@ -3,12 +3,30 @@ import { createContext, useContext, useEffect, useState, ReactNode } from "react
 import Cookies from "js-cookie";
 import UserData from "@/models/User/User";
 import { usePathname, useRouter } from "next/navigation";
-
 import Box from "@mui/material/Box";
 import Typography from "@mui/material/Typography";
 import Button from "@mui/material/Button";
 import { WarningAmber } from "@mui/icons-material";
 import { CircularProgress } from "@mui/material";
+
+async function fetchAndApplyGymSettings(gymId: string) {
+  try {
+    const token = Cookies.get('token')
+    const res = await fetch(
+      `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/gyms/${gymId}?include_settings=true`,
+      { headers: { Authorization: `Bearer ${token}` } }
+    )
+    if (!res.ok) return
+    const data = await res.json()
+    if (data?.settings) {
+      sessionStorage.setItem('gym_settings', JSON.stringify(data.settings))
+      if (data.logo_url) sessionStorage.setItem('gym_logo_url', data.logo_url)
+      window.dispatchEvent(new Event('gym-settings-updated'))
+    }
+  } catch {
+    // silently fail — theme will use defaults
+  }
+}
 
 type UserContextType = {
   user: UserData | null;
@@ -45,6 +63,10 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
         role_id: Number(role_id),
         gym_id,
       });
+
+      if (!sessionStorage.getItem('gym_settings')) {
+        fetchAndApplyGymSettings(gym_id)
+      }
     }
 
     setLoading(false);
@@ -63,9 +85,9 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
           backgroundColor: '#f5f5f5',
         }}
       >
-        <CircularProgress 
+        <CircularProgress
           color="inherit"
-          size={70} 
+          size={70}
           thickness={3}
           sx={{
             color: '#0dc985',

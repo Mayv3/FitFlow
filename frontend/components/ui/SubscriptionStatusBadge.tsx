@@ -124,6 +124,7 @@ export const SubscriptionStatusBadge = () => {
     <>
       {/* Badge + toggle de tema — fixed arriba a la derecha */}
       <Box
+        data-fitflow-topbar
         sx={{
           position: 'fixed',
           top: 12,

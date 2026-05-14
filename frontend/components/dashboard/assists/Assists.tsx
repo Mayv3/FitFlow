@@ -25,6 +25,8 @@ import CancelIcon from "@mui/icons-material/Cancel";
 import AssignmentTurnedInIcon from '@mui/icons-material/AssignmentTurnedIn'
 import WarningAmberIcon from '@mui/icons-material/WarningAmber'
 import AccessTimeIcon from '@mui/icons-material/AccessTime'
+import FullscreenIcon from '@mui/icons-material/Fullscreen'
+import FullscreenExitIcon from '@mui/icons-material/FullscreenExit'
 import Cookies from 'js-cookie'
 import { useMutation } from '@tanstack/react-query'
 import axios, { AxiosError } from 'axios'
@@ -83,6 +85,28 @@ export default function Assists() {
     const [alreadyInfo, setAlreadyInfo] = useState<{ hora: string; nombre: string } | null>(null)
     const [openErrorModal, setOpenErrorModal] = useState(false)
     const [errorModalMsg, setErrorModalMsg] = useState<string | null>(null)
+    const [isFullscreen, setIsFullscreen] = useState(false)
+
+    const toggleFullscreen = () => {
+        if (!document.fullscreenElement) {
+            document.documentElement.requestFullscreen()
+        } else {
+            document.exitFullscreen()
+        }
+    }
+
+    useEffect(() => {
+        const onFsChange = () => {
+            const active = !!document.fullscreenElement
+            setIsFullscreen(active)
+            document.body.classList.toggle('fitflow-fullscreen', active)
+        }
+        document.addEventListener('fullscreenchange', onFsChange)
+        return () => {
+            document.removeEventListener('fullscreenchange', onFsChange)
+            document.body.classList.remove('fitflow-fullscreen')
+        }
+    }, [])
 
     const daysLeft = (dateStr?: string | null) => {
         if (!dateStr) return null
@@ -331,6 +355,31 @@ export default function Assists() {
                     </Typography>
                 </CardContent>
             </Card>
+
+            <Box
+                onClick={toggleFullscreen}
+                sx={{
+                    mt: 2.5,
+                    display: 'flex',
+                    flexDirection: 'column',
+                    alignItems: 'center',
+                    gap: 0.5,
+                    cursor: 'pointer',
+                    color: 'text.secondary',
+                    '&:hover': { color: 'primary.main' },
+                    transition: 'color 0.2s',
+                }}
+            >
+                {isFullscreen
+                    ? <FullscreenExitIcon sx={{ fontSize: 32 }} />
+                    : <FullscreenIcon sx={{ fontSize: 32 }} />
+                }
+                <Typography variant="caption" textAlign="center" lineHeight={1.4}>
+                    {isFullscreen
+                        ? 'Salir de pantalla completa'
+                        : 'Pantalla completa · recomendado para tablets en horizontal'}
+                </Typography>
+            </Box>
 
             <Dialog
                 open={openModal}

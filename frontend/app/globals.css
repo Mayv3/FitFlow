@@ -170,3 +170,8 @@
   scrollbar-color: #646665 #f1f1f1;
   /* thumb + track */
 }
+
+body.fitflow-fullscreen [data-fitflow-sidebar],
+body.fitflow-fullscreen [data-fitflow-topbar] {
+  display: none !important;
+}

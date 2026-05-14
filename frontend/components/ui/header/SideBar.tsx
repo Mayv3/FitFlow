@@ -170,6 +170,7 @@ export const SideBar = ({ tabs }: HeaderComponentProps) => {
 
   const desktopSidebar = (
     <Box
+      data-fitflow-sidebar
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => {
         if (!isLocked) setIsHovered(false)
@@ -497,6 +498,7 @@ export const SideBar = ({ tabs }: HeaderComponentProps) => {
     return (
       <>
         <Paper
+          data-fitflow-sidebar
           sx={{
             position: 'fixed',
             backgroundColor: sidebarBg,

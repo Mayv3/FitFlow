@@ -55,8 +55,8 @@ export const getAlumno = async (req, res) => {
 
 export const addAlumno = async (req, res) => {
   try {
-    const { nombre, dni, telefono, email, fecha_nacimiento, fecha_de_vencimiento, fecha_inicio, plan_id, sexo, origen } = req.body
-    const payload = { nombre, dni, telefono, email, fecha_nacimiento, fecha_de_vencimiento, fecha_inicio, plan_id, sexo, origen, gym_id: req.gymId };
+    const { nombre, dni, telefono, email, fecha_nacimiento, fecha_de_vencimiento, fecha_inicio, plan_id, clases_pagadas, sexo, origen } = req.body
+    const payload = { nombre, dni, telefono, email, fecha_nacimiento, fecha_de_vencimiento, fecha_inicio, plan_id, clases_pagadas: clases_pagadas ?? null, sexo, origen, gym_id: req.gymId };
 
     const nuevo = await createAlumno(payload, req.supa);
 

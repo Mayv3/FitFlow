@@ -93,6 +93,7 @@ export default function Assists() {
 
     const dleft = daysLeft(summary?.vencimiento)
     const pct = summary?.plan.progreso_pct ?? 0
+    const clasesOk = (summary?.plan?.clases_pagadas ?? 0) === 0 || (summary?.plan?.clases_restantes ?? 0) > 0
 
     const barSx = {
         height: 12,
@@ -321,7 +322,7 @@ export default function Assists() {
                 >
                     <Zoom in={openModal} timeout={400}>
                         <Box>
-                            {dleft && dleft > 0 && (summary?.plan?.clases_restantes ?? 0) > 0 ? (
+                            {(dleft === null || dleft > 0) && clasesOk ? (
                                 <CheckCircleIcon
                                     sx={{
                                         fontSize: 88,
@@ -349,13 +350,13 @@ export default function Assists() {
                         fontWeight={800}
                         sx={{
                             color:
-                                dleft && dleft > 0 && (summary?.plan?.clases_restantes ?? 0) > 0
+                                (dleft === null || dleft > 0) && clasesOk
                                     ? theme.palette.success.dark
                                     : theme.palette.error.dark,
                             mt: 0.5,
                         }}
                     >
-                        {dleft && dleft > 0 && (summary?.plan?.clases_restantes ?? 0) > 0
+                        {(dleft === null || dleft > 0) && clasesOk
                             ? `¡Bienvenido ${summary?.alumno?.nombre || ""}!`
                             : "Acceso Denegado"}
                     </Typography>
@@ -454,7 +455,7 @@ export default function Assists() {
                             fontWeight: 700,
                             boxShadow: "0 3px 8px rgba(0,0,0,0.25)",
                             background:
-                                dleft && dleft > 0 && (summary?.plan?.clases_restantes ?? 0) > 0
+                                (dleft === null || dleft > 0) && clasesOk
                                     ? `linear-gradient(90deg, ${theme.palette.success.main}, ${theme.palette.success.dark})`
                                     : `linear-gradient(90deg, ${theme.palette.error.main}, ${theme.palette.error.dark})`,
                         }}

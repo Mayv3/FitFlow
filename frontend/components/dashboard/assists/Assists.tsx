@@ -150,7 +150,6 @@ export default function Assists() {
             setAsistencia(data.asistencia)
             setSummary(data.summary)
             setOpenModal(true)
-            setErrorMsg(null)
             setDni('')
             setTimeout(() => inputRef.current?.focus(), 0)
         },

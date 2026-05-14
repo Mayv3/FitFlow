@@ -24,6 +24,7 @@ export const addAsistencia = async (req, res) => {
     const { asistencia, summary } = await createAsistencia(req.supa, req.body, req.gymId)
 
     await cache.delPattern(`asistencias:${req.gymId}:*`)
+    await cache.delPattern(`stats:gym:${req.gymId}`)
     req.app.get('io')?.to(`gym:${req.gymId}`)?.emit('attendance:created', { id: asistencia.id })
 
     return res.status(201).json({
@@ -32,6 +33,14 @@ export const addAsistencia = async (req, res) => {
       summary,
     })
   } catch (error) {
+    if (error.code === 'ALREADY_CHECKED_IN') {
+      return res.status(409).json({
+        error: error.message,
+        alreadyCheckedIn: true,
+        hora: error.hora,
+        nombre: error.nombre,
+      })
+    }
     return res.status(400).json({ error: error.message })
   }
 }

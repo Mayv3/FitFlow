@@ -7,13 +7,10 @@ import {
     Card,
     CardContent,
     Dialog,
-    DialogTitle,
-    DialogContent,
-    DialogActions,
+    LinearProgress,
     Stack,
     TextField,
     Typography,
-    Alert,
     CircularProgress,
     Divider,
     Chip,
@@ -26,8 +23,8 @@ import { useTheme, alpha } from '@mui/material/styles'
 import CheckCircleIcon from "@mui/icons-material/CheckCircle";
 import CancelIcon from "@mui/icons-material/Cancel";
 import AssignmentTurnedInIcon from '@mui/icons-material/AssignmentTurnedIn'
-import CalendarMonthIcon from '@mui/icons-material/CalendarMonth'
-import FitnessCenterIcon from '@mui/icons-material/FitnessCenter'
+import WarningAmberIcon from '@mui/icons-material/WarningAmber'
+import AccessTimeIcon from '@mui/icons-material/AccessTime'
 import Cookies from 'js-cookie'
 import { useMutation } from '@tanstack/react-query'
 import axios, { AxiosError } from 'axios'
@@ -80,9 +77,12 @@ export default function Assists() {
     const [openModal, setOpenModal] = useState(false)
     const [asistencia, setAsistencia] = useState<Asistencia | null>(null)
     const [isLoading, setIsLoading] = useState(false);
-    const [errorMsg, setErrorMsg] = useState<string | null>(null)
     const inputRef = useRef<HTMLInputElement>(null)
     const [summary, setSummary] = useState<Summary | null>(null)
+    const [openAlreadyModal, setOpenAlreadyModal] = useState(false)
+    const [alreadyInfo, setAlreadyInfo] = useState<{ hora: string; nombre: string } | null>(null)
+    const [openErrorModal, setOpenErrorModal] = useState(false)
+    const [errorModalMsg, setErrorModalMsg] = useState<string | null>(null)
 
     const daysLeft = (dateStr?: string | null) => {
         if (!dateStr) return null
@@ -130,6 +130,12 @@ export default function Assists() {
                 return data
             } catch (e) {
                 const err = e as AxiosError<any>
+                if (err.response?.status === 409 && err.response?.data?.alreadyCheckedIn) {
+                    const alreadyErr = new Error('ALREADY_CHECKED_IN')
+                    ;(alreadyErr as any).hora = err.response.data.hora
+                    ;(alreadyErr as any).nombre = err.response.data.nombre
+                    throw alreadyErr
+                }
                 const msg =
                     err.response?.data?.error ||
                     err.response?.data?.message ||
@@ -149,17 +155,37 @@ export default function Assists() {
             setTimeout(() => inputRef.current?.focus(), 0)
         },
         onError: (err) => {
-            setErrorMsg(err.message || 'No se pudo registrar la asistencia')
+            setDni('')
+            if (err.message === 'ALREADY_CHECKED_IN') {
+                setAlreadyInfo({ hora: (err as any).hora, nombre: (err as any).nombre })
+                setOpenAlreadyModal(true)
+                return
+            }
+            setErrorModalMsg(err.message || 'No se pudo registrar la asistencia')
+            setOpenErrorModal(true)
         },
     })
     const closeModal = () => {
         setOpenModal(false)
         setTimeout(() => {
             const input = inputRef.current
-            if (input) {
-                input.focus()
-                input.select()
-            }
+            if (input) { input.focus(); input.select() }
+        }, 250)
+    }
+
+    const closeAlreadyModal = () => {
+        setOpenAlreadyModal(false)
+        setTimeout(() => {
+            const input = inputRef.current
+            if (input) { input.focus(); input.select() }
+        }, 250)
+    }
+
+    const closeErrorModal = () => {
+        setOpenErrorModal(false)
+        setTimeout(() => {
+            const input = inputRef.current
+            if (input) { input.focus(); input.select() }
         }, 250)
     }
 
@@ -167,10 +193,10 @@ export default function Assists() {
         e.preventDefault()
         const trimmed = dni.trim()
         if (!trimmed) {
-            setErrorMsg('Ingresá un DNI')
+            setErrorModalMsg('Ingresá un DNI')
+            setOpenErrorModal(true)
             return
         }
-        setErrorMsg(null)
         registrarAsistencia.mutate({ DNI: trimmed })
     }
 
@@ -200,10 +226,34 @@ export default function Assists() {
     }, [openModal])
 
     useEffect(() => {
-        if (!errorMsg) return
-        const t = setTimeout(() => setErrorMsg(null), 3000)
+        if (!openErrorModal) return
+        const t = setTimeout(closeErrorModal, 4000)
         return () => clearTimeout(t)
-    }, [errorMsg])
+    }, [openErrorModal])
+
+    useEffect(() => {
+        if (!openErrorModal) return
+        const handleKeyDown = (e: KeyboardEvent) => {
+            if (e.key === 'Enter') { e.preventDefault(); closeErrorModal() }
+        }
+        window.addEventListener('keydown', handleKeyDown)
+        return () => window.removeEventListener('keydown', handleKeyDown)
+    }, [openErrorModal])
+
+    useEffect(() => {
+        if (!openAlreadyModal) return
+        const t = setTimeout(closeAlreadyModal, 4000)
+        return () => clearTimeout(t)
+    }, [openAlreadyModal])
+
+    useEffect(() => {
+        if (!openAlreadyModal) return
+        const handleKeyDown = (e: KeyboardEvent) => {
+            if (e.key === 'Enter') { e.preventDefault(); closeAlreadyModal() }
+        }
+        window.addEventListener('keydown', handleKeyDown)
+        return () => window.removeEventListener('keydown', handleKeyDown)
+    }, [openAlreadyModal])
 
     return (
         <Box sx={{
@@ -220,12 +270,6 @@ export default function Assists() {
                     Registrar asistencia
                 </Typography>
             </Stack>
-
-            {errorMsg && (
-                <Alert severity="error" sx={{ mb: 2 }} onClose={() => setErrorMsg(null)}>
-                    {errorMsg}
-                </Alert>
-            )}
 
             <Card
                 variant="outlined"
@@ -294,178 +338,252 @@ export default function Assists() {
                 onClose={closeModal}
                 TransitionComponent={Grow}
                 keepMounted
-                maxWidth="sm"
+                maxWidth="xs"
                 fullWidth
                 PaperProps={{
                     sx: {
-                        borderRadius: 5,
-                        overflow: "hidden",
-                        bgcolor: theme.palette.background.paper,
-                        boxShadow: "0 12px 48px rgba(0,0,0,0.3)",
-                        textAlign: "center",
-                        backdropFilter: "blur(8px)",
-                        transition: "all 0.3s ease",
-                        p: { xs: 3, md: 4 },
+                        borderRadius: 4,
+                        overflow: 'hidden',
+                        boxShadow: '0 16px 56px rgba(0,0,0,0.25)',
+                        p: 0,
                     },
                 }}
             >
-                <DialogTitle
-                    component={Box}
+                {/* Colored header */}
+                <Box
                     sx={{
-                        display: "flex",
-                        flexDirection: "column",
-                        alignItems: "center",
+                        bgcolor: (dleft === null || dleft > 0) && clasesOk
+                            ? theme.palette.success.main
+                            : theme.palette.error.main,
+                        py: 4,
+                        px: 3,
+                        display: 'flex',
+                        flexDirection: 'column',
+                        alignItems: 'center',
                         gap: 1,
-                        pb: 0,
-                        pt: 2,
                     }}
                 >
-                    <Zoom in={openModal} timeout={400}>
+                    <Zoom in={openModal} timeout={350}>
                         <Box>
                             {(dleft === null || dleft > 0) && clasesOk ? (
-                                <CheckCircleIcon
-                                    sx={{
-                                        fontSize: 88,
-                                        color: theme.palette.success.main,
-                                        mb: 1,
-                                        filter: "drop-shadow(0 3px 6px rgba(0,0,0,0.15))",
-                                    }}
-                                />
+                                <CheckCircleIcon sx={{ fontSize: 80, color: 'white' }} />
                             ) : (
-                                <CancelIcon
-                                    sx={{
-                                        fontSize: 88,
-                                        color: theme.palette.error.main,
-                                        mb: 1,
-                                        filter: "drop-shadow(0 3px 6px rgba(0,0,0,0.15))",
-                                    }}
-                                />
+                                <CancelIcon sx={{ fontSize: 80, color: 'white' }} />
                             )}
                         </Box>
                     </Zoom>
-
-                    {/* Texto principal */}
-                    <Typography
-                        variant="h4"
-                        fontWeight={800}
-                        sx={{
-                            color:
-                                (dleft === null || dleft > 0) && clasesOk
-                                    ? theme.palette.success.dark
-                                    : theme.palette.error.dark,
-                            mt: 0.5,
-                        }}
-                    >
-                        {(dleft === null || dleft > 0) && clasesOk
-                            ? `¡Bienvenido ${summary?.alumno?.nombre || ""}!`
-                            : "Acceso Denegado"}
+                    <Typography variant="h4" fontWeight={800} sx={{ color: 'white', mt: 0.5 }}>
+                        {(dleft === null || dleft > 0) && clasesOk ? '¡Bienvenido!' : 'Acceso Denegado'}
                     </Typography>
-                </DialogTitle>
-
-                <DialogContent
-                    sx={{
-                        mt: 3,
-                        px: 5,
-                        pb: 4,
-                        display: "flex",
-                        flexDirection: "column",
-                        alignItems: "center",
-                        gap: 2.5,
-                    }}
-                >
-                    <Stack
-                        direction="row"
-                        alignItems="center"
-                        justifyContent="center"
-                        gap={1.5}
-                        sx={{
-                            bgcolor: alpha(theme.palette.primary.main, 0.08),
-                            borderRadius: 3,
-                            px: 3,
-                            py: 1.2,
-                            minWidth: 280,
-                        }}
-                    >
-                        <FitnessCenterIcon sx={{ fontSize: 28, color: theme.palette.primary.main }} />
-                        <Typography
-                            variant="h5"
-                            fontWeight={800}
-                            sx={{
-                                color: theme.palette.text.primary,
-                                letterSpacing: 0.3,
-                            }}
-                        >
-                            {summary?.plan?.nombre ?? "—"}
-                        </Typography>
-                    </Stack>
-
-                    <Stack
-                        direction="row"
-                        alignItems="center"
-                        justifyContent="center"
-                        gap={1.5}
-                        sx={{
-                            bgcolor: alpha(theme.palette.primary.main, 0.08),
-                            borderRadius: 3,
-                            px: 3,
-                            py: 1.2,
-                            minWidth: 280,
-                        }}
-                    >
-                        <CalendarMonthIcon sx={{ fontSize: 28, color: theme.palette.primary.main }} />
-                        <Typography
-                            variant="h5"
-                            fontWeight={700}
-                            sx={{
-                                color: theme.palette.text.primary,
-                            }}
-                        >
-                            Vence: {formatDate(summary?.vencimiento)}
-                        </Typography>
-                    </Stack>
-
-                    <Typography
-                        variant="h4"
-                        fontWeight={900}
-                        sx={{
-                            mt: 1,
-                            color: theme.palette.primary.main,
-                            bgcolor: alpha(theme.palette.primary.main, 0.1),
-                            px: 5,
-                            py: 1.5,
-                            borderRadius: 2,
-                            letterSpacing: 0.5,
-                        }}
-                    >
-                        {`Clases restantes: ${summary?.plan?.clases_restantes ?? 0}`}
+                    <Typography variant="h6" fontWeight={600} sx={{ color: 'rgba(255,255,255,0.88)' }}>
+                        {summary?.alumno?.nombre}
                     </Typography>
-                </DialogContent>
+                    <Box mt={0.5}>{statusChip}</Box>
+                </Box>
 
-                <DialogActions sx={{ justifyContent: "center", pb: 3 }}>
+                {/* Body */}
+                <Box sx={{ p: 3 }}>
+                    <Box display="grid" gridTemplateColumns="1fr 1fr" gap={2} mb={2}>
+                        <Box sx={{ bgcolor: alpha(theme.palette.primary.main, 0.07), borderRadius: 2.5, p: 2, textAlign: 'center' }}>
+                            <Typography variant="caption" color="text.secondary" fontWeight={600} display="block" mb={0.5}>
+                                Plan
+                            </Typography>
+                            <Typography variant="h6" fontWeight={700} noWrap>
+                                {summary?.plan?.nombre ?? '—'}
+                            </Typography>
+                        </Box>
+                        <Box sx={{ bgcolor: alpha(theme.palette.primary.main, 0.07), borderRadius: 2.5, p: 2, textAlign: 'center' }}>
+                            <Typography variant="caption" color="text.secondary" fontWeight={600} display="block" mb={0.5}>
+                                Vencimiento
+                            </Typography>
+                            <Typography variant="h6" fontWeight={700}>
+                                {formatDate(summary?.vencimiento)}
+                            </Typography>
+                        </Box>
+                    </Box>
+
+                    {(summary?.plan?.clases_pagadas ?? 0) > 0 && (
+                        <Box sx={{ bgcolor: alpha(theme.palette.primary.main, 0.07), borderRadius: 2.5, p: 2, mb: 2 }}>
+                            <Box display="flex" justifyContent="space-between" alignItems="center" mb={1}>
+                                <Typography variant="body2" color="text.secondary" fontWeight={600}>
+                                    Clases
+                                </Typography>
+                                <Typography variant="body2" fontWeight={700}>
+                                    {summary?.plan?.clases_realizadas} / {summary?.plan?.clases_pagadas}
+                                </Typography>
+                            </Box>
+                            <LinearProgress variant="determinate" value={pct} sx={barSx} />
+                            <Typography variant="caption" color="text.secondary" display="block" mt={1}>
+                                {summary?.plan?.clases_restantes} clases restantes
+                            </Typography>
+                        </Box>
+                    )}
+
                     <Button
                         onClick={closeModal}
                         variant="contained"
+                        fullWidth
                         size="large"
                         sx={{
-                            px: 5,
-                            py: 1.4,
                             borderRadius: 999,
-                            textTransform: "none",
-                            fontSize: 17,
+                            textTransform: 'none',
+                            fontSize: 16,
                             fontWeight: 700,
-                            boxShadow: "0 3px 8px rgba(0,0,0,0.25)",
-                            background:
-                                (dleft === null || dleft > 0) && clasesOk
-                                    ? `linear-gradient(90deg, ${theme.palette.success.main}, ${theme.palette.success.dark})`
-                                    : `linear-gradient(90deg, ${theme.palette.error.main}, ${theme.palette.error.dark})`,
+                            py: 1.4,
+                            boxShadow: 'none',
+                            background: (dleft === null || dleft > 0) && clasesOk
+                                ? `linear-gradient(90deg, ${theme.palette.success.main}, ${theme.palette.success.dark})`
+                                : `linear-gradient(90deg, ${theme.palette.error.main}, ${theme.palette.error.dark})`,
                         }}
                     >
                         Aceptar
                     </Button>
-                </DialogActions>
+                </Box>
             </Dialog>
 
+            <Dialog
+                open={openAlreadyModal}
+                onClose={closeAlreadyModal}
+                TransitionComponent={Grow}
+                keepMounted
+                maxWidth="xs"
+                fullWidth
+                PaperProps={{
+                    sx: {
+                        borderRadius: 4,
+                        overflow: 'hidden',
+                        boxShadow: '0 16px 56px rgba(0,0,0,0.25)',
+                        p: 0,
+                    },
+                }}
+            >
+                {/* Colored header */}
+                <Box
+                    sx={{
+                        bgcolor: theme.palette.warning.main,
+                        py: 4,
+                        px: 3,
+                        display: 'flex',
+                        flexDirection: 'column',
+                        alignItems: 'center',
+                        gap: 1,
+                    }}
+                >
+                    <Zoom in={openAlreadyModal} timeout={350}>
+                        <Box>
+                            <WarningAmberIcon sx={{ fontSize: 80, color: 'white' }} />
+                        </Box>
+                    </Zoom>
+                    <Typography variant="h4" fontWeight={800} sx={{ color: 'white', mt: 0.5 }}>
+                        Ya asistió hoy
+                    </Typography>
+                    <Typography variant="h6" fontWeight={600} sx={{ color: 'rgba(255,255,255,0.88)' }}>
+                        {alreadyInfo?.nombre}
+                    </Typography>
+                </Box>
 
+                {/* Body */}
+                <Box sx={{ p: 3 }}>
+                    <Box
+                        sx={{
+                            bgcolor: alpha(theme.palette.warning.main, 0.08),
+                            borderRadius: 2.5,
+                            p: 2.5,
+                            mb: 3,
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            gap: 1.5,
+                        }}
+                    >
+                        <AccessTimeIcon sx={{ fontSize: 32, color: theme.palette.warning.main }} />
+                        <Box>
+                            <Typography variant="caption" color="text.secondary" fontWeight={600} display="block">
+                                Hora de ingreso
+                            </Typography>
+                            <Typography variant="h5" fontWeight={800} sx={{ color: theme.palette.warning.dark }}>
+                                {alreadyInfo?.hora} hs
+                            </Typography>
+                        </Box>
+                    </Box>
+
+                    <Button
+                        onClick={closeAlreadyModal}
+                        variant="contained"
+                        fullWidth
+                        size="large"
+                        sx={{
+                            borderRadius: 999,
+                            textTransform: 'none',
+                            fontSize: 16,
+                            fontWeight: 700,
+                            py: 1.4,
+                            boxShadow: 'none',
+                            background: `linear-gradient(90deg, ${theme.palette.warning.main}, ${theme.palette.warning.dark})`,
+                        }}
+                    >
+                        Aceptar
+                    </Button>
+                </Box>
+            </Dialog>
+
+            <Dialog
+                open={openErrorModal}
+                onClose={closeErrorModal}
+                TransitionComponent={Grow}
+                keepMounted
+                maxWidth="xs"
+                fullWidth
+                PaperProps={{
+                    sx: {
+                        borderRadius: 4,
+                        overflow: 'hidden',
+                        boxShadow: '0 16px 56px rgba(0,0,0,0.25)',
+                        p: 0,
+                    },
+                }}
+            >
+                <Box
+                    sx={{
+                        bgcolor: theme.palette.error.main,
+                        py: 4,
+                        px: 3,
+                        display: 'flex',
+                        flexDirection: 'column',
+                        alignItems: 'center',
+                        gap: 1,
+                    }}
+                >
+                    <Zoom in={openErrorModal} timeout={350}>
+                        <Box>
+                            <CancelIcon sx={{ fontSize: 80, color: 'white' }} />
+                        </Box>
+                    </Zoom>
+                    <Typography variant="h5" fontWeight={800} sx={{ color: 'white', mt: 0.5, textAlign: 'center' }}>
+                        {errorModalMsg}
+                    </Typography>
+                </Box>
+
+                <Box sx={{ p: 3 }}>
+                    <Button
+                        onClick={closeErrorModal}
+                        variant="contained"
+                        fullWidth
+                        size="large"
+                        sx={{
+                            borderRadius: 999,
+                            textTransform: 'none',
+                            fontSize: 16,
+                            fontWeight: 700,
+                            py: 1.4,
+                            boxShadow: 'none',
+                            background: `linear-gradient(90deg, ${theme.palette.error.main}, ${theme.palette.error.dark})`,
+                        }}
+                    >
+                        Aceptar
+                    </Button>
+                </Box>
+            </Dialog>
 
         </Box>
     )

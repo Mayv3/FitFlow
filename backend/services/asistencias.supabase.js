@@ -1,5 +1,6 @@
 import { supabase, supabaseAdmin } from '../config/supabaseClient.js'
 import { fechaArgentina, horaArgentina } from '../utilities/moment.js'
+import moment from 'moment-timezone'
 
 export async function getAllAsistencias(gymId) {
   const { data, error } = await supabaseAdmin
@@ -39,12 +40,18 @@ export async function createAsistencia(supa, asistencia, gymId) {
 
   const { data: asistenciaHoy } = await supa
     .from('asistencias')
-    .select('id')
+    .select('id, hora')
     .eq('alumno_id', alumno.id)
     .eq('fecha', fechaArgentina())
     .eq('gym_id', gymId)
     .maybeSingle()
-  if (asistenciaHoy) throw new Error('El alumno ya registró asistencia hoy')
+  if (asistenciaHoy) {
+    const err = new Error('El alumno ya registró asistencia hoy')
+    err.code = 'ALREADY_CHECKED_IN'
+    err.hora = (asistenciaHoy.hora ?? '').slice(0, 5)
+    err.nombre = alumno.nombre
+    throw err
+  }
 
   const pag = alumno.clases_pagadas ?? 0
   const rea = alumno.clases_realizadas ?? 0
@@ -53,19 +60,14 @@ export async function createAsistencia(supa, asistencia, gymId) {
   }
 
   if (alumno.fecha_de_vencimiento) {
-    const hoyArg = new Date(
-      new Date().toLocaleString('en-US', { timeZone: 'America/Argentina/Buenos_Aires' })
-    )
+    const hoyArg = moment().tz('America/Argentina/Buenos_Aires').format('YYYY-MM-DD')
+    const venc = alumno.fecha_de_vencimiento
 
-    const hoy = new Date(hoyArg.getFullYear(), hoyArg.getMonth(), hoyArg.getDate())
-    const venc = new Date(alumno.fecha_de_vencimiento)
-    const vencimiento = new Date(venc.getFullYear(), venc.getMonth(), venc.getDate())
-
-    if (vencimiento <= hoy) {
-      if (vencimiento.getTime() === hoy.getTime()) {
-        throw new Error(`El plan vence hoy (${alumno.fecha_de_vencimiento}). No se permite registrar asistencia.`)
-      }
-      throw new Error(`El alumno tiene el plan vencido (venció el ${alumno.fecha_de_vencimiento})`)
+    if (venc < hoyArg) {
+      throw new Error(`El alumno tiene el plan vencido (venció el ${venc})`)
+    }
+    if (venc === hoyArg) {
+      throw new Error(`El plan vence hoy (${venc}). No se permite registrar asistencia.`)
     }
   }
 

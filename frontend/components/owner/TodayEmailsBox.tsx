@@ -73,7 +73,7 @@ export function TodayEmailsBox() {
     try {
       const token = Cookies.get("token")
       const res = await fetch(
-        `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/emails/logs`,
+        `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/emails/logs?sync=true`,
         { headers: token ? { Authorization: `Bearer ${token}` } : undefined }
       )
       const json = await res.json()
@@ -180,7 +180,11 @@ export function TodayEmailsBox() {
                     icon={<EmailIcon />}
                     label={g.total}
                     size="small"
-                    color="primary"
+                    sx={{
+                      bgcolor: "#7c3aed",
+                      color: "#fff",
+                      "& .MuiChip-icon": { color: "#fff" },
+                    }}
                   />
                 </Stack>
               </AccordionSummary>

@@ -5,7 +5,8 @@ import {
   previewVencimientoGymPlans,
   enviarEmailsVencimientoGymPlans,
   enviarTestVencimientoGymPlan,
-  getGymEmailLogs
+  getGymEmailLogs,
+  backfillBrevoLogs
 } from '../services/mailing.brevo.fitnessflow.js'
 
 const router = express.Router()
@@ -143,10 +144,35 @@ router.post('/test-vencimiento-gym-plan', async (req, res) => {
 router.get('/logs', async (req, res) => {
   try {
     const limit = req.query.limit ? Math.min(parseInt(req.query.limit, 10) || 500, 2000) : 500
+    let backfill = null
+    if (req.query.sync === 'true' || req.query.sync === '1') {
+      try {
+        backfill = await backfillBrevoLogs({})
+      } catch (e) {
+        console.error('⚠️ Backfill on /logs failed:', e.message)
+        backfill = { error: e.message }
+      }
+    }
     const data = await getGymEmailLogs({ limit })
-    res.json({ success: true, data })
+    res.json({ success: true, data, backfill })
   } catch (error) {
     console.error('❌ Error obteniendo logs de emails:', error)
+    res.status(500).json({ error: error.message })
+  }
+})
+
+/**
+ * POST /api/emails/backfill-brevo
+ * Trae eventos "sent" desde Brevo y los inserta en gym_email_logs.
+ * Body opcional: { fecha: 'YYYY-MM-DD' }. Default: hoy (America/Argentina/Cordoba).
+ */
+router.post('/backfill-brevo', async (req, res) => {
+  try {
+    const fecha = req.body?.fecha || null
+    const data = await backfillBrevoLogs({ fecha })
+    res.json({ success: true, data })
+  } catch (error) {
+    console.error('❌ Error backfill Brevo:', error)
     res.status(500).json({ error: error.message })
   }
 })

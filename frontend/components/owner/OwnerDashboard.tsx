@@ -346,7 +346,7 @@ export function OwnerDashboard() {
                 Date.now() + 7 * 24 * 60 * 60 * 1000
 
             return (
-              <Grid item xs={12} sm={6} md={4} key={gym.id}>
+              <Grid item xs={12} sm={6} md={4} lg={3} key={gym.id}>
                 <Card
                   variant="outlined"
                   sx={{

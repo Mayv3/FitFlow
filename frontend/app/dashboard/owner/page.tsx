@@ -5,7 +5,7 @@ import { OwnerDashboard } from "@/components/owner/OwnerDashboard"
 
 export default function OwnerHomePage() {
   return (
-    <Box sx={{ maxWidth: 1400, mx: "auto" }}>
+    <Box sx={{ width: "100%" }}>
       <OwnerDashboard />
     </Box>
   )

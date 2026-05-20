@@ -312,14 +312,38 @@ export async function enviarEmailsPorVencer({ previewOnly = true, gymIds = [] } 
 
     try {
       await sendBrevoEmail({ to: email, subject, text, html })
+      await logGymEmail({
+        gymId: gym_id,
+        emailDestino: email,
+        asunto: subject,
+        tipo: venceHoy ? 'vencimiento_alumno_hoy' : 'vencimiento_alumno_3d',
+        estado: 'enviado',
+        endAt: fecha_de_vencimiento,
+      })
       await delay(1000)
     } catch (error) {
       console.error(`❌ Error al enviar email a ${email}:`, error.message)
-      // Continuar con el siguiente alumno en lugar de detener todo el proceso
+      await logGymEmail({
+        gymId: gym_id,
+        emailDestino: email,
+        asunto: subject,
+        tipo: venceHoy ? 'vencimiento_alumno_hoy' : 'vencimiento_alumno_3d',
+        estado: 'error',
+        errorMsg: error.message,
+        endAt: fecha_de_vencimiento,
+      })
     }
   }
 
   console.log('✅ Proceso de envío finalizado.')
+
+  // Reconcilia con Brevo por si algún logGymEmail falló o Brevo aceptó algo no logueado
+  try {
+    const r = await backfillBrevoLogs({})
+    console.log(`🔄 Backfill post-envío: +${r.insertados} log(s)`)
+  } catch (e) {
+    console.error('⚠️ Backfill post-envío falló:', e.message)
+  }
 }
 
 export async function enviarPruebaPlantillas() {
@@ -752,6 +776,102 @@ export async function getGymEmailLogs({ limit = 500 } = {}) {
   return Object.values(porGym).sort(
     (a, b) => new Date(b.ultimo_envio).getTime() - new Date(a.ultimo_envio).getTime()
   )
+}
+
+/**
+ * Backfill: trae eventos "sent" de Brevo para un día y los inserta en gym_email_logs.
+ * Mapea email→gym_id consultando la tabla alumnos.
+ * Evita duplicados: chequea si ya existe log con mismo email_destino + fecha (mismo día).
+ */
+export async function backfillBrevoLogs({ fecha = null } = {}) {
+  const ZONE = 'America/Argentina/Cordoba'
+  const dia = fecha || dayjs.tz(dayjs(), ZONE).format('YYYY-MM-DD')
+
+  // Mapa email -> gym_id desde alumnos
+  const { data: alumnos, error: alErr } = await supabase
+    .from('alumnos')
+    .select('email,gym_id')
+    .is('deleted_at', null)
+    .not('email', 'is', null)
+  if (alErr) throw alErr
+
+  const gymIdByEmail = {}
+  for (const a of alumnos || []) {
+    const k = a.email?.toLowerCase()
+    if (k && !gymIdByEmail[k]) gymIdByEmail[k] = a.gym_id
+  }
+
+  // Logs ya existentes ese día para evitar duplicados
+  const inicioDia = `${dia}T00:00:00`
+  const finDia = `${dia}T23:59:59`
+  const { data: existentes, error: exErr } = await supabase
+    .from('gym_email_logs')
+    .select('email_destino,asunto')
+    .gte('created_at', inicioDia)
+    .lte('created_at', finDia)
+  if (exErr) throw exErr
+
+  const yaLogueado = new Set(
+    (existentes || []).map(e => `${e.email_destino?.toLowerCase()}|${e.asunto}`)
+  )
+
+  let offset = 0
+  const limit = 100
+  let insertados = 0
+  let saltados = 0
+  let sinGym = 0
+
+  while (true) {
+    const url = new URL('https://api.brevo.com/v3/smtp/statistics/events')
+    url.searchParams.set('startDate', dia)
+    url.searchParams.set('endDate', dia)
+    url.searchParams.set('event', 'requests')
+    url.searchParams.set('limit', String(limit))
+    url.searchParams.set('offset', String(offset))
+    url.searchParams.set('sort', 'desc')
+
+    const res = await fetch(url.toString(), {
+      headers: { 'api-key': BREVO_API_KEY, accept: 'application/json' },
+    })
+    if (!res.ok) throw new Error(`Brevo ${res.status}: ${await res.text()}`)
+    const json = await res.json()
+    const events = json.events || []
+    if (!events.length) break
+
+    for (const ev of events) {
+      const emailLower = ev.email?.toLowerCase()
+      const gymId = gymIdByEmail[emailLower]
+      if (!gymId) { sinGym++; continue }
+
+      const key = `${emailLower}|${ev.subject || null}`
+      if (yaLogueado.has(key)) { saltados++; continue }
+
+      const subject = ev.subject || ''
+      const venceHoy = subject.includes('vence hoy')
+      const tipo = venceHoy ? 'vencimiento_alumno_hoy' : 'vencimiento_alumno_3d'
+
+      const { error: insErr } = await supabase.from('gym_email_logs').insert({
+        gym_id: gymId,
+        email_destino: ev.email,
+        asunto: ev.subject || null,
+        tipo,
+        estado: 'enviado',
+        created_at: ev.date || undefined,
+      })
+      if (insErr) {
+        console.error('⚠️ Insert log fail:', insErr.message)
+        continue
+      }
+      yaLogueado.add(key)
+      insertados++
+    }
+
+    if (events.length < limit) break
+    offset += limit
+  }
+
+  console.log(`✅ Backfill ${dia}: insertados=${insertados} saltados=${saltados} sin_gym=${sinGym}`)
+  return { fecha: dia, insertados, saltados, sin_gym: sinGym }
 }
 
 /**

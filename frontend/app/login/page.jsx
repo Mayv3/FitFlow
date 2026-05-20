@@ -29,7 +29,7 @@ const LoginPage = () => {
     if (roleId === ADMINISTRADOR) router.replace("/dashboard/administrator/members")
     else if (roleId === RECEPCIONISTA) router.replace("/dashboard/receptionist/members")
     else if (roleId === SOCIO) router.replace("/dashboard/member")
-    else if (roleId === OWNER || roleId === 1) router.replace("/dashboard/owner/register")
+    else if (roleId === OWNER || roleId === 1) router.replace("/dashboard/owner")
     else router.replace("/")
   }, [])
 
@@ -75,7 +75,7 @@ const LoginPage = () => {
       } else if (profile.role_id === SOCIO) {
         router.push("/dashboard/member")
       } else if (profile.role_id === OWNER || profile.role_id === 1) {
-        router.push("/dashboard/owner/register")
+        router.push("/dashboard/owner")
       } else {
         router.push("/")
       }

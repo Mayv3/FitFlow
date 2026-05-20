@@ -43,7 +43,7 @@ export const recepcionistTabs = [
 ];
 
 export const ownerTabs = [
-  { label: "Onboarding", icon: <StorefrontIcon />, route: "/dashboard/owner/onboarding" },
+  { label: "Dashboard", icon: <StorefrontIcon />, route: "/dashboard/owner" },
 ]
 
 export const memberTabs = [

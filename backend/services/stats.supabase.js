@@ -5,6 +5,21 @@ function getTodayArgentina() {
   return moment().tz('America/Argentina/Buenos_Aires').format('YYYY-MM-DD');
 }
 
+// Pagina sobre cualquier select de Supabase (evita el cap de 1000 filas por request)
+async function fetchAllPaged(buildQuery, pageSize = 1000) {
+  const out = [];
+  let from = 0;
+  while (true) {
+    const { data, error } = await buildQuery().range(from, from + pageSize - 1);
+    if (error) throw error;
+    if (!data || data.length === 0) break;
+    out.push(...data);
+    if (data.length < pageSize) break;
+    from += pageSize;
+  }
+  return out;
+}
+
 async function countTotalMembers(gymId) {
   let q = supabaseAdmin.from('alumnos').select('id', { count: 'exact', head: true }).is('deleted_at', null);;
   if (gymId) q = q.eq('gym_id', gymId);
@@ -305,11 +320,19 @@ export async function getFacturacionByPeriodo({ gymId, year, range }) {
     if (!idsByPeriod || Object.keys(idsByPeriod).length === 0) return {};
     const allIds = [...new Set(Object.values(idsByPeriod).flatMap(v => v.pagoIds))];
     if (allIds.length === 0) return {};
-    const { data: items, error } = await supabaseAdmin
-      .from('pago_items')
-      .select('pago_id, monto, metodo_de_pago_id, metodo:metodos_de_pago(nombre)')
-      .in('pago_id', allIds);
-    if (error) throw error;
+    // Trae items en chunks para evitar URLs gigantes + cap de 1000 filas
+    const items = [];
+    const idChunkSize = 200;
+    for (let i = 0; i < allIds.length; i += idChunkSize) {
+      const chunk = allIds.slice(i, i + idChunkSize);
+      const chunkItems = await fetchAllPaged(() =>
+        supabaseAdmin
+          .from('pago_items')
+          .select('pago_id, monto, metodo_de_pago_id, metodo:metodos_de_pago(nombre)')
+          .in('pago_id', chunk)
+      );
+      items.push(...chunkItems);
+    }
     const methodByPagoId = {};
     for (const item of items ?? []) {
       if (!methodByPagoId[item.pago_id]) methodByPagoId[item.pago_id] = {};
@@ -336,14 +359,15 @@ export async function getFacturacionByPeriodo({ gymId, year, range }) {
   }
 
   if (range === '12m') {
-    const { data, error } = await supabaseAdmin
-      .from('pagos')
-      .select('id, fecha_de_pago, monto_total')
-      .eq('gym_id', gymId)
-      .is('deleted_at', null)
-      .gte('fecha_de_pago', `${year}-01-01`)
-      .lte('fecha_de_pago', `${year}-12-31`);
-    if (error) throw error;
+    const data = await fetchAllPaged(() =>
+      supabaseAdmin
+        .from('pagos')
+        .select('id, fecha_de_pago, monto_total')
+        .eq('gym_id', gymId)
+        .is('deleted_at', null)
+        .gte('fecha_de_pago', `${year}-01-01`)
+        .lte('fecha_de_pago', `${year}-12-31`)
+    );
 
     const byMonth = {};
     for (let m = 1; m <= 12; m++) {
@@ -363,14 +387,15 @@ export async function getFacturacionByPeriodo({ gymId, year, range }) {
   if (range === '30d') {
     const startOfMonth = now.clone().startOf('month').format('YYYY-MM-DD');
     const endOfMonth = now.format('YYYY-MM-DD');
-    const { data, error } = await supabaseAdmin
-      .from('pagos')
-      .select('id, fecha_de_pago, monto_total')
-      .eq('gym_id', gymId)
-      .is('deleted_at', null)
-      .gte('fecha_de_pago', startOfMonth)
-      .lte('fecha_de_pago', endOfMonth);
-    if (error) throw error;
+    const data = await fetchAllPaged(() =>
+      supabaseAdmin
+        .from('pagos')
+        .select('id, fecha_de_pago, monto_total')
+        .eq('gym_id', gymId)
+        .is('deleted_at', null)
+        .gte('fecha_de_pago', startOfMonth)
+        .lte('fecha_de_pago', endOfMonth)
+    );
 
     const byDay = {};
     for (const p of data ?? []) {
@@ -387,14 +412,15 @@ export async function getFacturacionByPeriodo({ gymId, year, range }) {
   if (range === '7w') {
     const startOfMonth = now.clone().startOf('month').format('YYYY-MM-DD');
     const endOfMonth = now.format('YYYY-MM-DD');
-    const { data, error } = await supabaseAdmin
-      .from('pagos')
-      .select('id, fecha_de_pago, monto_total')
-      .eq('gym_id', gymId)
-      .is('deleted_at', null)
-      .gte('fecha_de_pago', startOfMonth)
-      .lte('fecha_de_pago', endOfMonth);
-    if (error) throw error;
+    const data = await fetchAllPaged(() =>
+      supabaseAdmin
+        .from('pagos')
+        .select('id, fecha_de_pago, monto_total')
+        .eq('gym_id', gymId)
+        .is('deleted_at', null)
+        .gte('fecha_de_pago', startOfMonth)
+        .lte('fecha_de_pago', endOfMonth)
+    );
 
     const byWeek = {};
     for (const p of data ?? []) {
@@ -746,16 +772,17 @@ export async function getFacturacionMes({ gymId, year, month }) {
   const prevStart = `${prevYear}-${String(prevMonth).padStart(2, '0')}-01`;
   const prevEnd = new Date(prevYear, prevMonth, 0).toISOString().split('T')[0];
 
-  const [actualResult, anteriorResult] = await Promise.all([
-    supabaseAdmin.from('pagos').select('monto_total').eq('gym_id', gymId).is('deleted_at', null).gte('fecha_de_pago', actualStart).lte('fecha_de_pago', actualEnd),
-    supabaseAdmin.from('pagos').select('monto_total').eq('gym_id', gymId).is('deleted_at', null).gte('fecha_de_pago', prevStart).lte('fecha_de_pago', prevEnd),
+  const [actualData, anteriorData] = await Promise.all([
+    fetchAllPaged(() =>
+      supabaseAdmin.from('pagos').select('monto_total').eq('gym_id', gymId).is('deleted_at', null).gte('fecha_de_pago', actualStart).lte('fecha_de_pago', actualEnd)
+    ),
+    fetchAllPaged(() =>
+      supabaseAdmin.from('pagos').select('monto_total').eq('gym_id', gymId).is('deleted_at', null).gte('fecha_de_pago', prevStart).lte('fecha_de_pago', prevEnd)
+    ),
   ]);
 
-  if (actualResult.error) throw actualResult.error;
-  if (anteriorResult.error) throw anteriorResult.error;
-
-  const actual = (actualResult.data ?? []).reduce((sum, p) => sum + Number(p.monto_total || 0), 0);
-  const anterior = (anteriorResult.data ?? []).reduce((sum, p) => sum + Number(p.monto_total || 0), 0);
+  const actual = actualData.reduce((sum, p) => sum + Number(p.monto_total || 0), 0);
+  const anterior = anteriorData.reduce((sum, p) => sum + Number(p.monto_total || 0), 0);
   const deltaPct = anterior > 0 ? Math.round(((actual - anterior) / anterior) * 100) : 0;
 
   return { actual, anterior, deltaPct };

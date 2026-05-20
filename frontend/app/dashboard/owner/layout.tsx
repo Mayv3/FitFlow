@@ -1,12 +1,10 @@
 'use client';
 
 import { SideBar } from "@/components/ui/header/SideBar";
-import { SubscriptionStatusBadge } from "@/components/ui/SubscriptionStatusBadge";
 import { ownerTabs } from "@/const/headerTabs.tsx/sideBarTabs";
 import { useAuthRole } from "@/hooks/auth/useAuthRole";
 import { OWNER } from "@/const/roles/roles";
 import { useMediaQuery, useTheme } from '@mui/material';
-import NovedadesModal from "@/components/dashboard/novedades/NovedadesBanner";
 export default function OwnerLayout({
   children,
 }: {
@@ -23,7 +21,6 @@ export default function OwnerLayout({
       width: '100%'
     }}>
       <SideBar tabs={ownerTabs} />
-      <SubscriptionStatusBadge />
       <main style={{
         flexGrow: 1,
         padding: '2rem',
@@ -31,7 +28,6 @@ export default function OwnerLayout({
         marginLeft: isDesktop ? '80px' : '0px',
         width: isDesktop ? '20px' : '100%'
       }}>
-        <NovedadesModal />
         {children}
       </main>
     </div>

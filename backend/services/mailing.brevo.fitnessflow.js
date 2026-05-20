@@ -140,6 +140,39 @@ function plantillaVenceEnTres(nombre, gymLogo, gymColor, gymName) {
 
 const delay = (ms) => new Promise(res => setTimeout(res, ms))
 
+/**
+ * Guarda un registro de email enviado/intentado para un gimnasio
+ */
+async function logGymEmail({
+  gymId,
+  emailDestino,
+  asunto,
+  tipo = 'vencimiento_gym_plan',
+  estado = 'enviado',
+  errorMsg = null,
+  planNombre = null,
+  planPrecio = null,
+  endAt = null,
+}) {
+  if (!gymId) return
+  try {
+    const { error } = await supabase.from('gym_email_logs').insert({
+      gym_id: gymId,
+      email_destino: emailDestino,
+      asunto,
+      tipo,
+      estado,
+      error_msg: errorMsg,
+      plan_nombre: planNombre,
+      plan_precio: planPrecio,
+      end_at: endAt,
+    })
+    if (error) console.error('⚠️ No se pudo registrar log de email:', error.message)
+  } catch (e) {
+    console.error('⚠️ Error registrando log de email:', e.message)
+  }
+}
+
 
 export async function enviarEmailsPorVencer({ previewOnly = true, gymIds = [] } = {}) {
   const ZONE = 'America/Argentina/Cordoba'
@@ -598,6 +631,15 @@ export async function enviarEmailsVencimientoGymPlans() {
         destinatario: null,
         estado: 'sin_email',
       })
+      await logGymEmail({
+        gymId: s.gym_id,
+        emailDestino: null,
+        asunto: `⚠️ Vencimiento de plan — ${gymName}`,
+        estado: 'sin_email',
+        planNombre: planName,
+        planPrecio: planPrice,
+        endAt: s.end_at,
+      })
       continue
     }
 
@@ -623,6 +665,15 @@ export async function enviarEmailsVencimientoGymPlans() {
         destinatario: emailAdmin,
         estado: 'enviado',
       })
+      await logGymEmail({
+        gymId: s.gym_id,
+        emailDestino: emailAdmin,
+        asunto: subject,
+        estado: 'enviado',
+        planNombre: planName,
+        planPrecio: planPrice,
+        endAt: s.end_at,
+      })
     } catch (err) {
       console.error(`❌ Error enviando mail de ${gymName} a ${emailAdmin}:`, err.message)
       errores++
@@ -633,6 +684,16 @@ export async function enviarEmailsVencimientoGymPlans() {
         vencimiento: dayjs(s.end_at).format('DD/MM/YYYY'),
         destinatario: emailAdmin,
         estado: 'error',
+      })
+      await logGymEmail({
+        gymId: s.gym_id,
+        emailDestino: emailAdmin,
+        asunto: subject,
+        estado: 'error',
+        errorMsg: err.message,
+        planNombre: planName,
+        planPrecio: planPrice,
+        endAt: s.end_at,
       })
     }
   }
@@ -646,6 +707,51 @@ export async function enviarEmailsVencimientoGymPlans() {
     total: todos.length,
     detalle,
   }
+}
+
+/**
+ * Obtiene logs de emails enviados a gimnasios, agrupados por gimnasio
+ */
+export async function getGymEmailLogs({ limit = 500 } = {}) {
+  const { data, error } = await supabase
+    .from('gym_email_logs')
+    .select('*, gyms:gym_id(id, name, logo_url)')
+    .order('created_at', { ascending: false })
+    .limit(limit)
+
+  if (error) throw error
+
+  const porGym = {}
+  for (const row of data || []) {
+    const gymId = row.gym_id
+    if (!porGym[gymId]) {
+      porGym[gymId] = {
+        gym_id: gymId,
+        gym_nombre: row.gyms?.name || 'Sin nombre',
+        gym_logo: row.gyms?.logo_url || null,
+        total: 0,
+        ultimo_envio: row.created_at,
+        emails: [],
+      }
+    }
+    porGym[gymId].total += 1
+    porGym[gymId].emails.push({
+      id: row.id,
+      email_destino: row.email_destino,
+      asunto: row.asunto,
+      tipo: row.tipo,
+      estado: row.estado,
+      error_msg: row.error_msg,
+      plan_nombre: row.plan_nombre,
+      plan_precio: row.plan_precio,
+      end_at: row.end_at,
+      created_at: row.created_at,
+    })
+  }
+
+  return Object.values(porGym).sort(
+    (a, b) => new Date(b.ultimo_envio).getTime() - new Date(a.ultimo_envio).getTime()
+  )
 }
 
 /**

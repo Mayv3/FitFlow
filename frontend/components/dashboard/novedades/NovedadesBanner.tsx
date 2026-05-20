@@ -61,7 +61,7 @@ function markNovedadesAsRead(ids: number[]) {
 
 function getNovedadesRoute(): string {
   const rol = Cookies.get('rol');
-  if (rol === '1') return '/dashboard/owner/register';
+  if (rol === '1') return '/dashboard/owner';
   if (rol === '2') return '/dashboard/administrator/novedades';
   if (rol === '3') return '/dashboard/receptionist/novedades';
   return '/dashboard/administrator/novedades';

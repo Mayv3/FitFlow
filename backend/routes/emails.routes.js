@@ -1,10 +1,11 @@
 import express from 'express'
-import { 
-  enviarEmailsPorVencer, 
+import {
+  enviarEmailsPorVencer,
   enviarPruebaPlantillas,
   previewVencimientoGymPlans,
   enviarEmailsVencimientoGymPlans,
-  enviarTestVencimientoGymPlan
+  enviarTestVencimientoGymPlan,
+  getGymEmailLogs
 } from '../services/mailing.brevo.fitnessflow.js'
 
 const router = express.Router()
@@ -131,6 +132,21 @@ router.post('/test-vencimiento-gym-plan', async (req, res) => {
     })
   } catch (error) {
     console.error('❌ Error al enviar test gym plan:', error)
+    res.status(500).json({ error: error.message })
+  }
+})
+
+/**
+ * GET /api/emails/logs
+ * Devuelve historial de emails enviados a gimnasios, agrupados por gimnasio.
+ */
+router.get('/logs', async (req, res) => {
+  try {
+    const limit = req.query.limit ? Math.min(parseInt(req.query.limit, 10) || 500, 2000) : 500
+    const data = await getGymEmailLogs({ limit })
+    res.json({ success: true, data })
+  } catch (error) {
+    console.error('❌ Error obteniendo logs de emails:', error)
     res.status(500).json({ error: error.message })
   }
 })

@@ -8,7 +8,6 @@ import {
 } from "@mui/material"
 import { ThemeSettings } from "@/components/ui/gymThemeEditor/gymThemeEditor"
 import { ThemePreview } from "./ThemePreview"
-import { CustomBreadcrumbs } from "@/components/ui/breadcrums/CustomBreadcrumbs"
 import { GymThemeEditorSimple } from "@/components/ui/gymThemeEditor/gymThemeEditorSimple"
 
 import PaletteIcon from '@mui/icons-material/Palette';
@@ -18,12 +17,6 @@ export function SettingsAdmin() {
 
     return (
         <Box>
-            <CustomBreadcrumbs
-                items={[
-                    { label: 'Dashboard', href: '' },
-                    { label: 'Configuración' }
-                ]}
-            />
             <Paper sx={{ p: 3 }}>
                 <Box sx={{ display: "flex", flexDirection: { xs: "column", md: "row" }, gap: 3 }}>
                     <Box

@@ -22,7 +22,11 @@ import {
   FormControl,
   InputLabel,
   Tooltip,
+  Switch,
+  FormControlLabel,
+  Paper,
 } from "@mui/material"
+import WhatsAppIcon from "@mui/icons-material/WhatsApp"
 import CloseIcon from "@mui/icons-material/Close"
 import SaveIcon from "@mui/icons-material/Save"
 import AutorenewIcon from "@mui/icons-material/Autorenew"
@@ -124,13 +128,32 @@ export function GymDetailDrawer({ gym, open, onClose }: Props) {
 function DetailsTab({ gym, onDeleted }: { gym: Gym; onDeleted: () => void }) {
   const [name, setName] = useState(gym.name)
   const [logoUrl, setLogoUrl] = useState(gym.logo_url || "")
+  const [waModule, setWaModule] = useState<boolean>(
+    !!gym.settings?.whatsapp_module_enabled
+  )
+  const [waBusy, setWaBusy] = useState(false)
   const updateGym = useUpdateGym()
   const softDelete = useSoftDeleteGym()
 
   useEffect(() => {
     setName(gym.name)
     setLogoUrl(gym.logo_url || "")
+    setWaModule(!!gym.settings?.whatsapp_module_enabled)
   }, [gym.id])
+
+  const toggleWaModule = async (next: boolean) => {
+    setWaBusy(true)
+    try {
+      const newSettings = { ...(gym.settings || {}), whatsapp_module_enabled: next }
+      await updateGym.mutateAsync({ id: gym.id, settings: newSettings })
+      setWaModule(next)
+      notify.success(next ? "Módulo WhatsApp habilitado" : "Módulo WhatsApp deshabilitado")
+    } catch (e: any) {
+      notify.error(e.message || "Error al actualizar módulo")
+    } finally {
+      setWaBusy(false)
+    }
+  }
 
   const handleSave = async () => {
     if (!name.trim()) return notify.error("Nombre requerido")
@@ -201,6 +224,34 @@ function DetailsTab({ gym, onDeleted }: { gym: Gym; onDeleted: () => void }) {
           </span>
         </Tooltip>
       </Stack>
+
+      <Divider sx={{ my: 1 }} />
+
+      <Paper variant="outlined" sx={{ p: 2 }}>
+        <Stack direction="row" alignItems="center" spacing={1.5}>
+          <WhatsAppIcon sx={{ color: "#25D366" }} />
+          <Box sx={{ flex: 1 }}>
+            <Typography variant="subtitle2" sx={{ fontWeight: 600 }}>
+              Módulo WhatsApp
+            </Typography>
+            <Typography variant="caption" color="text.secondary">
+              Habilita el envío de recordatorios automáticos para este gimnasio.
+            </Typography>
+          </Box>
+          <FormControlLabel
+            sx={{ m: 0 }}
+            control={
+              <Switch
+                checked={waModule}
+                disabled={waBusy}
+                onChange={(e) => toggleWaModule(e.target.checked)}
+                color="success"
+              />
+            }
+            label=""
+          />
+        </Stack>
+      </Paper>
     </Stack>
   )
 }

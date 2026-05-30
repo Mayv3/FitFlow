@@ -25,6 +25,8 @@ import suscriptionsRoutes from "./routes/suscriptions.routes.js"
 import productosRoutes from "./routes/productos.routes.js"
 import emailsRoutes from "./routes/emails.routes.js"
 import novedadesRoutes from "./routes/novedades.routes.js"
+import whatsappRoutes from "./routes/whatsapp.routes.js"
+import { ensureConnectedGyms } from './services/whatsapp/reminders.js'
 
 import { supabaseAdmin } from './config/supabaseClient.js'
 import { verifyToken } from '../backend/middleware/auth.js'
@@ -92,6 +94,7 @@ app.use('/api/novedades', novedadesRoutes);
 app.use('/api/payment-methods', paymentMethodsRoutes);
 app.use('/api/auth', authRoutes);
 app.use('/api/emails', emailsRoutes);
+app.use('/api/whatsapp', whatsappRoutes);
 
 app.get('/ping', (req, res) => res.sendStatus(200));
 if (process.env.NODE_ENV !== 'production') {
@@ -134,4 +137,7 @@ export function emitToGym(gymId, event, payload) {
 
 server.listen(PORT, () => {
   console.log(`Servidor corriendo en http://localhost:${PORT}`);
+  ensureConnectedGyms().catch((e) =>
+    console.warn('[wa boot] ensureConnectedGyms failed:', e.message)
+  );
 });

@@ -82,6 +82,18 @@ export async function updateUserRole(userId, newRoleId) {
     .single()
 
   if (error) throw error
+
+  // Sincronizar app_metadata.role_id en auth (es la llave que usa el RLS)
+  if (data?.auth_user_id) {
+    try {
+      await supabaseAdmin.auth.admin.updateUserById(data.auth_user_id, {
+        app_metadata: { gym_id: data.gym_id, role_id: newRoleId },
+      })
+    } catch (e) {
+      console.error("No se pudo sincronizar app_metadata.role_id:", e?.message)
+    }
+  }
+
   return data
 }
 

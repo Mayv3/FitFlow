@@ -21,6 +21,7 @@ export async function registerUser({ email, password, dni, gym_id, role_id, name
         await supabaseAdmin.auth.admin.updateUserById(existingAuthUser.id, {
           password,
           user_metadata: { dni, gym_id, role_id, name },
+          app_metadata: { gym_id, role_id }, // llave de inquilino para RLS (no manipulable)
         })
       if (updateAuthError) throw updateAuthError
 
@@ -48,6 +49,7 @@ export async function registerUser({ email, password, dni, gym_id, role_id, name
     email,
     password,
     user_metadata: { dni, gym_id, role_id, name },
+    app_metadata: { gym_id, role_id }, // llave de inquilino para RLS (no manipulable)
     email_confirm: true,
   })
   if (authError) throw authError
@@ -97,7 +99,9 @@ export async function loginUser({ email, password }) {
   const { session, user } = data
   if (!session || !user) throw new Error("Error en la autenticación: sesión o usuario no disponibles")
 
-  const { data: profile, error: profileError } = await supabase
+  // supabaseAdmin (service_role) para que el fetch del perfil no dependa del RLS
+  // ni de la sesion del cliente anon compartido (ver backend/sql/rls_multitenant.sql)
+  const { data: profile, error: profileError } = await supabaseAdmin
     .from("users")
     .select(`
       id,

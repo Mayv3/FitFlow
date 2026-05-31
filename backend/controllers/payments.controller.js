@@ -61,10 +61,16 @@ export const getPago = async (req, res) => {
 export const addPago = async (req, res) => {
   try {
     const nuevoPago = await createPago(req.supa, req.body);
-    await Promise.all([
+    const invalidations = [
       cache.delPattern(`pagos:${req.gymId}:*`),
       cache.delPattern(`alumnos:${req.gymId}:*`),
-    ])
+    ]
+    // Si fue venta de producto, el stock cambió en DB => invalidar cache de productos
+    if (req.body.producto_id) {
+      invalidations.push(cache.delPattern(`productos:${req.gymId}:*`))
+      invalidations.push(cache.delPattern(`productos:id:${req.body.producto_id}`))
+    }
+    await Promise.all(invalidations)
     res.status(201).json(nuevoPago);
   } catch (error) {
     console.error('[addPago] Error:', error);

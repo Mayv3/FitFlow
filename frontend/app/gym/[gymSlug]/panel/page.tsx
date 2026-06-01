@@ -29,7 +29,7 @@ import Brightness7Icon from '@mui/icons-material/Brightness7'
 import AutorenewIcon from '@mui/icons-material/Autorenew'
 import AccessTimeIcon from '@mui/icons-material/AccessTime'
 import { notify } from '@/lib/toast'
-import axios from 'axios'
+import { api } from '@/lib/api'
 import { useDarkMode } from '@/context/DarkModeContext'
 
 export default function GymPanelPage() {
@@ -75,25 +75,25 @@ export default function GymPanelPage() {
             try {
                 const alumnoBasic = JSON.parse(storedAlumno)
 
-                const alumnoResponse = await axios.get(
-                    `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/auth/gym-alumno/${gymId}/${alumnoBasic.dni}`
+                const alumnoResponse = await api.get(
+                    `/api/auth/gym-alumno/${gymId}/${alumnoBasic.dni}`
                 )
                 setAlumno(alumnoResponse.data)
-                
+
                 console.log('[Panel] Datos del alumno:', alumnoResponse.data)
                 console.log('[Panel] Clases inscritas:', alumnoResponse.data?.clases_inscritas)
 
                 if (gymId) {
-                    const gymResponse = await axios.get(
-                        `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/gyms/${gymId}?include_settings=true`
+                    const gymResponse = await api.get(
+                        `/api/gyms/${gymId}?include_settings=true`
                     )
                     setGymName(gymResponse.data.name || 'Sin Data')
 
                     const primaryColor = gymResponse.data?.settings?.colors?.primary || '#2196F3'
                     setGymColor(primaryColor)
 
-                    const serviciosResponse = await axios.get(
-                        `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/public/appointments/gym/${gymId}/services`
+                    const serviciosResponse = await api.get(
+                        `/api/public/appointments/gym/${gymId}/services`
                     )
                     setServicios(serviciosResponse.data)
                 }
@@ -123,8 +123,8 @@ export default function GymPanelPage() {
         setLoadingSesiones(true)
 
         try {
-            const response = await axios.get(
-                `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/public/appointments/service/${servicio.id}/sessions`,
+            const response = await api.get(
+                `/api/public/appointments/service/${servicio.id}/sessions`,
                 {
                     params: { alumno_id: datosPersonales?.id }
                 }
@@ -149,8 +149,8 @@ export default function GymPanelPage() {
 
         setEnrollingSession(selectedSesionId)
         try {
-            await axios.post(
-                `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/public/appointments/session/${selectedSesionId}/enroll`,
+            await api.post(
+                `/api/public/appointments/session/${selectedSesionId}/enroll`,
                 {
                     alumno_id: datosPersonales.id,
                     es_fija: esFija
@@ -166,8 +166,8 @@ export default function GymPanelPage() {
             const storedAlumno = localStorage.getItem('gym_alumno')
             if (gymId && storedAlumno) {
                 const alumnoBasic = JSON.parse(storedAlumno)
-                const alumnoResponse = await axios.get(
-                    `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/auth/gym-alumno/${gymId}/${alumnoBasic.dni}`
+                const alumnoResponse = await api.get(
+                    `/api/auth/gym-alumno/${gymId}/${alumnoBasic.dni}`
                 )
                 setAlumno(alumnoResponse.data)
             }
@@ -183,8 +183,8 @@ export default function GymPanelPage() {
 
         setCancelingSession(sessionId)
         try {
-            await axios.post(
-                `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/public/appointments/session/${sessionId}/cancel`,
+            await api.post(
+                `/api/public/appointments/session/${sessionId}/cancel`,
                 { alumno_id: datosPersonales.id }
             )
             notify.success('Inscripción cancelada')
@@ -195,8 +195,8 @@ export default function GymPanelPage() {
             const storedAlumno = localStorage.getItem('gym_alumno')
             if (gymId && storedAlumno) {
                 const alumnoBasic = JSON.parse(storedAlumno)
-                const alumnoResponse = await axios.get(
-                    `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/auth/gym-alumno/${gymId}/${alumnoBasic.dni}`
+                const alumnoResponse = await api.get(
+                    `/api/auth/gym-alumno/${gymId}/${alumnoBasic.dni}`
                 )
                 setAlumno(alumnoResponse.data)
             }
@@ -212,8 +212,8 @@ export default function GymPanelPage() {
 
         setReloadingSesiones(true)
         try {
-            const response = await axios.get(
-                `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/public/appointments/service/${selectedServicio.id}/sessions`,
+            const response = await api.get(
+                `/api/public/appointments/service/${selectedServicio.id}/sessions`,
                 {
                     params: { alumno_id: datosPersonales?.id }
                 }

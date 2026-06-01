@@ -1,8 +1,7 @@
 "use client"
 
 import { useEffect, useState } from "react"
-import axios from "axios"
-import Cookies from "js-cookie"
+import { api } from "@/lib/api"
 import {
   Box,
   Typography,
@@ -61,11 +60,7 @@ export function ManageGymUsers() {
       setLoadingGyms(true)
       setError("")
       try {
-        const token = Cookies.get("token")
-        const res = await axios.get(
-          `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/gyms`,
-          token ? { headers: { Authorization: `Bearer ${token}` } } : undefined
-        )
+        const res = await api.get(`/api/gyms`)
         const items: Gym[] = Array.isArray(res.data) ? res.data : (res.data?.items ?? [])
         setGyms(items)
         if (!gymId && items.length) setGymId(items[0].id)
@@ -82,11 +77,7 @@ export function ManageGymUsers() {
     setLoadingUsers(true)
     setError("")
     try {
-      const token = Cookies.get("token")
-      const { data } = await axios.get(
-        `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/users?gym_id=${gid}`,
-        token ? { headers: { Authorization: `Bearer ${token}` } } : undefined
-      )
+      const { data } = await api.get(`/api/users?gym_id=${gid}`)
       const items: UserRow[] = Array.isArray(data) ? data : (data?.items ?? [])
       setUsers(items)
     } catch (e: any) {
@@ -107,11 +98,9 @@ export function ManageGymUsers() {
       return
     }
     try {
-      const token = Cookies.get("token")
-      await axios.post(
-        `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/auth/register`,
-        { name, email, password, dni: Number(dni), gym_id: gymId, role_id: roleId },
-        token ? { headers: { Authorization: `Bearer ${token}` } } : undefined
+      await api.post(
+        `/api/auth/register`,
+        { name, email, password, dni: Number(dni), gym_id: gymId, role_id: roleId }
       )
       await fetchUsers(gymId)
       setName("")
@@ -133,12 +122,7 @@ export function ManageGymUsers() {
     if (!selectedUser) return
     setError("")
     try {
-      const token = Cookies.get("token")
-      await axios.put(
-        `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/users/${selectedUser.id}`,
-        { role_id: editingRoleId },
-        token ? { headers: { Authorization: `Bearer ${token}` } } : undefined
-      )
+      await api.put(`/api/users/${selectedUser.id}`, { role_id: editingRoleId })
       await fetchUsers(gymId)
       setEditDialogOpen(false)
       setSelectedUser(null)
@@ -156,11 +140,7 @@ export function ManageGymUsers() {
     if (!selectedUser) return
     setError("")
     try {
-      const token = Cookies.get("token")
-      await axios.delete(
-        `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/users/${selectedUser.id}`,
-        token ? { headers: { Authorization: `Bearer ${token}` } } : undefined
-      )
+      await api.delete(`/api/users/${selectedUser.id}`)
       await fetchUsers(gymId)
       setDeleteDialogOpen(false)
       setSelectedUser(null)

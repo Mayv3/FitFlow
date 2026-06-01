@@ -1,4 +1,9 @@
-import { supabase, supabaseAdmin } from '../config/supabaseClient.js';
+import { supabaseAdmin } from '../config/supabaseClient.js';
+
+// El backend es la capa confiable: usa service_role y saltea el RLS (que es un
+// safety-net para acceso REST directo con anon key). El aislamiento por gimnasio
+// se mantiene porque cada query filtra explícitamente por gym_id / clase_id.
+const supabase = supabaseAdmin;
 
 // Obtener todas las clases de un gimnasio
 export async function getClasesService({ gymId, page, limit, q = '' }) {

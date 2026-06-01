@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import axios from "axios"
+import { api } from "@/lib/api"
 import {
   TextField,
   Button,
@@ -41,10 +41,7 @@ export default function ForgotPasswordPage() {
 
     try {
       setLoading(true)
-      const res = await axios.post(
-        `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/auth/forgot-password`,
-        { email }
-      )
+      const res = await api.post(`/api/auth/forgot-password`, { email })
       notify.success(
         res.data.message ||
           "Si el correo existe, te llegará un link de recuperación"

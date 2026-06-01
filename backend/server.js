@@ -33,7 +33,6 @@ import { verifyToken } from '../backend/middleware/auth.js'
 import { createServer } from 'http';
 import { Server } from 'socket.io';
 import { supaPerRequest } from './middleware/supaPerRequest.js';
-import { handleGetActiveAlumnosCountByGym } from './controllers/members.controller.js';
 
 // await enviarEmailsPorVencer(); // Comentado - ahora se usa via endpoint
 
@@ -66,7 +65,6 @@ app.use(helmet());
 app.use(express.json());
 
 
-app.get('/api/alumnos/active-count', handleGetActiveAlumnosCountByGym);
 app.use('/api/alumnos', verifyToken, supaPerRequest, alumnosRoutes);
 app.use('/api/pagos', verifyToken, supaPerRequest, pagosRoutes);
 app.use('/api/planes', verifyToken, supaPerRequest, planesRoutes);

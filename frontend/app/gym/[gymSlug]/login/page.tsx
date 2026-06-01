@@ -13,7 +13,7 @@ import {
     CircularProgress,
 } from '@mui/material'
 import { slugify } from '@/utils/slugify'
-import axios from 'axios'
+import { api } from '@/lib/api'
 import { notify } from '@/lib/toast'
 
 export default function GymLoginPage() {
@@ -33,10 +33,8 @@ export default function GymLoginPage() {
             try {
                 setGymLoading(true)
                 // Buscar gym por nombre (el slug es el nombre)
-                const response = await axios.get(
-                    `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/gyms`
-                )
-                
+                const response = await api.get(`/api/gyms`)
+
                 // Buscar el gym cuyo nombre coincida con el slug
                 const gym = response.data.find((g: any) => 
                     slugify(g.name) === gymSlug
@@ -87,8 +85,8 @@ export default function GymLoginPage() {
             setLoading(true)
             
             // Buscar alumno por DNI y gym_id
-            const response = await axios.post(
-                `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/auth/gym-login`,
+            const response = await api.post(
+                `/api/auth/gym-login`,
                 {
                     dni: dni.trim(),
                     gym_id: gymInfo.id,

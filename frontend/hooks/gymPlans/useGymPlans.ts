@@ -1,9 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import axios from 'axios'
-import Cookies from 'js-cookie'
+import { api } from '@/lib/api'
 import { notify } from '@/lib/toast'
-
-const API_URL = process.env.NEXT_PUBLIC_BACKEND_URL
 
 interface GymPlan {
   id: number
@@ -41,20 +38,12 @@ interface UpdatePlanData {
   settings?: boolean
 }
 
-const getAuthHeaders = () => {
-  const token = Cookies.get('token')
-  return token ? { Authorization: `Bearer ${token}` } : {}
-}
-
 // Fetch todos los gym plans
 export const useGymPlans = () => {
   return useQuery({
     queryKey: ['gymPlans'],
     queryFn: async () => {
-      const { data } = await axios.get<GymPlan[]>(
-        `${API_URL}/api/gym-plans`,
-        { headers: getAuthHeaders() }
-      )
+      const { data } = await api.get<GymPlan[]>('/api/gym-plans')
       return data || []
     },
   })
@@ -66,11 +55,7 @@ export const useCreateGymPlan = () => {
 
   return useMutation({
     mutationFn: async (planData: CreatePlanData) => {
-      const { data } = await axios.post<GymPlan>(
-        `${API_URL}/api/gym-plans`,
-        planData,
-        { headers: getAuthHeaders() }
-      )
+      const { data } = await api.post<GymPlan>('/api/gym-plans', planData)
       return data
     },
     onSuccess: () => {
@@ -89,11 +74,7 @@ export const useUpdateGymPlan = () => {
 
   return useMutation({
     mutationFn: async ({ id, ...planData }: UpdatePlanData & { id: number }) => {
-      const { data } = await axios.put<GymPlan>(
-        `${API_URL}/api/gym-plans/${id}`,
-        planData,
-        { headers: getAuthHeaders() }
-      )
+      const { data } = await api.put<GymPlan>(`/api/gym-plans/${id}`, planData)
       return data
     },
     onSuccess: () => {
@@ -112,10 +93,7 @@ export const useDeleteGymPlan = () => {
 
   return useMutation({
     mutationFn: async (id: number) => {
-      await axios.delete(
-        `${API_URL}/api/gym-plans/${id}`,
-        { headers: getAuthHeaders() }
-      )
+      await api.delete(`/api/gym-plans/${id}`)
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['gymPlans'] })

@@ -1,9 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import axios from 'axios'
-import Cookies from 'js-cookie'
+import { api } from '@/lib/api'
 import { notify } from '@/lib/toast'
-
-const API_URL = process.env.NEXT_PUBLIC_BACKEND_URL
 
 interface GymPlan {
   id: number
@@ -44,20 +41,12 @@ interface UpdateSuscriptionData {
   end_at?: string | null
 }
 
-const getAuthHeaders = () => {
-  const token = Cookies.get('token')
-  return token ? { Authorization: `Bearer ${token}` } : {}
-}
-
 // Fetch todas las suscripciones
 export const useSuscriptions = () => {
   return useQuery({
     queryKey: ['suscriptions'],
     queryFn: async () => {
-      const { data } = await axios.get<Suscription[]>(
-        `${API_URL}/api/suscriptions`,
-        { headers: getAuthHeaders() }
-      )
+      const { data } = await api.get<Suscription[]>('/api/suscriptions')
       return data || []
     },
   })
@@ -68,9 +57,8 @@ export const useSuscriptionsByGymId = (gymId: string | undefined, onlyActive = f
   return useQuery({
     queryKey: ['suscriptions', 'gym', gymId, onlyActive],
     queryFn: async () => {
-      const { data } = await axios.get<Suscription[]>(
-        `${API_URL}/api/suscriptions/gym/${gymId}${onlyActive ? '?active=true' : ''}`,
-        { headers: getAuthHeaders() }
+      const { data } = await api.get<Suscription[]>(
+        `/api/suscriptions/gym/${gymId}${onlyActive ? '?active=true' : ''}`
       )
       return data || []
     },
@@ -83,9 +71,8 @@ export const useActiveSuscriptionByGymId = (gymId: string | undefined) => {
   return useQuery({
     queryKey: ['suscriptions', 'gym', gymId, 'active'],
     queryFn: async () => {
-      const { data } = await axios.get<Suscription | null>(
-        `${API_URL}/api/suscriptions/gym/${gymId}/active`,
-        { headers: getAuthHeaders() }
+      const { data } = await api.get<Suscription | null>(
+        `/api/suscriptions/gym/${gymId}/active`
       )
       return data
     },
@@ -99,11 +86,7 @@ export const useCreateSuscription = () => {
 
   return useMutation({
     mutationFn: async (suscriptionData: CreateSuscriptionData) => {
-      const { data } = await axios.post<Suscription>(
-        `${API_URL}/api/suscriptions`,
-        suscriptionData,
-        { headers: getAuthHeaders() }
-      )
+      const { data } = await api.post<Suscription>('/api/suscriptions', suscriptionData)
       return data
     },
     onSuccess: (data) => {
@@ -123,11 +106,7 @@ export const useUpdateSuscription = () => {
 
   return useMutation({
     mutationFn: async ({ id, ...suscriptionData }: UpdateSuscriptionData & { id: number }) => {
-      const { data } = await axios.put<Suscription>(
-        `${API_URL}/api/suscriptions/${id}`,
-        suscriptionData,
-        { headers: getAuthHeaders() }
-      )
+      const { data } = await api.put<Suscription>(`/api/suscriptions/${id}`, suscriptionData)
       return data
     },
     onSuccess: (data) => {
@@ -147,10 +126,7 @@ export const useDeleteSuscription = () => {
 
   return useMutation({
     mutationFn: async ({ id, gymId }: { id: number; gymId: string }) => {
-      await axios.delete(
-        `${API_URL}/api/suscriptions/${id}`,
-        { headers: getAuthHeaders() }
-      )
+      await api.delete(`/api/suscriptions/${id}`)
       return { gymId }
     },
     onSuccess: (_, variables) => {

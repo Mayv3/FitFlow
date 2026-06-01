@@ -1,8 +1,7 @@
 "use client"
 
 import { useEffect, useMemo, useState } from "react"
-import axios from "axios"
-import Cookies from "js-cookie"
+import { api } from "@/lib/api"
 import {
   Box,
   Drawer,
@@ -463,11 +462,7 @@ function UsersTab({ gym }: { gym: Gym }) {
     setLoading(true)
     setError("")
     try {
-      const token = Cookies.get("token")
-      const res = await axios.get(
-        `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/users?gym_id=${gym.id}`,
-        token ? { headers: { Authorization: `Bearer ${token}` } } : undefined
-      )
+      const res = await api.get(`/api/users?gym_id=${gym.id}`)
       setUsers(Array.isArray(res.data) ? res.data : res.data?.items ?? [])
     } catch (e: any) {
       setError(e.response?.data?.error || "Error al cargar usuarios")

@@ -1,7 +1,7 @@
 "use client"
 
 import { useEffect, useState } from "react"
-import axios from "axios"
+import { api } from "@/lib/api"
 import Cookies from "js-cookie"
 import {
     Box,
@@ -81,11 +81,7 @@ export function MyGymUsers() {
         setLoadingUsers(true)
         setError("")
         try {
-            const token = Cookies.get("token")
-            const { data } = await axios.get(
-                `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/users?gym_id=${gymId}`,
-                token ? { headers: { Authorization: `Bearer ${token}` } } : undefined
-            )
+            const { data } = await api.get(`/api/users?gym_id=${gymId}`)
             const items: UserRow[] = Array.isArray(data) ? data : data?.items ?? []
             setUsers(items)
         } catch (e: any) {
@@ -104,16 +100,14 @@ export function MyGymUsers() {
         }
 
         try {
-            const token = Cookies.get("token")
-            await axios.post(
-                `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/auth/register`,
+            await api.post(
+                `/api/auth/register`,
                 {
                     ...formValues,
                     dni: Number(formValues.dni),
                     gym_id: gymId,
                     role_id: roleId,
-                },
-                token ? { headers: { Authorization: `Bearer ${token}` } } : undefined
+                }
             )
             await fetchUsers()
             setFormValues({ name: "", dni: "", email: "", password: "" })
@@ -124,12 +118,7 @@ export function MyGymUsers() {
 
     const onChangeRole = async (userId: number, newRoleId: number) => {
         try {
-            const token = Cookies.get("token")
-            await axios.put(
-                `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/users/${userId}`,
-                { role_id: newRoleId },
-                token ? { headers: { Authorization: `Bearer ${token}` } } : undefined
-            )
+            await api.put(`/api/users/${userId}`, { role_id: newRoleId })
             setUsers(prev =>
                 prev.map(u => (u.id === userId ? { ...u, role_id: newRoleId } : u))
             )
@@ -140,11 +129,7 @@ export function MyGymUsers() {
 
     const onDeleteUser = async (userId: number) => {
         try {
-            const token = Cookies.get("token")
-            await axios.delete(
-                `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/users/${userId}`,
-                token ? { headers: { Authorization: `Bearer ${token}` } } : undefined
-            )
+            await api.delete(`/api/users/${userId}`)
             setUsers(prev => prev.filter(u => u.id !== userId))
         } catch (e: any) {
             setError(e?.response?.data?.error || "No se pudo eliminar el usuario")

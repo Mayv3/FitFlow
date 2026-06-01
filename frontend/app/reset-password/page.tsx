@@ -12,7 +12,7 @@ import {
   InputAdornment,
   IconButton,
 } from "@mui/material"
-import axios from "axios"
+import { api } from "@/lib/api"
 import { Visibility, VisibilityOff } from "@mui/icons-material"
 
 export default function ResetPasswordPage() {
@@ -47,7 +47,7 @@ export default function ResetPasswordPage() {
 
     try {
       setLoading(true)
-      const res = await axios.post(`${process.env.NEXT_PUBLIC_BACKEND_URL}/api/auth/reset-password`, {
+      const res = await api.post(`/api/auth/reset-password`, {
         access_token: accessToken,
         newPassword,
       })

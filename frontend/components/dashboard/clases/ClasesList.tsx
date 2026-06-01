@@ -19,7 +19,7 @@ import { GenericModal } from '@/components/ui/modals/GenericModal'
 import { notify } from '@/lib/toast'
 import { ClaseFormModal } from './ClaseFormModal'
 import { ClaseDetalleModal } from './ClaseDetalleModal'
-import axios from 'axios'
+import { api } from '@/lib/api'
 import { useQueryClient } from '@tanstack/react-query'
 import tableSize from '@/const/tables/tableSize'
 
@@ -72,27 +72,30 @@ export default function ClasesList() {
             const nuevaClase = await addClase.mutateAsync({ ...claseData, gym_id: gymId })
 
             // Crear las sesiones
+            let fallidas = 0
             if (sesiones && sesiones.length > 0) {
                 for (const sesion of sesiones) {
                     try {
-                        await axios.post(
-                            `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/sesiones`,
-                            {
-                                ...sesion,
-                                clase_id: nuevaClase.id,
-                                gym_id: gymId,
-                            }
-                        )
+                        await api.post('/api/sesiones', {
+                            ...sesion,
+                            clase_id: nuevaClase.id,
+                            gym_id: gymId,
+                        })
                     } catch (err: any) {
+                        fallidas++
                         console.error('Error creando sesión:', err.response?.data || err.message)
                     }
                 }
                 // Invalidar queries para refrescar
                 queryClient.invalidateQueries({ queryKey: ['sesiones', nuevaClase.id] })
             }
-            
+
             setOpenAdd(false)
-            notify.success('Clase y sesiones creadas correctamente')
+            if (fallidas > 0) {
+                notify.error(`Clase creada, pero ${fallidas} sesión(es) no se pudieron crear`)
+            } else {
+                notify.success('Clase y sesiones creadas correctamente')
+            }
         } catch (error: any) {
             console.error('Error al añadir clase:', error)
             notify.error(error.response?.data?.error || 'Error al añadir la clase')
@@ -101,9 +104,7 @@ export default function ClasesList() {
 
     const handleOpenEdit = useCallback(async (clase: any) => {
         try {
-            const response = await axios.get(
-                `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/sesiones/clase/${clase.id}`
-            )
+            const response = await api.get(`/api/sesiones/clase/${clase.id}`)
             setEditingClase({ ...clase, sesiones: response.data || [] })
             setOpenEdit(true)
         } catch (error) {
@@ -141,14 +142,11 @@ export default function ClasesList() {
 
                 for (const sesion of sesionesNuevas) {
                     try {
-                        await axios.post(
-                            `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/sesiones`,
-                            {
-                                ...sesion,
-                                clase_id: id,
-                                gym_id: gymId,
-                            }
-                        )
+                        await api.post('/api/sesiones', {
+                            ...sesion,
+                            clase_id: id,
+                            gym_id: gymId,
+                        })
                     } catch (err: any) {
                         console.error('[handleEditClase] Error creando sesión:', err.response?.data || err.message)
                     }

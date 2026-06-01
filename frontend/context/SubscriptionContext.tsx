@@ -2,7 +2,7 @@
 
 import { createContext, useContext, useCallback, ReactNode } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
-import axios from 'axios'
+import { api } from '@/lib/api'
 import Cookies from 'js-cookie'
 
 /* =======================
@@ -61,14 +61,7 @@ const SubscriptionContext = createContext<SubscriptionContextType | undefined>(
 )
 
 const fetchGymSubscription = async (gymId: string): Promise<SubscriptionData> => {
-  const token = Cookies.get('token')
-  const headers = token ? { Authorization: `Bearer ${token}` } : {}
-
-  const { data } = await axios.get(
-    `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/suscriptions/gym/${gymId}/plan`,
-    { headers }
-  )
-
+  const { data } = await api.get(`/api/suscriptions/gym/${gymId}/plan`)
   return data
 }
 

@@ -26,7 +26,7 @@ import DeleteIcon from '@mui/icons-material/Delete'
 import EditIcon from '@mui/icons-material/Edit'
 import { useState, useEffect } from 'react'
 import { getDiaNombre } from '@/const/inputs/sesiones'
-import axios from 'axios'
+import { api } from '@/lib/api'
 import { notify } from '@/lib/toast'
 import { ColorPickerPopover } from '@/components/ui/colorSelector/colorSelector'
 
@@ -109,8 +109,8 @@ export function ClaseFormModal({
             
             if (esSesionBD && mode === 'edit') {
                 // Actualizar en el backend
-                axios.put(
-                    `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/sesiones/${editingSesion.id}`,
+                api.put(
+                    `/api/sesiones/${editingSesion.id}`,
                     {
                         dia_semana: diaSemana,
                         hora_inicio: horaInicio,
@@ -182,9 +182,7 @@ export function ClaseFormModal({
         if (sesionToDelete === null) return
         
         try {
-            await axios.delete(
-                `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/sesiones/${sesionToDelete}`
-            )
+            await api.delete(`/api/sesiones/${sesionToDelete}`)
             
             // Eliminar del estado local
             setSesiones(sesiones.filter(s => s.id !== sesionToDelete))

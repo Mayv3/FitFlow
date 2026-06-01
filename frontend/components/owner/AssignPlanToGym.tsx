@@ -1,8 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import axios from "axios"
-import Cookies from "js-cookie"
+import { api } from "@/lib/api"
 import {
   Box,
   Typography,
@@ -89,9 +88,7 @@ export function AssignPlanToGym() {
 
   const fetchGyms = async () => {
     try {
-      const token = Cookies.get("token")
-      const headers = token ? { Authorization: `Bearer ${token}` } : {}
-      const res = await axios.get(`${process.env.NEXT_PUBLIC_BACKEND_URL}/api/gyms`, { headers })
+      const res = await api.get(`/api/gyms`)
       setGyms(Array.isArray(res.data) ? res.data : [])
     } catch (err: any) {
       setError(err.response?.data?.error || "Error al cargar gimnasios")
@@ -105,7 +102,7 @@ export function AssignPlanToGym() {
 
     const fetchCounts = async () => {
       try {
-        const res = await axios.get(`${process.env.NEXT_PUBLIC_BACKEND_URL}/api/alumnos/active-count`)
+        const res = await api.get(`/api/alumnos/active-count`)
         setAlumnosCounts(res.data ?? {})
       } catch {
         // no crítico, la tabla sigue funcionando sin conteos

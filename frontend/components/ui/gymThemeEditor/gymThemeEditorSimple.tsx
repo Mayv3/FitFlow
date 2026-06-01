@@ -14,8 +14,7 @@ import {
     CircularProgress,
 } from "@mui/material"
 import { ColorPickerPopover } from "../colorSelector/colorSelector"
-import Cookies from "js-cookie"
-import axios from "axios"
+import { api } from "@/lib/api"
 
 export type ThemeSettings = {
     theme: {
@@ -146,13 +145,7 @@ export function GymThemeEditorSimple({
                 shape: settings.theme.shape,
             }
 
-            const token = Cookies.get("token")
-
-            await axios.put(
-                `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/gyms/settings`,
-                payload,
-                token ? { headers: { Authorization: `Bearer ${token}` } } : undefined
-            )
+            await api.put(`/api/gyms/settings`, payload)
 
             sessionStorage.setItem("gym_settings", JSON.stringify(payload))
 

@@ -16,4 +16,7 @@ Supabase LOCAL.md
 frontend/playwright-report/
 frontend/test-results/
 
+# Backend SQL (migraciones / RLS locales)
+backend/sql/
+
 env

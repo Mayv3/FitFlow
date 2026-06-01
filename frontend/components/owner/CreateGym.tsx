@@ -1,7 +1,7 @@
 "use client"
 
 import { useState } from "react"
-import axios from "axios"
+import { api } from "@/lib/api"
 import Cookies from "js-cookie"
 import {
   Box,
@@ -62,7 +62,6 @@ export function CreateGym() {
 
     setLoading(true)
     try {
-      const token = Cookies.get("token")
       const settingsPayload = toSettingsPayload(themeSettings)
 
       const finalLogo = logoUrl.trim()
@@ -73,11 +72,7 @@ export function CreateGym() {
 
       const payload = { name: gymName, logo_url: finalLogo, settings: settingsPayload }
 
-      const { data } = await axios.post(
-        `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/gyms`,
-        payload,
-        token ? { headers: { Authorization: `Bearer ${token}` } } : undefined
-      )
+      const { data } = await api.post(`/api/gyms`, payload)
 
       // Guardar el ID en cookies o en estado
       Cookies.set("last_created_gym_id", data.id, { expires: 1 })

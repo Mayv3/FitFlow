@@ -1,8 +1,7 @@
 "use client"
 
 import { useEffect, useMemo, useState } from "react"
-import axios from "axios"
-import Cookies from "js-cookie"
+import { api } from "@/lib/api"
 import {
   Box,
   Paper,
@@ -133,9 +132,7 @@ export function OwnerDashboard() {
   useEffect(() => {
     ;(async () => {
       try {
-        const res = await axios.get(
-          `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/alumnos/active-count`
-        )
+        const res = await api.get(`/api/alumnos/active-count`)
         setAlumnosCounts(res.data ?? {})
       } catch {
         /* opcional */

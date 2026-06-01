@@ -27,9 +27,9 @@ import WarningAmberIcon from '@mui/icons-material/WarningAmber'
 import AccessTimeIcon from '@mui/icons-material/AccessTime'
 import FullscreenIcon from '@mui/icons-material/Fullscreen'
 import FullscreenExitIcon from '@mui/icons-material/FullscreenExit'
-import Cookies from 'js-cookie'
 import { useMutation } from '@tanstack/react-query'
-import axios, { AxiosError } from 'axios'
+import { AxiosError } from 'axios'
+import { api } from '@/lib/api'
 
 type RegistrarPayload = { DNI: string }
 
@@ -145,12 +145,7 @@ export default function Assists() {
         mutationFn: async (payload) => {
             setIsLoading(true);
             try {
-                const token = Cookies.get('token')
-                const { data } = await axios.post(
-                    `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/asistencias`,
-                    payload,
-                    { headers: token ? { Authorization: `Bearer ${token}` } : undefined }
-                )
+                const { data } = await api.post('/api/asistencias', payload)
                 return data
             } catch (e) {
                 const err = e as AxiosError<any>

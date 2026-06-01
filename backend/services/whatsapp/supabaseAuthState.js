@@ -35,13 +35,35 @@ async function writeRow(gymId, id, value) {
   if (error) console.warn(`[wa-auth ${gymId}] write ${id} error:`, error.message)
 }
 
-async function deleteRow(gymId, id) {
-  const { error } = await supabaseAdmin
-    .from(TABLE)
-    .delete()
-    .eq('gym_id', gymId)
-    .eq('id', id)
-  if (error) console.warn(`[wa-auth ${gymId}] delete ${id} error:`, error.message)
+function chunk(arr, size) {
+  const out = []
+  for (let i = 0; i < arr.length; i += size) out.push(arr.slice(i, i + size))
+  return out
+}
+
+// Bulk upsert en chunks SECUENCIALES. Al escanear el QR, Baileys setea ~800
+// pre-keys de una sola vez; un fetch por clave (Promise.all) abre cientos de
+// conexiones concurrentes a Supabase y satura la red en el free tier
+// (TypeError: fetch failed → handshake no termina → cierre 408 en loop).
+// Un upsert por lote convierte esa ráfaga en pocas requests.
+async function writeMany(gymId, rows) {
+  for (const part of chunk(rows, 200)) {
+    const { error } = await supabaseAdmin
+      .from(TABLE)
+      .upsert(part, { onConflict: 'gym_id,id' })
+    if (error) console.warn(`[wa-auth ${gymId}] writeMany error:`, error.message)
+  }
+}
+
+async function deleteMany(gymId, ids) {
+  for (const part of chunk(ids, 100)) {
+    const { error } = await supabaseAdmin
+      .from(TABLE)
+      .delete()
+      .eq('gym_id', gymId)
+      .in('id', part)
+    if (error) console.warn(`[wa-auth ${gymId}] deleteMany error:`, error.message)
+  }
 }
 
 async function readManyKeys(gymId, type, ids) {
@@ -82,16 +104,27 @@ export async function useSupabaseAuthState(gymId) {
       keys: {
         get: async (type, ids) => readManyKeys(gymId, type, ids),
         set: async (data) => {
-          const tasks = []
+          const toUpsert = []
+          const toDelete = []
           for (const type of Object.keys(data)) {
             for (const id of Object.keys(data[type])) {
               const value = data[type][id]
               const full = rowId(type, id)
-              if (value) tasks.push(writeRow(gymId, full, value))
-              else tasks.push(deleteRow(gymId, full))
+              if (value) {
+                toUpsert.push({
+                  gym_id: gymId,
+                  id: full,
+                  data: { value: JSON.stringify(value, BufferJSON.replacer) }
+                })
+              } else {
+                toDelete.push(full)
+              }
             }
           }
-          await Promise.all(tasks)
+          await Promise.all([
+            toUpsert.length ? writeMany(gymId, toUpsert) : Promise.resolve(),
+            toDelete.length ? deleteMany(gymId, toDelete) : Promise.resolve()
+          ])
         }
       }
     },

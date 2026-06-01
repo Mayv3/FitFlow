@@ -85,12 +85,10 @@ export function GenericDataGrid<T extends { id: string | number }>({
     <>
       {/* Vista Desktop - Tabla */}
       <Box sx={{ display: { xs: 'none', md: 'block' }, overflowX: 'auto', minHeight: 400 }}>
-        <Box sx={{ minWidth: '1400px', height: '100%' }}>
+        <Box sx={{ minWidth: '1400px' }}>
           <DataGrid
             sx={{
               backgroundColor: theme.palette.background.paper,
-              height: '100%',
-              minHeight: 400,
               '& .MuiDataGrid-main': { backgroundColor: theme.palette.background.paper },
               '& .MuiDataGrid-columnHeaders': { backgroundColor: theme.palette.background.paper },
               '& .MuiDataGrid-columnHeader': { backgroundColor: theme.palette.background.paper },
@@ -101,7 +99,7 @@ export function GenericDataGrid<T extends { id: string | number }>({
               '& .MuiDataGrid-columnHeaderTitle': { color: theme.palette.text.primary, fontWeight: 600 },
             }}
             localeText={esES.components.MuiDataGrid.defaultProps.localeText}
-            autoHeight={false}
+            autoHeight
             checkboxSelection={false}
             hideFooterSelectedRowCount
             rows={rows}
@@ -173,7 +171,7 @@ export function GenericDataGrid<T extends { id: string | number }>({
                                 }}
                               />
                             ) : (
-                              <Typography variant="body2" sx={{ mt: 0.5, textAlign: 'left', wordBreak: 'break-word', width: '100%' }}>
+                              <Typography component="div" variant="body2" sx={{ mt: 0.5, textAlign: 'left', wordBreak: 'break-word', width: '100%' }}>
                                 {cellContent || '-'}
                               </Typography>
                             )}

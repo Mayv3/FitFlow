@@ -25,6 +25,13 @@ class WhatsappManager {
     this.instances = new Map()
     this.connecting = new Map() // gymId -> Promise (avoid double connect)
     this.reconnectTimers = new Map() // gymId -> NodeJS.Timeout (cancel en disconnect)
+    this.reconnectAttempts = new Map() // gymId -> number (para backoff exponencial)
+  }
+
+  _clearReconnect(gymId) {
+    const t = this.reconnectTimers.get(gymId)
+    if (t) { clearTimeout(t); this.reconnectTimers.delete(gymId) }
+    this.reconnectAttempts.delete(gymId)
   }
 
   getState(gymId) {
@@ -48,8 +55,10 @@ class WhatsappManager {
   async connect(gymId) {
     if (this.connecting.has(gymId)) return this.connecting.get(gymId)
 
+    // Si ya hay un socket vivo (conectando/qr/conectado) o cedido por replace,
+    // NO abrir otro: dos sockets con las mismas creds => WhatsApp tira 440 en loop.
     const existing = this.instances.get(gymId)
-    if (existing && existing.status === 'connected') return existing
+    if (existing && existing.status !== 'disconnected') return existing
 
     const p = this._connect(gymId).finally(() => this.connecting.delete(gymId))
     this.connecting.set(gymId, p)
@@ -101,6 +110,7 @@ class WhatsappManager {
         inst.qr = null
         inst.qrDataUrl = null
         inst.lastError = null
+        this.reconnectAttempts.delete(gymId) // reset backoff al conectar OK
         console.log(`[wa ${gymId}] connected`)
       }
 
@@ -108,18 +118,17 @@ class WhatsappManager {
         const code = new Boom(lastDisconnect?.error)?.output?.statusCode
         const loggedOut = code === DisconnectReason.loggedOut
         const restartRequired = code === DisconnectReason.restartRequired
-        inst.status = loggedOut ? 'logged_out' : (restartRequired ? 'connecting' : 'disconnected')
-        // restartRequired = post-pairing handshake — no es un error real
-        inst.lastError = (loggedOut || restartRequired)
-          ? null
-          : (lastDisconnect?.error?.message || `code ${code}`)
-        console.warn(`[wa ${gymId}] closed (${code}) loggedOut=${loggedOut} restart=${restartRequired}`)
+        const replaced = code === DisconnectReason.connectionReplaced // 440
+        console.warn(`[wa ${gymId}] closed (${code}) loggedOut=${loggedOut} restart=${restartRequired} replaced=${replaced}`)
+
+        // cerrar socket viejo SIEMPRE
+        try { inst.sock?.ev?.removeAllListeners?.() } catch {}
+        try { inst.sock?.end?.(undefined) } catch {}
 
         if (loggedOut) {
-          const t = this.reconnectTimers.get(gymId)
-          if (t) { clearTimeout(t); this.reconnectTimers.delete(gymId) }
-          try { inst.sock?.ev?.removeAllListeners?.() } catch {}
-          try { inst.sock?.end?.(undefined) } catch {}
+          inst.status = 'logged_out'
+          inst.lastError = null
+          this._clearReconnect(gymId)
           this.instances.delete(gymId)
           try {
             await deleteSession(gymId)
@@ -129,12 +138,28 @@ class WhatsappManager {
           return
         }
 
-        // cerrar socket viejo y limpiar instance antes de reconnect
-        try { inst.sock?.ev?.removeAllListeners?.() } catch {}
-        try { inst.sock?.end?.(undefined) } catch {}
+        if (replaced) {
+          // Otra conexión tomó la sesión (otra instancia/proceso con las mismas creds).
+          // Reconectar acá se la roba de vuelta => guerra 440 infinita. CEDEMOS.
+          // Recuperar: asegurar una sola instancia y reconectar manual (o reiniciar server).
+          this._clearReconnect(gymId)
+          inst.sock = null
+          inst.status = 'replaced'
+          inst.lastError = 'connection_replaced'
+          console.warn(`[wa ${gymId}] reemplazada por otra sesión — NO reconecto. Verificá que solo UNA instancia use estas creds.`)
+          return
+        }
+
+        // resto (408 timeout, 428 closed, 515 restart): reconnect con backoff exponencial
+        inst.lastError = restartRequired ? null : (lastDisconnect?.error?.message || `code ${code}`)
         this.instances.delete(gymId)
 
-        const delay = restartRequired ? 200 : 3000
+        const attempts = this.reconnectAttempts.get(gymId) || 0
+        const delay = restartRequired
+          ? 200
+          : Math.min(3000 * 2 ** attempts, 5 * 60 * 1000) // 3s,6s,12s,24s… tope 5min
+        if (!restartRequired) this.reconnectAttempts.set(gymId, attempts + 1)
+
         const prev = this.reconnectTimers.get(gymId)
         if (prev) clearTimeout(prev)
         const t = setTimeout(() => {
@@ -151,8 +176,7 @@ class WhatsappManager {
   }
 
   async disconnect(gymId) {
-    const t = this.reconnectTimers.get(gymId)
-    if (t) { clearTimeout(t); this.reconnectTimers.delete(gymId) }
+    this._clearReconnect(gymId)
     const inst = this.instances.get(gymId)
     if (inst?.sock) {
       try { inst.sock.ev?.removeAllListeners?.() } catch {}

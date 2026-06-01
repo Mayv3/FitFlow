@@ -32,7 +32,7 @@ import { useRouter, usePathname } from 'next/navigation'
 import { ROLE_ROUTES } from '@/const/roles/roles'
 import { useSubscription } from '@/context/SubscriptionContext'
 import { SidebarSkeleton } from './SideBarSkeleton'
-type TabItem = { label: string; icon: React.ReactNode; route: string }
+type TabItem = { label: string; icon: React.ReactNode; route: string; section?: string }
 type HeaderComponentProps = { tabs: TabItem[] }
 
 const ROUTE_FEATURE_MAP: Record<string, string> = {
@@ -67,6 +67,8 @@ export const SideBar = ({ tabs }: HeaderComponentProps) => {
   const [selectedIndex, setSelectedIndex] = useState(0)
   const theme = useTheme()
   const isMobile = useMediaQuery(theme.breakpoints.down('md'))
+  // Notebooks / pantallas bajas: items más compactos para que entre todo sin scroll
+  const isCompact = useMediaQuery('(max-height:800px)')
   const [mounted, setMounted] = useState(false)
 
   const [isHovered, setIsHovered] = useState(false)
@@ -187,6 +189,8 @@ export const SideBar = ({ tabs }: HeaderComponentProps) => {
         p: 2,
         zIndex: 1000,
         overflowX: 'hidden',
+        borderTopRightRadius: 16,
+        borderBottomRightRadius: 16,
       }}
     >
       <Box
@@ -195,11 +199,11 @@ export const SideBar = ({ tabs }: HeaderComponentProps) => {
           display: 'flex',
           alignItems: 'center',
           gap: 1.25,
-          height: 60,
+          height: isCompact ? 48 : 60,
           width: '100%',
-          py: 1,
+          py: isCompact ? 0.5 : 1,
           px: 1,
-          mb: 1,
+          mb: isCompact ? 0.5 : 1,
           cursor: 'pointer',
           borderRadius: 3,
           bgcolor: 'rgba(255,255,255,0.12)',
@@ -211,8 +215,8 @@ export const SideBar = ({ tabs }: HeaderComponentProps) => {
           alt={gym_name || 'Gym'}
           onError={(e: any) => { e.currentTarget.src = defaultLogo }}
           sx={{
-            width: isExpanded ? 50 : 30,
-            height: isExpanded ? 50 : 30,
+            width: isExpanded ? (isCompact ? 40 : 50) : (isCompact ? 26 : 30),
+            height: isExpanded ? (isCompact ? 40 : 50) : (isCompact ? 26 : 30),
             borderRadius: '90%',
             objectFit: isDefaultLogo ? 'contain' : 'cover',
             bgcolor: isDefaultLogo ? 'white' : 'transparent',
@@ -268,6 +272,8 @@ export const SideBar = ({ tabs }: HeaderComponentProps) => {
           const selected = selectedIndex === index
           const enabled = isTabEnabled(tab.route)
           const isNovedades = tab.label === 'Novedades'
+          const section = tab.section
+          const showHeader = !!section && (index === 0 || tabs[index - 1].section !== section)
           const item = (
             <ListItemButton
               key={tab.route}
@@ -277,8 +283,8 @@ export const SideBar = ({ tabs }: HeaderComponentProps) => {
               onClick={() => enabled ? handleNav(tab.route, index, enabled) : handleBlockedClick(tab.label)}
               sx={{
                 borderRadius: 2,
-                mb: 1,
-                height: 40,
+                mb: isCompact ? 0.4 : 1,
+                height: isCompact ? 34 : 40,
                 px: 1.45,
                 bgcolor: selected && enabled ? '#fff' : 'transparent',
                 opacity: enabled ? 1 : 0.7,
@@ -299,6 +305,7 @@ export const SideBar = ({ tabs }: HeaderComponentProps) => {
                   color: !enabled ? '#F5CE08' : isNovedades && !selected ? '#FFD700' : selected ? 'black' : 'white',
                   minWidth: 0,
                   mr: isExpanded ? 1.5 : 0,
+                  '& .MuiSvgIcon-root': { fontSize: isCompact ? 20 : 24 },
                 }}
               >
                 {!enabled ? <StarIcon /> : tab.icon}
@@ -325,72 +332,62 @@ export const SideBar = ({ tabs }: HeaderComponentProps) => {
               </Box>
             </ListItemButton>
           )
-          return isExpanded ? (
-            item
-          ) : (
-            <Tooltip
-              key={tab.route}
-              title={!enabled ? `${tab.label} (No disponible en tu plan)` : tab.label}
-              placement="right"
-            >
-              {item}
-            </Tooltip>
+          return (
+            <Box key={tab.route}>
+              {showHeader && (isExpanded ? (
+                <Typography
+                  variant="caption"
+                  sx={{
+                    display: 'block',
+                    px: 1.5,
+                    pt: index === 0 ? 0 : (isCompact ? 0.5 : 1),
+                    pb: 0.5,
+                    color: 'rgba(255,255,255,0.55)',
+                    fontWeight: 700,
+                    letterSpacing: '0.06em',
+                    textTransform: 'uppercase',
+                    fontSize: '0.62rem',
+                  }}
+                >
+                  {section}
+                </Typography>
+              ) : (index > 0 ? (
+                <Divider sx={{ borderColor: 'rgba(255,255,255,0.12)', my: isCompact ? 0.5 : 0.75 }} />
+              ) : null))}
+              {isExpanded ? item : (
+                <Tooltip
+                  title={!enabled ? `${tab.label} (No disponible en tu plan)` : tab.label}
+                  placement="right"
+                >
+                  {item}
+                </Tooltip>
+              )}
+            </Box>
           )
         })}
       </List>
 
-      <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
-        <Box
-          onClick={() => handleNav(getProfileRoute())}
-          sx={{
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: isExpanded ? 'flex-start' : 'center',
-            gap: isExpanded ? 1.25 : 0,
-            height: 48,
-            px: isExpanded ? 1.25 : 0,
-            borderRadius: 2,
-            cursor: 'pointer',
-            bgcolor: pathname === getProfileRoute() ? '#fff' : 'transparent',
-            '&:hover': {
-              bgcolor: pathname === getProfileRoute() ? '#fff' : 'rgba(255,255,255,0.10)',
-            },
-          }}
-        >
-          <AccountCircleIcon
-            sx={{
-              color: pathname === getProfileRoute() ? 'black' : 'white',
-              fontSize: 24,
-              flexShrink: 0,
-            }}
-          />
-          <Box
-            sx={{
-              overflow: 'hidden',
-              whiteSpace: 'nowrap',
-              opacity: isExpanded ? 1 : 0,
-              width: isExpanded ? 'auto' : 0,
-              transition: 'opacity .25s ease, width .25s ease',
-            }}
-          >
-            <Typography variant="body2" color={pathname === getProfileRoute() ? 'black' : 'white'} noWrap>
-              {user_name || ''}
-            </Typography>
-          </Box>
-        </Box>
-
+      <Box
+        sx={{
+          display: 'flex',
+          flexDirection: isExpanded ? 'row' : 'column',
+          alignItems: 'center',
+          gap: 1,
+        }}
+      >
         <Tooltip title={isExpanded ? '' : 'Salir'} placement="right">
           <ListItemButton
             onClick={logout}
             sx={{
               borderRadius: 2,
-              height: 48,
+              height: isCompact ? 40 : 48,
               px: 1.25,
-              justifyContent: 'flex-start',
+              flexGrow: isExpanded ? 1 : 0,
+              justifyContent: isExpanded ? 'flex-start' : 'center',
               '&:hover': { bgcolor: 'rgba(255,255,255,0.10)' },
             }}
           >
-            <ListItemIcon sx={{ color: 'white', minWidth: 0, mr: isExpanded ? 1.5 : 0 }}>
+            <ListItemIcon sx={{ color: 'white', minWidth: 0, mr: isExpanded ? 1.5 : 0, justifyContent: 'center' }}>
               <LogoutIcon fontSize="medium" />
             </ListItemIcon>
             <Box
@@ -405,6 +402,30 @@ export const SideBar = ({ tabs }: HeaderComponentProps) => {
               <ListItemText primary="Salir" primaryTypographyProps={{ color: 'white' }} />
             </Box>
           </ListItemButton>
+        </Tooltip>
+
+        <Tooltip title={user_name || 'Perfil'} placement="top">
+          <Box
+            onClick={() => handleNav(getProfileRoute())}
+            sx={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              width: isCompact ? 40 : 48,
+              height: isCompact ? 40 : 48,
+              flexShrink: 0,
+              borderRadius: 2,
+              cursor: 'pointer',
+              bgcolor: pathname === getProfileRoute() ? '#fff' : 'transparent',
+              '&:hover': {
+                bgcolor: pathname === getProfileRoute() ? '#fff' : 'rgba(255,255,255,0.10)',
+              },
+            }}
+          >
+            <AccountCircleIcon
+              sx={{ color: pathname === getProfileRoute() ? 'black' : 'white', fontSize: isCompact ? 22 : 26 }}
+            />
+          </Box>
         </Tooltip>
       </Box>
     </Box>

@@ -1,0 +1,52 @@
+name: Supabase Daily Backup
+
+# Backup diario de la DB de FitFlow (Supabase free tier).
+# - Corre 04:00 UTC (~01:00 ART) todos los dias.
+# - pg_dump (formato custom, ya comprimido) -> cifrado GPG AES256 -> guardado como artifact en GitHub.
+# - GitHub guarda cada backup 90 dias y despues lo borra solo.
+#
+# Proyecto: FitFlow  ref=ilxnmxunzpugdredtixa  region=us-east-2  PostgreSQL 15
+#
+# Secrets necesarios (Settings -> Secrets and variables -> Actions):
+#   SUPABASE_DB_URL    string de conexion (session pooler, puerto 5432)
+#   BACKUP_PASSPHRASE  frase secreta para cifrar/descifrar el backup
+
+on:
+  schedule:
+    - cron: '0 4 * * *'      # diario 04:00 UTC
+  workflow_dispatch: {}        # boton "Run workflow" para probar a mano
+
+jobs:
+  backup:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Install postgresql-client-15
+        run: |
+          sudo sh -c 'echo "deb http://apt.postgresql.org/pub/repos/apt $(lsb_release -cs)-pgdg main" > /etc/apt/sources.list.d/pgdg.list'
+          curl -fsSL https://www.postgresql.org/media/keys/ACCC4CF8.asc | sudo gpg --dearmor -o /etc/apt/trusted.gpg.d/pgdg.gpg
+          sudo apt-get update
+          sudo apt-get install -y postgresql-client-15
+
+      - name: Dump database
+        env:
+          DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+        run: |
+          STAMP=$(date -u +%Y-%m-%d_%H%M)
+          echo "STAMP=$STAMP" >> "$GITHUB_ENV"
+          pg_dump "$DB_URL" --no-owner --no-acl -Fc -f "fitflow-$STAMP.dump"
+          ls -lh "fitflow-$STAMP.dump"
+
+      - name: Encrypt (AES256)
+        env:
+          PASSPHRASE: ${{ secrets.BACKUP_PASSPHRASE }}
+        run: |
+          gpg --batch --yes --passphrase "$PASSPHRASE" --cipher-algo AES256 -c "fitflow-$STAMP.dump"
+          rm -f "fitflow-$STAMP.dump"
+
+      - name: Upload backup artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: fitflow-backup-${{ env.STAMP }}
+          path: fitflow-*.dump.gpg
+          retention-days: 90

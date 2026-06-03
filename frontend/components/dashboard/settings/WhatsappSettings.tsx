@@ -82,6 +82,7 @@ export function WhatsappSettings() {
     const [feedback, setFeedback] = useState<{ kind: 'success' | 'error' | 'info'; msg: string } | null>(null)
     const [simResult, setSimResult] = useState<any | null>(null)
     const [confirmTrigger, setConfirmTrigger] = useState(false)
+    const [confirmDisconnect, setConfirmDisconnect] = useState(false)
     const pollRef = useRef<NodeJS.Timeout | null>(null)
     const templateRef = useRef<HTMLTextAreaElement | null>(null)
 
@@ -148,7 +149,7 @@ export function WhatsappSettings() {
     }
 
     async function disconnect() {
-        if (!window.confirm('¿Desvincular WhatsApp del gimnasio?')) return
+        setConfirmDisconnect(false)
         setBusy('disconnect')
         try {
             await api.post(`/api/whatsapp/gyms/${gymId}/disconnect`)
@@ -253,7 +254,7 @@ export function WhatsappSettings() {
                             ) : (
                                 <>
                                     <CircularProgress sx={{ color: GREEN }} />
-                                    <Typography variant="caption">Generando QR…</Typography>
+                                    <Typography variant="caption">Vinculando…</Typography>
                                 </>
                             )
                         ) : (
@@ -325,7 +326,7 @@ export function WhatsappSettings() {
                                     size="small"
                                     color="error"
                                     startIcon={<LogoutIcon />}
-                                    onClick={disconnect}
+                                    onClick={() => setConfirmDisconnect(true)}
                                     disabled={busy === 'disconnect'}
                                     sx={{ mt: 1 }}
                                 >
@@ -518,6 +519,39 @@ export function WhatsappSettings() {
                         startIcon={<RocketLaunchIcon />}
                     >
                         Enviar ahora
+                    </Button>
+                </DialogActions>
+            </Dialog>
+
+            <Dialog
+                open={confirmDisconnect}
+                onClose={() => setConfirmDisconnect(false)}
+                maxWidth="xs"
+                fullWidth
+            >
+                <DialogTitle sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                    <WarningAmberIcon color="error" />
+                    Desvincular WhatsApp
+                </DialogTitle>
+                <DialogContent>
+                    <DialogContentText>
+                        Se desvinculará WhatsApp de este gimnasio y se dejarán de enviar los recordatorios automáticos.
+                    </DialogContentText>
+                    <DialogContentText sx={{ mt: 1.5 }}>
+                        Para volver a usarlo deberás escanear el QR nuevamente. ¿Continuar?
+                    </DialogContentText>
+                </DialogContent>
+                <DialogActions sx={{ px: 3, pb: 2 }}>
+                    <Button onClick={() => setConfirmDisconnect(false)} color="inherit">
+                        Cancelar
+                    </Button>
+                    <Button
+                        onClick={disconnect}
+                        variant="contained"
+                        color="error"
+                        startIcon={<LogoutIcon />}
+                    >
+                        Desvincular
                     </Button>
                 </DialogActions>
             </Dialog>

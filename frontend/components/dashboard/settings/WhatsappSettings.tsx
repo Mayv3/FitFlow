@@ -29,7 +29,7 @@ import RocketLaunchIcon from '@mui/icons-material/RocketLaunch'
 import { api } from "@/lib/api"
 import { WhatsappHistory } from "./WhatsappHistory"
 
-type Status = 'disconnected' | 'connecting' | 'qr' | 'connected' | 'logged_out'
+type Status = 'disconnected' | 'connecting' | 'qr' | 'connected' | 'logged_out' | 'number_in_use' | 'replaced'
 
 interface WAState {
     status: Status
@@ -67,6 +67,8 @@ const STATUS_MAP: Record<Status, { label: string; color: 'default' | 'success' |
     qr: { label: 'Escaneá el QR', color: 'warning' },
     connected: { label: 'Conectado', color: 'success' },
     logged_out: { label: 'Sesión cerrada', color: 'error' },
+    number_in_use: { label: 'Número en uso', color: 'error' },
+    replaced: { label: 'Reemplazada', color: 'warning' },
 }
 
 export function WhatsappSettings() {
@@ -118,11 +120,9 @@ export function WhatsappSettings() {
         try {
             const { data } = await api.get(`/api/whatsapp/gyms/${gymId}/status`)
             setState(data)
+            // El backend persiste admin_jid al conectar; acá solo refrescamos el label local.
             if (data.status === 'connected' && data?.me?.id && data.me.id !== adminJid) {
-                try {
-                    await api.patch(`/api/whatsapp/gyms/${gymId}/config`, { admin_jid: data.me.id })
-                    setAdminJid(data.me.id)
-                } catch { /* ignore */ }
+                setAdminJid(data.me.id)
             }
         } catch { /* silent */ }
     }
@@ -273,9 +273,15 @@ export function WhatsappSettings() {
                                     {busy === 'connect' ? 'Conectando…' : 'Vincular WhatsApp'}
                                 </Button>
                                 {state.lastError && (
-                                    <Typography variant="caption" color="warning.main">
-                                        {state.lastError}
-                                    </Typography>
+                                    state.status === 'number_in_use' ? (
+                                        <Alert severity="error" sx={{ maxWidth: 420 }}>
+                                            {state.lastError}
+                                        </Alert>
+                                    ) : (
+                                        <Typography variant="caption" color="warning.main">
+                                            {state.lastError}
+                                        </Typography>
+                                    )
                                 )}
                             </>
                         )}

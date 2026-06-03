@@ -78,9 +78,17 @@ export async function postDisconnect(req, res) {
   if (!assertGymAccess(req, gymId)) return res.status(403).json({ error: 'forbidden' })
   try {
     await whatsappManager.disconnect(gymId)
+    // Liberar el número: limpiar admin_jid para que pueda vincularse en otro gimnasio.
+    const { data: gym } = await supabaseAdmin
+      .from('gyms')
+      .select('settings')
+      .eq('id', gymId)
+      .maybeSingle()
+    const settings = gym?.settings || {}
+    if (settings.whatsapp) settings.whatsapp = { ...settings.whatsapp, admin_jid: null }
     await supabaseAdmin
       .from('gyms')
-      .update({ whatsapp_enabled: false })
+      .update({ whatsapp_enabled: false, settings })
       .eq('id', gymId)
     res.json({ ok: true })
   } catch (e) {
@@ -140,7 +148,9 @@ export async function patchConfig(req, res) {
   const { gymId } = req.params
   if (!assertGymAccess(req, gymId)) return res.status(403).json({ error: 'forbidden' })
   const patch = req.body || {}
-  const allowed = ['country_prefix', 'admin_jid', 'reminder_days_before', 'send_delay_ms', 'template', 'enabled']
+  // admin_jid lo gestiona el backend al conectar (no editable por el cliente:
+  // es la clave de unicidad del número entre gimnasios).
+  const allowed = ['country_prefix', 'reminder_days_before', 'send_delay_ms', 'template', 'enabled']
   const clean = {}
   for (const k of allowed) if (k in patch) clean[k] = patch[k]
 

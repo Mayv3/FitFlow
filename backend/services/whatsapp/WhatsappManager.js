@@ -9,6 +9,7 @@ import { Boom } from '@hapi/boom'
 import pino from 'pino'
 import QRCode from 'qrcode'
 import { useSupabaseAuthState, deleteSession } from './supabaseAuthState.js'
+import { supabaseAdmin } from '../../config/supabaseClient.js'
 
 const logger = pino({ level: 'silent' })
 
@@ -52,13 +53,58 @@ class WhatsappManager {
     return this.instances.get(gymId)?.status === 'connected'
   }
 
+  // Devuelve el id de otro gimnasio que ya tenga vinculado este número, o null.
+  async _findGymUsingNumber(jid, exceptGymId) {
+    const normalized = jidNormalizedUser(jid)
+    if (!normalized) return null
+    const { data, error } = await supabaseAdmin
+      .from('gyms')
+      .select('id')
+      .eq('settings->whatsapp->>admin_jid', normalized)
+      .neq('id', exceptGymId)
+      .limit(1)
+    if (error) {
+      console.warn(`[wa] uniqueness check failed:`, error.message)
+      return null
+    }
+    return data?.[0]?.id || null
+  }
+
+  // Guarda admin_jid en gyms.settings.whatsapp sin pisar el resto de settings.
+  async _persistAdminJid(gymId, jid) {
+    const normalized = jidNormalizedUser(jid)
+    if (!normalized) return
+    const { data } = await supabaseAdmin
+      .from('gyms')
+      .select('settings')
+      .eq('id', gymId)
+      .maybeSingle()
+    const settings = data?.settings || {}
+    settings.whatsapp = { ...(settings.whatsapp || {}), admin_jid: normalized }
+    await supabaseAdmin.from('gyms').update({ settings }).eq('id', gymId)
+  }
+
+  // Libera el número (admin_jid = null) para que pueda vincularse en otro gimnasio.
+  async _clearAdminJid(gymId) {
+    const { data } = await supabaseAdmin
+      .from('gyms')
+      .select('settings')
+      .eq('id', gymId)
+      .maybeSingle()
+    const settings = data?.settings || {}
+    if (!settings.whatsapp) return
+    settings.whatsapp = { ...settings.whatsapp, admin_jid: null }
+    await supabaseAdmin.from('gyms').update({ settings }).eq('id', gymId)
+  }
+
   async connect(gymId) {
     if (this.connecting.has(gymId)) return this.connecting.get(gymId)
 
     // Si ya hay un socket vivo (conectando/qr/conectado) o cedido por replace,
     // NO abrir otro: dos sockets con las mismas creds => WhatsApp tira 440 en loop.
+    // 'number_in_use' es un rechazo terminal: permitir reintento (escanear otro número).
     const existing = this.instances.get(gymId)
-    if (existing && existing.status !== 'disconnected') return existing
+    if (existing && existing.status !== 'disconnected' && existing.status !== 'number_in_use') return existing
 
     const p = this._connect(gymId).finally(() => this.connecting.delete(gymId))
     this.connecting.set(gymId, p)
@@ -106,11 +152,37 @@ class WhatsappManager {
       }
 
       if (connection === 'open') {
+        const myJid = jidNormalizedUser(sock.user?.id || '')
+
+        // Un número de WhatsApp solo puede estar vinculado a UN gimnasio.
+        const conflictGym = myJid ? await this._findGymUsingNumber(myJid, gymId) : null
+        if (conflictGym) {
+          inst.status = 'number_in_use'
+          inst.qr = null
+          inst.qrDataUrl = null
+          inst.lastError = 'Este número ya está vinculado a otro gimnasio. Usá otro número o desvinculalo del otro gimnasio primero.'
+          this._clearReconnect(gymId)
+          console.warn(`[wa ${gymId}] número ${myJid} ya usado por gym ${conflictGym} — rechazo vínculo`)
+          // Quitar listeners ANTES de logout: evita reentrar acá con el 'close' (loggedOut)
+          // y que se borre el inst con el mensaje de error.
+          try { sock.ev?.removeAllListeners?.() } catch {}
+          try { await sock.logout() } catch { try { sock.end?.(undefined) } catch {} }
+          inst.sock = null
+          try { await deleteSession(gymId) } catch (e) {
+            console.warn(`[wa ${gymId}] cleanup error:`, e.message)
+          }
+          return
+        }
+
         inst.status = 'connected'
         inst.qr = null
         inst.qrDataUrl = null
         inst.lastError = null
         this.reconnectAttempts.delete(gymId) // reset backoff al conectar OK
+        // Persistir el número server-side (autoritativo para el chequeo de unicidad).
+        this._persistAdminJid(gymId, myJid).catch((e) =>
+          console.warn(`[wa ${gymId}] persist admin_jid:`, e.message)
+        )
         console.log(`[wa ${gymId}] connected`)
       }
 
@@ -132,6 +204,7 @@ class WhatsappManager {
           this.instances.delete(gymId)
           try {
             await deleteSession(gymId)
+            await this._clearAdminJid(gymId) // liberar el número
           } catch (e) {
             console.warn(`[wa ${gymId}] cleanup error:`, e.message)
           }

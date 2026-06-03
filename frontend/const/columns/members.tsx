@@ -12,8 +12,22 @@ import { Plan } from '@/models/Plan/Plan';
 import { estadoVencimiento, formatearFecha } from '@/utils/date/dateUtils';
 import { StateCheap } from '@/components/ui/cheap/StateCheap';
 
+// Argentina: wa.me needs full international format 54 + 9 + area + number.
+// DB stores 10-digit local numbers (no country code, no leading 0, no 15).
+function normalizeArPhone(raw: string | null | undefined): string {
+  // strip float artifacts ("3512358228.0") then keep digits only
+  let digits = (raw ?? '').split('.')[0].replace(/\D/g, '');
+  if (!digits) return '';
+  // drop leading 0 (long-distance prefix) and mobile 15 prefix if present
+  if (digits.startsWith('0')) digits = digits.slice(1);
+  // already has country code
+  if (digits.startsWith('549')) return digits;
+  if (digits.startsWith('54')) return '549' + digits.slice(2);
+  return '549' + digits;
+}
+
 function buildWhatsAppUrl(member: Member, gymName: string, plan: Plan | undefined, code: 'expired' | 'expiring'): string {
-  const phone = (member.telefono ?? '').replace(/\D/g, '');
+  const phone = normalizeArPhone(member.telefono);
   const planNombre = plan?.nombre ?? member.plan_nombre ?? 'tu plan';
   const precio = plan?.precio != null ? `$${plan.precio}` : 'consultar precio';
   const fv = (member as any).fecha_de_vencimiento ?? member.fecha_vencimiento;

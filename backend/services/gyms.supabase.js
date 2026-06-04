@@ -197,3 +197,84 @@ export const getGymOverview = async (gymId) => {
     usuarios: users || [],
   };
 };
+
+/**
+ * Owner: estadísticas generales de UN gimnasio, filtradas por mes.
+ * month = 'YYYY-MM' (default: mes actual).
+ * - alumnos: snapshot actual (total/activos/vencidos) + altas del mes (fecha_inicio en el mes)
+ * - facturacion: pagos del mes (total $ + cantidad)
+ */
+export const getOwnerGymStats = async (gymId, month) => {
+  const now = new Date();
+  const valid = typeof month === 'string' && /^\d{4}-\d{2}$/.test(month);
+  const y = valid ? Number(month.slice(0, 4)) : now.getFullYear();
+  const m = valid ? Number(month.slice(5, 7)) : now.getMonth() + 1;
+  const monthStart = `${y}-${String(m).padStart(2, '0')}-01`;
+  const nextY = m === 12 ? y + 1 : y;
+  const nextM = m === 12 ? 1 : m + 1;
+  const nextStart = `${nextY}-${String(nextM).padStart(2, '0')}-01`;
+  const todayStr = now.toISOString().slice(0, 10);
+
+  // Snapshot alumnos (actual)
+  const { data: alumnos } = await supabaseAdmin
+    .from('alumnos')
+    .select('fecha_de_vencimiento')
+    .eq('gym_id', gymId)
+    .is('deleted_at', null);
+  const total = alumnos?.length || 0;
+  const activos = alumnos?.filter(
+    (a) => a.fecha_de_vencimiento && a.fecha_de_vencimiento >= todayStr
+  ).length || 0;
+  const vencidos = total - activos;
+
+  // Serie de los últimos 6 meses (incluido el seleccionado) para gráficos
+  const N = 6;
+  const series = [];
+  for (let i = N - 1; i >= 0; i--) {
+    const d = new Date(y, (m - 1) - i, 1);
+    series.push({
+      month: `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`,
+      facturacion: 0,
+      altas: 0,
+      pagos: 0,
+    });
+  }
+  const idx = {};
+  series.forEach((s, i) => { idx[s.month] = i; });
+  const seriesStart = `${series[0].month}-01`;
+
+  // Pagos en la ventana
+  const { data: pagosWin } = await supabaseAdmin
+    .from('pagos')
+    .select('monto_total, fecha_de_pago')
+    .eq('gym_id', gymId)
+    .is('deleted_at', null)
+    .gte('fecha_de_pago', seriesStart)
+    .lt('fecha_de_pago', nextStart);
+  for (const p of pagosWin || []) {
+    const i = idx[String(p.fecha_de_pago).slice(0, 7)];
+    if (i != null) { series[i].facturacion += Number(p.monto_total || 0); series[i].pagos += 1; }
+  }
+
+  // Altas (fecha_inicio) en la ventana
+  const { data: altasWin } = await supabaseAdmin
+    .from('alumnos')
+    .select('fecha_inicio')
+    .eq('gym_id', gymId)
+    .is('deleted_at', null)
+    .gte('fecha_inicio', seriesStart)
+    .lt('fecha_inicio', nextStart);
+  for (const a of altasWin || []) {
+    const i = idx[String(a.fecha_inicio).slice(0, 7)];
+    if (i != null) series[i].altas += 1;
+  }
+
+  const sel = series[N - 1]; // mes seleccionado = último de la serie
+
+  return {
+    month: `${y}-${String(m).padStart(2, '0')}`,
+    alumnos: { total, activos, vencidos, altas_mes: sel.altas },
+    facturacion: { total: sel.facturacion, cantidad: sel.pagos },
+    series,
+  };
+};

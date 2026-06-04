@@ -29,6 +29,8 @@ import BusinessIcon from "@mui/icons-material/Business"
 import GroupIcon from "@mui/icons-material/Group"
 import WarningIcon from "@mui/icons-material/Warning"
 import EmailIcon from "@mui/icons-material/Email"
+import WhatsAppIcon from "@mui/icons-material/WhatsApp"
+import InsightsIcon from "@mui/icons-material/Insights"
 import CardMembershipIcon from "@mui/icons-material/CardMembership"
 import AnnouncementIcon from "@mui/icons-material/Announcement"
 import RestoreIcon from "@mui/icons-material/Restore"
@@ -46,8 +48,8 @@ import { GymDetailDrawer } from "@/components/owner/GymDetailDrawer"
 import { CreateGymModal } from "@/components/owner/CreateGymModal"
 import { ManageGymPlans } from "@/components/owner/ManageGymPlans"
 import { ManageNovedades } from "@/components/owner/ManageNovedades"
-import { EmailLogs } from "@/components/owner/EmailLogs"
-import { TodayEmailsBox } from "@/components/owner/TodayEmailsBox"
+import { CommsHistory } from "@/components/owner/CommsHistory"
+import { GymStatsSection } from "@/components/owner/GymStatsSection"
 
 type GymCardData = {
   gym: Gym
@@ -126,7 +128,6 @@ export function OwnerDashboard() {
   const [createOpen, setCreateOpen] = useState(false)
   const [plansOpen, setPlansOpen] = useState(false)
   const [novedadesOpen, setNovedadesOpen] = useState(false)
-  const [emailsOpen, setEmailsOpen] = useState(false)
   const [deletedOpen, setDeletedOpen] = useState(false)
 
   useEffect(() => {
@@ -236,15 +237,6 @@ export function OwnerDashboard() {
               sx={{ borderColor: "white", color: "white" }}
             >
               Novedades
-            </Button>
-            <Button
-              variant="outlined"
-              color="inherit"
-              startIcon={<EmailIcon />}
-              onClick={() => setEmailsOpen(true)}
-              sx={{ borderColor: "white", color: "white" }}
-            >
-              Emails
             </Button>
           </Stack>
         </Stack>
@@ -448,8 +440,39 @@ export function OwnerDashboard() {
         </Grid>
       )}
 
-      {/* EMAILS DE HOY */}
-      <TodayEmailsBox />
+      {/* ESTADÍSTICAS POR GIMNASIO */}
+      <Paper sx={{ p: { xs: 2, md: 3 }, borderRadius: 2, mt: 3 }}>
+        <Stack direction="row" spacing={1.5} alignItems="center" mb={2}>
+          <InsightsIcon color="primary" />
+          <Typography variant="h6" fontWeight={700}>
+            Estadísticas por gimnasio
+          </Typography>
+        </Stack>
+        <GymStatsSection />
+      </Paper>
+
+      {/* COMUNICACIONES: dos secciones iguales (WhatsApp + Emails) */}
+      <Box sx={{ display: "flex", flexDirection: { xs: "column", md: "row" }, gap: 3, mt: 3, alignItems: "stretch" }}>
+        <Paper sx={{ p: { xs: 2, md: 3 }, borderRadius: 2, flex: 1, minWidth: 0 }}>
+          <Stack direction="row" spacing={1.5} alignItems="center" mb={2}>
+            <WhatsAppIcon sx={{ color: "#25D366" }} />
+            <Typography variant="h6" fontWeight={700}>
+              WhatsApp enviados
+            </Typography>
+          </Stack>
+          <CommsHistory channel="whatsapp" />
+        </Paper>
+
+        <Paper sx={{ p: { xs: 2, md: 3 }, borderRadius: 2, flex: 1, minWidth: 0 }}>
+          <Stack direction="row" spacing={1.5} alignItems="center" mb={2}>
+            <EmailIcon color="primary" />
+            <Typography variant="h6" fontWeight={700}>
+              Emails enviados
+            </Typography>
+          </Stack>
+          <CommsHistory channel="email" />
+        </Paper>
+      </Box>
 
       {/* DRAWERS / MODALS */}
       <GymDetailDrawer
@@ -470,14 +493,6 @@ export function OwnerDashboard() {
         title="Novedades"
       >
         <ManageNovedades />
-      </SectionDialog>
-
-      <SectionDialog
-        open={emailsOpen}
-        onClose={() => setEmailsOpen(false)}
-        title="Emails enviados"
-      >
-        <EmailLogs />
       </SectionDialog>
 
       <Dialog

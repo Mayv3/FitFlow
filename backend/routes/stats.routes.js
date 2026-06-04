@@ -13,6 +13,7 @@ import {
   getAbandonosDetailsController,
   getAltasDetailsController,
   getPagosByDateRangeController,
+  getOwnerGymOverviewController,
 } from '../controllers/stats.controller.js';
 import { getAsistenciasByGym, getAsistenciasByHora } from '../controllers/attendance.controller.js';
 import { requireRole } from '../middleware/requireRole.js';
@@ -47,5 +48,8 @@ router.get('/dashboard/activos-mes', getActiveMembersPaymentDetailsController);
 router.get('/dashboard/abandonos-mes', getAbandonosDetailsController);
 router.get('/dashboard/altas-mes', getAltasDetailsController);
 router.get('/dashboard/gyms/:gym_id/facturacion/pagos', getPagosByDateRangeController);
+
+// Owner: estadísticas generales por gimnasio (solo OWNER puede ver cualquier gym)
+router.get('/dashboard/owner/gyms/:gym_id/overview', requireRole(1), getOwnerGymOverviewController);
 
 export default router;

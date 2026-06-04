@@ -216,6 +216,48 @@ export async function getMensajes(req, res) {
   res.json(data)
 }
 
+// Owner-only: mensajes de WhatsApp de TODOS los gimnasios en un rango.
+// Cada fila incluye info del gym (nombre, logo) para agrupar en el detalle.
+export async function getOwnerMensajes(req, res) {
+  const { from, to } = req.query
+  const limit = Math.min(Number(req.query.limit) || 5000, 10000)
+  // Sanity guard: máximo 62 días por request (evita egress alto).
+  if (from && to) {
+    const fromMs = Date.parse(from), toMs = Date.parse(to)
+    if (Number.isNaN(fromMs) || Number.isNaN(toMs) || (toMs - fromMs) > 62 * 24 * 3600 * 1000) {
+      return res.status(400).json({ error: 'invalid range' })
+    }
+  }
+  let q = supabaseAdmin
+    .from('whatsapp_mensajes')
+    .select('id, gym_id, nombre, telefono, plan, vencimiento, mensaje, estado, enviado_at')
+    .order('enviado_at', { ascending: false })
+    .limit(limit)
+  if (from) q = q.gte('enviado_at', from)
+  if (to) q = q.lt('enviado_at', to)
+  const { data, error } = await q
+  if (error) return res.status(500).json({ error: error.message })
+
+  // Adjuntar info de gym (join en JS, sin depender de FK embed en PostgREST).
+  const gymIds = [...new Set((data || []).map((r) => r.gym_id))]
+  const gymMap = {}
+  if (gymIds.length) {
+    const { data: gyms } = await supabaseAdmin
+      .from('gyms')
+      .select('id, name, logo_url')
+      .in('id', gymIds)
+    for (const g of gyms || []) gymMap[g.id] = g
+  }
+  const rows = (data || []).map((r) => ({
+    ...r,
+    gym_nombre: gymMap[r.gym_id]?.name || 'Sin nombre',
+    gym_logo: gymMap[r.gym_id]?.logo_url || null,
+  }))
+
+  res.set('Cache-Control', 'public, s-maxage=60, stale-while-revalidate=120')
+  res.json({ data: rows })
+}
+
 export async function getMensajesCalendar(req, res) {
   const { gymId } = req.params
   if (!assertGymAccess(req, gymId)) return res.status(403).json({ error: 'forbidden' })

@@ -20,6 +20,21 @@ import {
   getPagosByDateRange,
 
 } from '../services/stats.supabase.js';
+import { getOwnerGymStats } from '../services/gyms.supabase.js';
+
+// Owner: estadísticas generales de un gimnasio filtradas por mes (?month=YYYY-MM)
+export async function getOwnerGymOverviewController(req, res) {
+  try {
+    const { gym_id } = req.params;
+    const { month } = req.query;
+    if (!gym_id) return res.status(400).json({ error: 'gym_id requerido' });
+    const data = await getOwnerGymStats(gym_id, month);
+    return res.status(200).json(data);
+  } catch (err) {
+    console.error('[GET owner gym stats] Error:', err);
+    return res.status(500).json({ error: 'No se pudieron obtener las estadísticas' });
+  }
+}
 
 export async function getGymStatsController(req, res) {
   try {

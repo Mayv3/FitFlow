@@ -1,5 +1,6 @@
 import express from 'express'
 import { verifyToken } from '../middleware/auth.js'
+import { requireRole } from '../middleware/requireRole.js'
 import {
   postConnect,
   getStatus,
@@ -11,6 +12,7 @@ import {
   postTriggerAll,
   getMensajes,
   getMensajesCalendar,
+  getOwnerMensajes,
   patchConfig,
   getConfig
 } from '../controllers/whatsapp.controller.js'
@@ -19,6 +21,9 @@ const router = express.Router()
 
 // Cron público con header secret
 router.post('/trigger-all', postTriggerAll)
+
+// Owner: mensajes de WhatsApp de todos los gimnasios (rol OWNER = 1)
+router.get('/owner/mensajes', verifyToken, requireRole(1), getOwnerMensajes)
 
 // Operaciones por gym (auth requerida)
 router.post('/gyms/:gymId/connect', verifyToken, postConnect)

@@ -52,6 +52,10 @@ async function fetchAlumnosToRemind(gymId, daysBefore) {
   return (data || []).filter((a) => a.telefono)
 }
 
+// Dos avisos por ciclo: 'recordatorio_previo' (N días antes) y
+// 'recordatorio_vencimiento' (el día del vencimiento).
+const REMINDER_TIPOS = ['recordatorio_previo', 'recordatorio_vencimiento']
+
 async function fetchAlreadySent(gymId, alumnoIds, vencimientos) {
   if (!alumnoIds.length) return new Set()
   // Filtrar por las vencimiento dates exactas en juego — evita traer historia entera.
@@ -59,9 +63,9 @@ async function fetchAlreadySent(gymId, alumnoIds, vencimientos) {
   if (!uniqueVenc.length) return new Set()
   const { data, error } = await supabaseAdmin
     .from('whatsapp_mensajes')
-    .select('alumno_id,vencimiento')
+    .select('alumno_id,vencimiento,tipo')
     .eq('gym_id', gymId)
-    .eq('tipo', 'recordatorio_vencimiento')
+    .in('tipo', REMINDER_TIPOS)
     .eq('estado', 'enviado')
     .in('alumno_id', alumnoIds)
     .in('vencimiento', uniqueVenc)
@@ -69,7 +73,9 @@ async function fetchAlreadySent(gymId, alumnoIds, vencimientos) {
     console.warn('[wa-dedupe] query error:', error.message)
     return new Set()
   }
-  return new Set((data || []).map((r) => `${r.alumno_id}|${r.vencimiento}`))
+  // Key incluye el tipo de aviso: cada alumno puede recibir el previo Y el del día
+  // (mismo vencimiento), pero cada uno una sola vez.
+  return new Set((data || []).map((r) => `${r.alumno_id}|${r.vencimiento}|${r.tipo}`))
 }
 
 async function logMensaje(row) {
@@ -116,7 +122,10 @@ export async function procesarRecordatorios(gymId, { simulate = false } = {}) {
 
   for (const a of alumnos) {
     const venc = dayjs(a.fecha_de_vencimiento).startOf('day')
-    const dedupeKey = `${a.id}|${a.fecha_de_vencimiento}`
+    const diffDays = venc.diff(today, 'day')
+    // Aviso del día de vencimiento vs aviso previo (N días antes).
+    const tipo = diffDays <= 0 ? 'recordatorio_vencimiento' : 'recordatorio_previo'
+    const dedupeKey = `${a.id}|${a.fecha_de_vencimiento}|${tipo}`
     if (sentSet.has(dedupeKey)) {
       skipped++
       results.push({ alumno_id: a.id, status: 'already_sent' })
@@ -125,7 +134,6 @@ export async function procesarRecordatorios(gymId, { simulate = false } = {}) {
 
     const planNombre = a.planes_precios?.nombre || ''
     const fecha = venc.format('D/M/YYYY')
-    const diffDays = venc.diff(today, 'day')
     const estado = diffDays < 0 ? 'venció' : (diffDays === 0 ? 'vence hoy' : 'vence')
     const text = fmt(cfg.template, { nombre: a.nombre, plan: planNombre, fecha, estado })
     const jid = whatsappManager.buildJid(a.telefono, cfg.countryPrefix)
@@ -153,7 +161,7 @@ export async function procesarRecordatorios(gymId, { simulate = false } = {}) {
         plan: planNombre,
         vencimiento: a.fecha_de_vencimiento,
         mensaje: text,
-        tipo: 'recordatorio_vencimiento',
+        tipo,
         estado: 'enviado'
       })
       results.push({ alumno_id: a.id, status: 'sent' })
@@ -167,7 +175,7 @@ export async function procesarRecordatorios(gymId, { simulate = false } = {}) {
         plan: planNombre,
         vencimiento: a.fecha_de_vencimiento,
         mensaje: text,
-        tipo: 'recordatorio_vencimiento',
+        tipo,
         estado: 'error',
         error_msg: e.message
       })

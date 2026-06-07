@@ -352,7 +352,7 @@ export function WhatsappSettings() {
                                     Sobre los recordatorios
                                 </Typography>
                                 <Typography variant="body2" color="text.secondary">
-                                    Los mensajes se envían automáticamente <strong>todos los días a las 9:00 AM</strong> a alumnos que <strong>vencen hoy</strong> o exactamente <strong>dentro de {reminderDays} día{reminderDays === 1 ? '' : 's'}</strong> (no los días intermedios). Cada alumno recibe el mensaje una sola vez por fecha de vencimiento.
+                                    Los mensajes se envían automáticamente <strong>todos los días a las 9:00 AM</strong>. Cada alumno recibe <strong>2 avisos</strong> para recordarle que debe abonar la cuota mensual: el primero <strong>{reminderDays} día{reminderDays === 1 ? '' : 's'} antes</strong> del vencimiento y el segundo <strong>el día del vencimiento</strong>. Cada aviso se envía una sola vez.
                                 </Typography>
                             </Box>
 

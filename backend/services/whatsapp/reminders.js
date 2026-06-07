@@ -35,17 +35,18 @@ async function getGymConfig(gymId) {
 
 async function fetchAlumnosToRemind(gymId, daysBefore) {
   const today = dayjs().startOf('day')
-  // Ventana forward-only: vencen HOY o en los próximos `daysBefore` días.
-  // No incluye vencimientos pasados (alumnos ya vencidos antes de hoy no se recuerdan).
-  const lower = today.format('YYYY-MM-DD')
-  const upper = today.add(daysBefore, 'day').format('YYYY-MM-DD')
+  // Solo 2 fechas exactas: vencen HOY y vencen dentro de `daysBefore` días.
+  // NO los días intermedios. (Si daysBefore=0, queda solo hoy.)
+  const dueDays = Array.from(new Set([
+    today.format('YYYY-MM-DD'),
+    today.add(daysBefore, 'day').format('YYYY-MM-DD')
+  ]))
 
   const { data, error } = await supabaseAdmin
     .from('alumnos')
     .select('id,nombre,telefono,fecha_de_vencimiento,plan_id,planes_precios(nombre)')
     .eq('gym_id', gymId)
-    .gte('fecha_de_vencimiento', lower)
-    .lte('fecha_de_vencimiento', upper)
+    .in('fecha_de_vencimiento', dueDays)
     .is('deleted_at', null)
   if (error) throw error
   return (data || []).filter((a) => a.telefono)

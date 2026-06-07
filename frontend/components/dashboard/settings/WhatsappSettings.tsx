@@ -219,6 +219,11 @@ export function WhatsappSettings() {
     const isConnected = state.status === 'connected'
     const phoneLabel = useMemo(() => formatPhone(adminJid), [adminJid])
     const statusInfo = STATUS_MAP[state.status]
+    // Solo lo que se mandaría AHORA (alumnos nuevos); el backend ya excluye los ya enviados.
+    const simPreview = useMemo(
+        () => (simResult?.results || []).filter((r: any) => r.status === 'simulated'),
+        [simResult]
+    )
 
     if (loading) {
         return (
@@ -453,7 +458,7 @@ export function WhatsappSettings() {
                                 </Button>
                             </Box>
 
-                            {simResult && simResult.results?.length > 0 && (
+                            {simResult && simPreview.length > 0 && (
                                 <Box sx={{
                                     mt: 1,
                                     p: 2,
@@ -462,10 +467,10 @@ export function WhatsappSettings() {
                                     border: (theme) => `1px solid ${theme.palette.divider}`,
                                 }}>
                                     <Typography variant="caption" color="text.secondary">
-                                        Vista previa — {simResult.total} alumno(s){simResult.total > 2 ? ' (mostrando 2)' : ''}:
+                                        Se enviarían ahora — {simPreview.length} alumno(s){simPreview.length > 2 ? ' (mostrando 2)' : ''}:
                                     </Typography>
                                     <Stack spacing={1} sx={{ mt: 1 }}>
-                                        {simResult.results.slice(0, 2).map((r: any, i: number) => (
+                                        {simPreview.slice(0, 2).map((r: any, i: number) => (
                                             <Box key={i} sx={{
                                                 p: 1.2,
                                                 borderRadius: 1,
@@ -480,16 +485,25 @@ export function WhatsappSettings() {
                                                 </Typography>
                                             </Box>
                                         ))}
-                                        {simResult.results.length > 2 && (
+                                        {simPreview.length > 2 && (
                                             <Typography variant="caption" color="text.secondary" sx={{ textAlign: 'center', pt: 0.5, display: 'block' }}>
-                                                + {simResult.results.length - 2} más
+                                                + {simPreview.length - 2} más
                                             </Typography>
                                         )}
                                     </Stack>
+                                    {simResult.skipped > 0 && (
+                                        <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 1 }}>
+                                            {simResult.skipped} ya recibieron el recordatorio (no se repiten).
+                                        </Typography>
+                                    )}
                                 </Box>
                             )}
-                            {simResult && (!simResult.results || simResult.results.length === 0) && (
-                                <Alert severity="info">Ningún alumno vence en el rango configurado.</Alert>
+                            {simResult && simPreview.length === 0 && (
+                                <Alert severity="info">
+                                    {simResult.skipped > 0
+                                        ? 'Todos los alumnos del rango ya recibieron el recordatorio. No hay nada nuevo para enviar.'
+                                        : 'Ningún alumno vence en el rango configurado.'}
+                                </Alert>
                             )}
                         </Box>
                     </Box>

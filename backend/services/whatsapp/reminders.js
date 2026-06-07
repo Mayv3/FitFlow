@@ -95,18 +95,19 @@ export async function procesarRecordatorios(gymId, { simulate = false } = {}) {
 
   const alumnos = await fetchAlumnosToRemind(gymId, cfg.daysBefore)
 
-  // Dedupe: si ya se envió pa ese alumno+vencimiento, saltar (no aplica en simulate)
-  const sentSet = simulate
-    ? new Set()
-    : await fetchAlreadySent(
-        gymId,
-        alumnos.map((a) => a.id),
-        alumnos.map((a) => a.fecha_de_vencimiento)
-      )
+  // Dedupe: si ya se envió pa ese alumno+vencimiento, saltar.
+  // Aplica TAMBIÉN en simulate: la vista previa muestra solo lo que se mandaría
+  // ahora (alumnos nuevos), nunca lo ya enviado en corridas previas.
+  const sentSet = await fetchAlreadySent(
+    gymId,
+    alumnos.map((a) => a.id),
+    alumnos.map((a) => a.fecha_de_vencimiento)
+  )
 
   let sent = 0
   let errors = 0
   let skipped = 0
+  let pending = 0
   const results = []
   const today = dayjs().startOf('day')
 
@@ -133,6 +134,7 @@ export async function procesarRecordatorios(gymId, { simulate = false } = {}) {
     }
 
     if (simulate) {
+      pending++
       results.push({ alumno_id: a.id, jid, text, status: 'simulated' })
       continue
     }
@@ -172,7 +174,7 @@ export async function procesarRecordatorios(gymId, { simulate = false } = {}) {
     await sleep(cfg.delayMs)
   }
 
-  return { gym_id: gymId, status: 'ok', sent, errors, skipped, total: alumnos.length, results }
+  return { gym_id: gymId, status: 'ok', sent, errors, skipped, pending, total: alumnos.length, results }
 }
 
 export async function triggerAllGyms({ simulate = false } = {}) {

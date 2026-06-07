@@ -352,7 +352,7 @@ export function WhatsappSettings() {
                                     Sobre los recordatorios
                                 </Typography>
                                 <Typography variant="body2" color="text.secondary">
-                                    Los mensajes se envían automáticamente <strong>todos los días a las 9:00 AM</strong> a alumnos con vencimiento del <strong>mes en curso</strong> o en los próximos <strong>{reminderDays} día{reminderDays === 1 ? '' : 's'}</strong>. Cada alumno recibe el mensaje una sola vez por fecha de vencimiento.
+                                    Los mensajes se envían automáticamente <strong>todos los días a las 9:00 AM</strong> a alumnos que <strong>vencen hoy</strong> o en los próximos <strong>{reminderDays} día{reminderDays === 1 ? '' : 's'}</strong>. Cada alumno recibe el mensaje una sola vez por fecha de vencimiento.
                                 </Typography>
                             </Box>
 
@@ -522,7 +522,7 @@ export function WhatsappSettings() {
                 </DialogTitle>
                 <DialogContent>
                     <DialogContentText>
-                        Se enviarán mensajes <strong>reales</strong> de WhatsApp a los alumnos que cumplen los criterios (vencimiento del mes en curso o próximos {reminderDays} día{reminderDays === 1 ? '' : 's'}).
+                        Se enviarán mensajes <strong>reales</strong> de WhatsApp a los alumnos que cumplen los criterios (vencen hoy o en los próximos {reminderDays} día{reminderDays === 1 ? '' : 's'}).
                     </DialogContentText>
                     <DialogContentText sx={{ mt: 1.5 }}>
                         Esta acción no se puede deshacer. ¿Continuar?

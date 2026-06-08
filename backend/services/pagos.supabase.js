@@ -224,6 +224,27 @@ export async function createPago(supaClient, pago) {
 
     const clasesPagadas = planRow?.numero_clases ?? 0;
 
+    // Snapshot del estado del alumno ANTES de pisarlo, para poder
+    // restaurarlo exacto si este pago se elimina.
+    const { data: alumnoPrev } = await supaClient
+      .from('alumnos')
+      .select('plan_id, fecha_de_vencimiento, clases_pagadas, clases_realizadas, gym_id')
+      .eq('id', pago.alumno_id)
+      .single();
+
+    if (alumnoPrev) {
+      await supabaseAdmin.from('alumno_snapshots').insert({
+        pago_id: cab.id,
+        alumno_id: pago.alumno_id,
+        gym_id: alumnoPrev.gym_id ?? pago.gym_id ?? null,
+        plan_id: alumnoPrev.plan_id,
+        fecha_de_vencimiento: alumnoPrev.fecha_de_vencimiento,
+        clases_pagadas: alumnoPrev.clases_pagadas,
+        clases_realizadas: alumnoPrev.clases_realizadas,
+        accion: 'create',
+      });
+    }
+
     const { error: eUpd } = await supaClient
       .from('alumnos')
       .update({
@@ -347,18 +368,195 @@ export async function updatePago(supaClient, id, nuevosDatos, { includeDeleted =
   };
 }
 
-/** Soft delete */
+/**
+ * Recalcula el estado del alumno (plan, vencimiento, clases) a partir del
+ * último pago de plan que sigue vivo. Si no queda ninguno, resetea.
+ * Un pago es "de plan" cuando tiene plan_id (no se guarda isPlan en DB).
+ */
+async function recalcAlumnoTrasPlan(supaClient, alumnoId) {
+  const { data: ultimoPago, error: eUlt } = await supaClient
+    .from('pagos')
+    .select('plan_id, fecha_de_venc, fecha_de_pago')
+    .eq('alumno_id', alumnoId)
+    .not('plan_id', 'is', null)
+    .is('deleted_at', null)
+    .order('fecha_de_pago', { ascending: false })
+    .order('hora', { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  if (eUlt) throw eUlt;
+
+  // No queda ningún pago de plan vivo => resetear alumno
+  if (!ultimoPago) {
+    const { data: reseteado, error: eReset } = await supaClient
+      .from('alumnos')
+      .update({
+        plan_id: null,
+        fecha_de_vencimiento: null,
+        clases_pagadas: 0,
+        clases_realizadas: 0,
+      })
+      .eq('id', alumnoId)
+      .select('id, nombre, plan_id, fecha_de_vencimiento, clases_pagadas, clases_realizadas')
+      .single();
+    if (eReset) throw eReset;
+    return { alumno: reseteado, origen: 'reset', pago_vigente: null };
+  }
+
+  // Clases del plan vigente
+  const { data: planRow, error: ePlan } = await supaClient
+    .from('planes_precios')
+    .select('numero_clases')
+    .eq('id', ultimoPago.plan_id)
+    .single();
+  if (ePlan) throw ePlan;
+  const clasesPagadas = planRow?.numero_clases ?? 0;
+
+  // clases_realizadas = asistencias desde la fecha del pago vigente
+  const { count: realizadas, error: eCount } = await supaClient
+    .from('asistencias')
+    .select('id', { count: 'exact', head: true })
+    .eq('alumno_id', alumnoId)
+    .gte('fecha', ultimoPago.fecha_de_pago);
+  if (eCount) throw eCount;
+
+  const { data: actualizado, error: eUpd } = await supaClient
+    .from('alumnos')
+    .update({
+      plan_id: ultimoPago.plan_id,
+      fecha_de_vencimiento: ultimoPago.fecha_de_venc,
+      clases_pagadas: clasesPagadas,
+      clases_realizadas: realizadas ?? 0,
+    })
+    .eq('id', alumnoId)
+    .select('id, nombre, plan_id, fecha_de_vencimiento, clases_pagadas, clases_realizadas')
+    .single();
+  if (eUpd) throw eUpd;
+
+  return { alumno: actualizado, origen: 'pago_anterior', pago_vigente: ultimoPago };
+}
+
+/**
+ * Restaura al alumno EXACTO al estado guardado en el snapshot tomado al crear
+ * el pago. Devuelve null si no hay snapshot (=> usar fallback recalculo).
+ */
+async function restaurarDesdeSnapshot(supaClient, alumnoId, pagoId) {
+  const { data: snap, error: eSnap } = await supabaseAdmin
+    .from('alumno_snapshots')
+    .select('plan_id, fecha_de_vencimiento, clases_pagadas, clases_realizadas')
+    .eq('pago_id', pagoId)
+    .eq('alumno_id', alumnoId)
+    .order('created_at', { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  if (eSnap) throw eSnap;
+  if (!snap) return null;
+
+  const { data: actualizado, error: eUpd } = await supaClient
+    .from('alumnos')
+    .update({
+      plan_id: snap.plan_id,
+      fecha_de_vencimiento: snap.fecha_de_vencimiento,
+      clases_pagadas: snap.clases_pagadas,
+      clases_realizadas: snap.clases_realizadas,
+    })
+    .eq('id', alumnoId)
+    .select('id, nombre, plan_id, fecha_de_vencimiento, clases_pagadas, clases_realizadas')
+    .single();
+  if (eUpd) throw eUpd;
+
+  return { alumno: actualizado, origen: 'snapshot', snapshot: snap };
+}
+
+/** Soft delete + restaura estado del alumno / stock */
 
 export async function deletePago(supaClient, id) {
+  // Leer el pago SIN filtrar deleted_at: queremos poder re-restaurar el alumno
+  // aunque el pago ya estuviera borrado de antes (incidentes previos al fix).
+  const { data: pago, error: eGet } = await supaClient
+    .from('pagos')
+    .select('id, alumno_id, plan_id, producto_id, fecha_de_pago, fecha_de_venc, monto_total, tipo, deleted_at')
+    .eq('id', id)
+    .maybeSingle();
+
+  if (eGet) throw eGet;
+  if (!pago) {
+    const err = new Error('Pago no encontrado');
+    err.code = 'NOT_FOUND';
+    throw err;
+  }
+
+  // Estado del alumno ANTES de restaurar
+  let alumnoAntes = null;
+  if (pago.alumno_id) {
+    const { data: aAntes } = await supaClient
+      .from('alumnos')
+      .select('id, nombre, plan_id, fecha_de_vencimiento, clases_pagadas, clases_realizadas')
+      .eq('id', pago.alumno_id)
+      .single();
+    alumnoAntes = aAntes ?? null;
+  }
+
+  // Soft-delete sólo si seguía vivo. `data` !== null => transición real live->deleted.
   const { data, error } = await supaClient
     .from('pagos')
     .update({ deleted_at: new Date().toISOString() })
     .eq('id', id)
     .is('deleted_at', null)
-    .single();
+    .select('id')
+    .maybeSingle();
 
   if (error) throw error;
-  return data;
+
+  const yaEstabaEliminado = !data;
+
+  // Restaurar estado del alumno si era pago de plan.
+  // 1º intentar snapshot exacto (estado previo a este pago).
+  // 2º si no hay snapshot (pagos viejos) => recalcular desde pagos vivos.
+  let restauracion = null;
+  if (pago.plan_id && pago.alumno_id) {
+    restauracion = await restaurarDesdeSnapshot(supaClient, pago.alumno_id, pago.id);
+    if (!restauracion) {
+      restauracion = await recalcAlumnoTrasPlan(supaClient, pago.alumno_id);
+    }
+  }
+
+  // Devolver stock si era venta de producto Y recién ahora lo borramos.
+  // (Si ya estaba borrado, el stock ya se devolvió antes => no duplicar.)
+  // La cantidad no se persiste en pagos => best-effort: 1 unidad.
+  let stockInfo = null;
+  if (pago.producto_id && !yaEstabaEliminado) {
+    const cantidad = 1;
+    const { data: producto, error: eProd } = await supaClient
+      .from('productos')
+      .select('stock')
+      .eq('id', pago.producto_id)
+      .single();
+    if (eProd) throw eProd;
+
+    const nuevoStock = (producto?.stock ?? 0) + cantidad;
+    const { error: eStock } = await supaClient
+      .from('productos')
+      .update({ stock: nuevoStock })
+      .eq('id', pago.producto_id);
+    if (eStock) throw eStock;
+    stockInfo = { producto_id: pago.producto_id, stock_antes: producto?.stock ?? 0, stock_despues: nuevoStock, devuelto: cantidad };
+  }
+
+  // Resumen del proceso (para debug en frontend)
+  return {
+    ok: true,
+    ya_estaba_eliminado: yaEstabaEliminado,
+    pago_eliminado: pago,
+    alumno_antes: alumnoAntes,
+    alumno_despues: restauracion?.alumno ?? null,
+    restauracion_origen: restauracion?.origen ?? null,   // 'snapshot' | 'pago_anterior' | 'reset' | null
+    snapshot: restauracion?.snapshot ?? null,            // estado previo guardado al crear el pago
+    pago_vigente: restauracion?.pago_vigente ?? null,    // (fallback) pago de plan que quedó vigente
+    stock: stockInfo,
+  };
 }
 
 export async function restorePago(supaClient, id) {
@@ -367,8 +565,32 @@ export async function restorePago(supaClient, id) {
     .update({ deleted_at: null })
     .eq('id', id)
     .not('deleted_at', 'is', null)
+    .select('id, alumno_id, plan_id, producto_id')
     .single();
   if (error) throw error;
+
+  // Re-aplicar estado del alumno si era pago de plan
+  if (data?.plan_id && data?.alumno_id) {
+    await recalcAlumnoTrasPlan(supaClient, data.alumno_id);
+  }
+
+  // Re-descontar stock si era venta de producto (cantidad no persistida => 1)
+  if (data?.producto_id) {
+    const cantidad = 1;
+    const { data: producto, error: eProd } = await supaClient
+      .from('productos')
+      .select('stock')
+      .eq('id', data.producto_id)
+      .single();
+    if (eProd) throw eProd;
+
+    const { error: eStock } = await supaClient
+      .from('productos')
+      .update({ stock: Math.max((producto?.stock ?? 0) - cantidad, 0) })
+      .eq('id', data.producto_id);
+    if (eStock) throw eStock;
+  }
+
   return data;
 }
 

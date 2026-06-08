@@ -14,6 +14,7 @@ import { FormModal } from '@/components/ui/modals/FormModal';
 import { Member } from '@/models/Member/Member';
 import { getInputFieldsAlumnos, layoutAlumnos } from '@/const/inputs/alumnos';
 import { columnsMember } from '@/const/columns/members';
+import { estadoVencimiento } from '@/utils/date/dateUtils';
 import { ReactQueryDevtools } from '@tanstack/react-query-devtools';
 import { useChangeItem } from '@/hooks/changeItemCache/useChangeItem';
 import { MemberStats } from './stats/MemberStats';
@@ -27,6 +28,7 @@ import {
 import AddIcon from '@mui/icons-material/Add';
 import WarningAmberIcon from '@mui/icons-material/WarningAmber';
 import WhatsAppIcon from '@mui/icons-material/WhatsApp';
+import PersonOffIcon from '@mui/icons-material/PersonOff';
 import { darken } from '@mui/material/styles';
 import { useGymThemeSettings } from '@/hooks/useGymThemeSettings';
 import { useMemberAsyncValidators } from '@/hooks/validatorsInput/UseAsyncValidators';
@@ -93,8 +95,20 @@ export default function MembersList() {
 
   const { data, isLoading, isError, error, isFetching } = useAlumnosByGym(gymId, page, tableSize, q);
   const { data: expiredData } = useExpiredAlumnos(gymId);
-  const expiredMembers = expiredData?.items ?? [];
-  const expiredCount = expiredData?.total ?? 0;
+  // El backend devuelve todos los vencidos; acá los separamos:
+  // - vencidos "reales": venció hace <= 2 meses
+  // - inactivos: venció hace > 2 meses (dejaron de venir) → no cuentan como vencidos
+  const { vencidosMembers, inactivosMembers } = useMemo(() => {
+    const v: any[] = [];
+    const i: any[] = [];
+    for (const m of expiredData?.items ?? []) {
+      const inactivo = estadoVencimiento((m as any).fecha_de_vencimiento).code === 'inactive';
+      (inactivo ? i : v).push(m);
+    }
+    return { vencidosMembers: v, inactivosMembers: i };
+  }, [expiredData]);
+  const expiredCount = vencidosMembers.length;
+  const inactivosCount = inactivosMembers.length;
   const alumnos = data?.items ?? [];
   const total = data?.total ?? 0;
   const { options: planOptions, byId, isLoading: plansLoading } = usePlanesPrecios(gymId);
@@ -278,6 +292,64 @@ export default function MembersList() {
   const gymName = Cookies.get('gym_name') ?? '';
   const columns = columnsMember(triggerEdit, triggerDelete, gymName, byId, toggleWaSent, waSent);
 
+  const renderExpiredRow = (m: any) => {
+    const dniKey = `${m.dni}_${m.fecha_de_vencimiento ?? 'sin-fecha'}`;
+    const sent = waSent.has(dniKey);
+    const phone = (m.telefono ?? '').replace(/\D/g, '');
+    const planNombre = m.plan_nombre ?? '—';
+    const precio = m.plan_precio != null ? `$${m.plan_precio}` : 'consultar precio';
+    const fv = m.fecha_de_vencimiento;
+    const fechaVenc = fv
+      ? new Date(fv).toLocaleDateString('es-AR', { day: '2-digit', month: '2-digit', year: 'numeric' })
+      : '—';
+    const mensaje =
+      `¡Hola ${m.nombre}! ¿Cómo estás?\n\n` +
+      `Te escribimos desde *${gymName}* con un recordatorio rápido\n\n` +
+      `Tu membresía venció el ${fechaVenc} y te extrañamos por acá!\n\n` +
+      `*Tu plan*:\n${planNombre}\nPrecio: ${precio}\n\n` +
+      `¡Renovar es muy fácil, avisanos y te ayudamos!\nTe esperamos con las puertas abiertas`;
+    const waUrl = phone ? `https://wa.me/${phone}?text=${encodeURIComponent(mensaje)}` : null;
+
+    return (
+      <TableRow
+        key={dniKey}
+        sx={{ opacity: sent ? 0.45 : 1, transition: 'opacity 0.2s' }}
+      >
+        <TableCell padding="checkbox" sx={{ width: 48 }}>
+          <Tooltip title={sent ? 'Marcar como no enviado' : 'Marcar como enviado'}>
+            <Checkbox
+              checked={sent}
+              onChange={() => toggleWaSent(dniKey)}
+              color="success"
+              sx={{ '& .MuiSvgIcon-root': { fontSize: 22 } }}
+            />
+          </Tooltip>
+        </TableCell>
+        <TableCell sx={{ fontSize: '0.875rem', fontWeight: sent ? 400 : 600 }}>
+          {m.nombre}
+        </TableCell>
+        <TableCell sx={{ fontSize: '0.875rem', color: 'error.main', fontWeight: 500 }}>{fechaVenc}</TableCell>
+        <TableCell sx={{ fontSize: '0.875rem', color: 'text.secondary' }}>{m.telefono ?? '—'}</TableCell>
+        <TableCell align="center" padding="checkbox" sx={{ width: 56 }}>
+          <Tooltip title={waUrl ? 'Enviar por WhatsApp' : 'Sin teléfono registrado'}>
+            <span>
+              <IconButton
+                sx={{ color: waUrl ? '#25D366' : 'action.disabled' }}
+                component={waUrl ? 'a' : 'button'}
+                href={waUrl ?? undefined}
+                target={waUrl ? '_blank' : undefined}
+                rel={waUrl ? 'noopener noreferrer' : undefined}
+                disabled={!waUrl}
+              >
+                <WhatsAppIcon sx={{ fontSize: 24 }} />
+              </IconButton>
+            </span>
+          </Tooltip>
+        </TableCell>
+      </TableRow>
+    );
+  };
+
   return (
     <Box sx={{ maxWidth: 'xl', mx: 'auto', py: 2 }} className="animate-fade-in">
       <CustomBreadcrumbs
@@ -425,81 +497,51 @@ export default function MembersList() {
           '&::-webkit-scrollbar-thumb': { bgcolor: primaryColor, borderRadius: 3 },
           '&::-webkit-scrollbar-thumb:hover': { bgcolor: darken(primaryColor, 0.3) },
         }}>
-          {expiredMembers.length === 0 ? (
+          {vencidosMembers.length === 0 && inactivosMembers.length === 0 ? (
             <Typography sx={{ p: 3, textAlign: 'center', color: 'text.secondary', fontSize: '0.875rem' }}>
               No hay miembros vencidos
             </Typography>
           ) : (
-            <Table size="small" stickyHeader>
-              <TableHead>
-                <TableRow sx={{ bgcolor: primaryColor, '& th': { border: 0 } }}>
-                  <TableCell padding="checkbox" sx={{ width: 48, bgcolor: primaryColor, border: 0 }} />
-                  <TableCell sx={{ fontWeight: 600, fontSize: '0.75rem', color: '#fff', border: 0 }}>Nombre</TableCell>
-                  <TableCell sx={{ fontWeight: 600, fontSize: '0.75rem', color: '#fff', border: 0 }}>Venció</TableCell>
-                  <TableCell sx={{ fontWeight: 600, fontSize: '0.75rem', color: '#fff', border: 0 }}>Teléfono</TableCell>
-                  <TableCell align="center" sx={{ fontWeight: 600, fontSize: '0.75rem', width: 56, color: '#fff', border: 0 }}>WA</TableCell>
-                </TableRow>
-              </TableHead>
-              <TableBody>
-                {expiredMembers.map((m) => {
-                  const dniKey = `${m.dni}_${m.fecha_de_vencimiento ?? 'sin-fecha'}`;
-                  const sent = waSent.has(dniKey);
-                  const phone = (m.telefono ?? '').replace(/\D/g, '');
-                  const planNombre = m.plan_nombre ?? '—';
-                  const precio = m.plan_precio != null ? `$${m.plan_precio}` : 'consultar precio';
-                  const fv = m.fecha_de_vencimiento;
-                  const fechaVenc = fv
-                    ? new Date(fv).toLocaleDateString('es-AR', { day: '2-digit', month: '2-digit', year: 'numeric' })
-                    : '—';
-                  const mensaje =
-                    `¡Hola ${m.nombre}! ¿Cómo estás?\n\n` +
-                    `Te escribimos desde *${gymName}* con un recordatorio rápido\n\n` +
-                    `Tu membresía venció el ${fechaVenc} y te extrañamos por acá!\n\n` +
-                    `*Tu plan*:\n${planNombre}\nPrecio: ${precio}\n\n` +
-                    `¡Renovar es muy fácil, avisanos y te ayudamos!\nTe esperamos con las puertas abiertas`;
-                  const waUrl = phone ? `https://wa.me/${phone}?text=${encodeURIComponent(mensaje)}` : null;
-
-                  return (
-                    <TableRow
-                      key={dniKey}
-                      sx={{ opacity: sent ? 0.45 : 1, transition: 'opacity 0.2s' }}
-                    >
-                      <TableCell padding="checkbox" sx={{ width: 48 }}>
-                        <Tooltip title={sent ? 'Marcar como no enviado' : 'Marcar como enviado'}>
-                          <Checkbox
-                            checked={sent}
-                            onChange={() => toggleWaSent(dniKey)}
-                            color="success"
-                            sx={{ '& .MuiSvgIcon-root': { fontSize: 22 } }}
-                          />
-                        </Tooltip>
-                      </TableCell>
-                      <TableCell sx={{ fontSize: '0.875rem', fontWeight: sent ? 400 : 600 }}>
-                        {m.nombre}
-                      </TableCell>
-                      <TableCell sx={{ fontSize: '0.875rem', color: 'error.main', fontWeight: 500 }}>{fechaVenc}</TableCell>
-                      <TableCell sx={{ fontSize: '0.875rem', color: 'text.secondary' }}>{m.telefono ?? '—'}</TableCell>
-                      <TableCell align="center" padding="checkbox" sx={{ width: 56 }}>
-                        <Tooltip title={waUrl ? 'Enviar por WhatsApp' : 'Sin teléfono registrado'}>
-                          <span>
-                            <IconButton
-                              sx={{ color: waUrl ? '#25D366' : 'action.disabled' }}
-                              component={waUrl ? 'a' : 'button'}
-                              href={waUrl ?? undefined}
-                              target={waUrl ? '_blank' : undefined}
-                              rel={waUrl ? 'noopener noreferrer' : undefined}
-                              disabled={!waUrl}
-                            >
-                              <WhatsAppIcon sx={{ fontSize: 24 }} />
-                            </IconButton>
-                          </span>
-                        </Tooltip>
-                      </TableCell>
+            <>
+              {vencidosMembers.length > 0 && (
+                <Table size="small" stickyHeader>
+                  <TableHead>
+                    <TableRow sx={{ bgcolor: primaryColor, '& th': { border: 0 } }}>
+                      <TableCell padding="checkbox" sx={{ width: 48, bgcolor: primaryColor, border: 0 }} />
+                      <TableCell sx={{ fontWeight: 600, fontSize: '0.75rem', color: '#fff', border: 0 }}>Nombre</TableCell>
+                      <TableCell sx={{ fontWeight: 600, fontSize: '0.75rem', color: '#fff', border: 0 }}>Venció</TableCell>
+                      <TableCell sx={{ fontWeight: 600, fontSize: '0.75rem', color: '#fff', border: 0 }}>Teléfono</TableCell>
+                      <TableCell align="center" sx={{ fontWeight: 600, fontSize: '0.75rem', width: 56, color: '#fff', border: 0 }}>WA</TableCell>
                     </TableRow>
-                  );
-                })}
-              </TableBody>
-            </Table>
+                  </TableHead>
+                  <TableBody>
+                    {vencidosMembers.map(renderExpiredRow)}
+                  </TableBody>
+                </Table>
+              )}
+
+              {inactivosMembers.length > 0 && (
+                <Box>
+                  <Box sx={{
+                    px: 2, py: 1, display: 'flex', alignItems: 'center', gap: 1,
+                    bgcolor: 'action.hover',
+                    borderTop: vencidosMembers.length > 0 ? '1px solid' : 0,
+                    borderColor: 'divider',
+                    position: 'sticky', top: 0, zIndex: 1,
+                  }}>
+                    <PersonOffIcon fontSize="small" sx={{ color: 'text.secondary' }} />
+                    <Typography sx={{ fontWeight: 700, fontSize: '0.8rem', color: 'text.secondary' }}>
+                      Inactivos · sin venir hace +2 meses ({inactivosCount})
+                    </Typography>
+                  </Box>
+                  <Table size="small">
+                    <TableBody>
+                      {inactivosMembers.map(renderExpiredRow)}
+                    </TableBody>
+                  </Table>
+                </Box>
+              )}
+            </>
           )}
         </DialogContent>
       </Dialog>

@@ -6,7 +6,7 @@ import AccessTimeRounded from '@mui/icons-material/AccessTimeRounded';
 import ErrorOutlineRounded from '@mui/icons-material/ErrorOutlineRounded';
 import RemoveCircleOutlineRounded from '@mui/icons-material/RemoveCircleOutlineRounded';
 
-type EstadoCode = 'active' | 'expiring' | 'expired' | 'none' | 'limit';
+type EstadoCode = 'active' | 'expiring' | 'expired' | 'inactive' | 'none' | 'limit';
 
 export function StateCheap({
   code,
@@ -36,6 +36,11 @@ export function StateCheap({
       expiring: soft(theme.palette.warning.main),
       expired: soft(theme.palette.error.main),
       limit: soft(theme.palette.error.dark),
+      inactive: {
+        bgcolor: alpha(theme.palette.text.primary, 0.10),
+        color: alpha(theme.palette.text.primary, 0.55),
+        border: `1px solid ${alpha(theme.palette.text.primary, 0.16)}`,
+      },
       none: {
         bgcolor: alpha(theme.palette.text.primary, 0.06),
         color: alpha(theme.palette.text.primary, 0.7),
@@ -56,6 +61,7 @@ export function StateCheap({
     code === 'active' && daysDiff != null ? `Vence en ${daysDiff} día(s)` :
     code === 'expiring' && daysDiff != null ? `Vence en ${daysDiff} día(s)` :
     code === 'expired' && daysDiff != null ? `Venció hace ${Math.abs(daysDiff)} día(s)` :
+    code === 'inactive' && daysDiff != null ? `Sin venir hace ${Math.abs(daysDiff)} día(s)` :
     label;
 
   return (

@@ -105,12 +105,25 @@ export function useDeletePago(
 
   return useMutation({
     mutationFn: async (id: number) => {
-      await axiosInstance.delete(`/api/pagos/${id}`);
-      return id;
+      const { data } = await axiosInstance.delete(`/api/pagos/${id}`);
+      return data;
     },
-    onSuccess: () => {
+    onSuccess: (resumen) => {
+      console.group('%c🗑️ Pago eliminado — proceso de restauración', 'color:#e11d48;font-weight:bold');
+      console.log('¿Ya estaba eliminado?:', resumen?.ya_estaba_eliminado);
+      console.log('Pago eliminado:', resumen?.pago_eliminado);
+      console.log('Alumno ANTES:', resumen?.alumno_antes);
+      console.log('Alumno DESPUÉS (restaurado):', resumen?.alumno_despues);
+      console.log('Origen restauración:', resumen?.restauracion_origen); // 'snapshot' | 'pago_anterior' | 'reset' | null
+      console.log('Snapshot (estado previo guardado):', resumen?.snapshot);
+      console.log('Pago de plan vigente (fallback):', resumen?.pago_vigente);
+      console.log('Stock producto:', resumen?.stock);
+      console.log('Respuesta completa:', resumen);
+      console.groupEnd();
+
       qc.invalidateQueries({ queryKey: ['payments', gymId] });
       qc.invalidateQueries({ queryKey: ['paymentsStats', gymId] });
+      qc.invalidateQueries({ queryKey: ['members', gymId] });
     }
   });
 }

@@ -96,12 +96,14 @@ export const editPago = async (req, res) => {
 
 export const removePago = async (req, res) => {
   try {
-    await deletePago(req.supa, req.params.id); // soft delete
+    const resumen = await deletePago(req.supa, req.params.id); // soft delete + restaura alumno/stock
     await Promise.all([
       cache.delPattern(`pagos:${req.gymId}:*`),
       cache.delPattern(`pagos:id:${req.params.id}:*`),
+      cache.delPattern(`alumnos:${req.gymId}:*`),
+      cache.delPattern(`productos:${req.gymId}:*`),
     ])
-    res.sendStatus(204);
+    res.json(resumen);
   } catch (error) {
     console.error('[removePago] Error:', error);
     res.status(400).json({ error: error.message });
@@ -111,7 +113,12 @@ export const removePago = async (req, res) => {
 export const undeletePago = async (req, res) => {
   try {
     const restored = await restorePago(req.supa, req.params.id);
-    await cache.delPattern(`pagos:${req.gymId}:*`)
+    await Promise.all([
+      cache.delPattern(`pagos:${req.gymId}:*`),
+      cache.delPattern(`pagos:id:${req.params.id}:*`),
+      cache.delPattern(`alumnos:${req.gymId}:*`),
+      cache.delPattern(`productos:${req.gymId}:*`),
+    ])
     res.json(restored);
   } catch (error) {
     res.status(400).json({ error: error.message });

@@ -1,7 +1,10 @@
 import moment from 'moment-timezone';
 
 const TZ = 'America/Argentina/Buenos_Aires';
-export type EstadoCode = 'active' | 'expiring' | 'expired' | 'none';
+export type EstadoCode = 'active' | 'expiring' | 'expired' | 'inactive' | 'none';
+
+// Vencido hace más de INACTIVE_MONTHS meses => "inactivo" (dejó de venir).
+export const INACTIVE_MONTHS = 2;
 
 moment.tz.setDefault('America/Argentina/Buenos_Aires');
 
@@ -33,6 +36,9 @@ export const estadoVencimiento = (
   const vence = moment.tz(fecha, TZ).endOf('day');
   const diff = vence.diff(hoy, 'days');
 
+  if (vence.isBefore(hoy.clone().subtract(INACTIVE_MONTHS, 'month'))) {
+    return { label: 'Inactivo', code: 'inactive', daysDiff: diff };
+  }
   if (diff < 0) return { label: 'Vencido', code: 'expired', daysDiff: diff };
   if (diff === 0) return { label: 'Vence hoy', code: 'expiring', daysDiff: diff };
   if (diff <= diasAviso) return { label: `Por vencer`, code: 'expiring', daysDiff: diff };

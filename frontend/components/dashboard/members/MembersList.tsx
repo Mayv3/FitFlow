@@ -475,8 +475,8 @@ export default function MembersList() {
 
       <ReactQueryDevtools initialIsOpen={true} />
 
-      <Dialog open={openExpired} onClose={() => setOpenExpired(false)} maxWidth="sm" fullWidth
-        PaperProps={{ sx: { borderRadius: 3, overflow: 'hidden' } }}
+      <Dialog open={openExpired} onClose={() => setOpenExpired(false)} maxWidth="md" fullWidth
+        PaperProps={{ sx: { borderRadius: 1, overflow: 'hidden' } }}
       >
         <Box sx={{ bgcolor: primaryColor, color: '#fff', px: 2, py: 1.5, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
           <Box display="flex" alignItems="center" gap={1}>
@@ -502,30 +502,37 @@ export default function MembersList() {
               No hay miembros vencidos
             </Typography>
           ) : (
-            <>
+            <Box sx={{ display: 'flex', flexDirection: { xs: 'column', md: 'row' }, alignItems: 'stretch' }}>
               {vencidosMembers.length > 0 && (
-                <Table size="small" stickyHeader>
-                  <TableHead>
-                    <TableRow sx={{ bgcolor: primaryColor, '& th': { border: 0 } }}>
-                      <TableCell padding="checkbox" sx={{ width: 48, bgcolor: primaryColor, border: 0 }} />
-                      <TableCell sx={{ fontWeight: 600, fontSize: '0.75rem', color: '#fff', border: 0 }}>Nombre</TableCell>
-                      <TableCell sx={{ fontWeight: 600, fontSize: '0.75rem', color: '#fff', border: 0 }}>Venció</TableCell>
-                      <TableCell sx={{ fontWeight: 600, fontSize: '0.75rem', color: '#fff', border: 0 }}>Teléfono</TableCell>
-                      <TableCell align="center" sx={{ fontWeight: 600, fontSize: '0.75rem', width: 56, color: '#fff', border: 0 }}>WA</TableCell>
-                    </TableRow>
-                  </TableHead>
-                  <TableBody>
-                    {vencidosMembers.map(renderExpiredRow)}
-                  </TableBody>
-                </Table>
-              )}
-
-              {inactivosMembers.length > 0 && (
-                <Box>
+                <Box sx={{ flex: 1, minWidth: 0 }}>
                   <Box sx={{
                     px: 2, py: 1, display: 'flex', alignItems: 'center', gap: 1,
                     bgcolor: 'action.hover',
-                    borderTop: vencidosMembers.length > 0 ? '1px solid' : 0,
+                    borderColor: 'divider',
+                    position: 'sticky', top: 0, zIndex: 1,
+                  }}>
+                    <Typography sx={{ fontWeight: 700, fontSize: '0.8rem', color: 'text.secondary' }}>
+                      Vencidos · hace hasta 2 meses ({expiredCount})
+                    </Typography>
+                  </Box>
+                  <Table size="small">
+                    <TableBody>
+                      {vencidosMembers.map(renderExpiredRow)}
+                    </TableBody>
+                  </Table>
+                </Box>
+              )}
+
+              {inactivosMembers.length > 0 && (
+                <Box sx={{
+                  flex: 1, minWidth: 0,
+                  borderTop: { xs: vencidosMembers.length > 0 ? '1px solid' : 0, md: 0 },
+                  borderLeft: { md: vencidosMembers.length > 0 ? '1px solid' : 0 },
+                  borderColor: 'divider',
+                }}>
+                  <Box sx={{
+                    px: 2, py: 1, display: 'flex', alignItems: 'center', gap: 1,
+                    bgcolor: 'action.hover',
                     borderColor: 'divider',
                     position: 'sticky', top: 0, zIndex: 1,
                   }}>
@@ -541,7 +548,7 @@ export default function MembersList() {
                   </Table>
                 </Box>
               )}
-            </>
+            </Box>
           )}
         </DialogContent>
       </Dialog>

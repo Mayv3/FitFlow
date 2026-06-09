@@ -293,7 +293,7 @@ export function WhatsappHistory({ gymId }: { gymId: string }) {
                                     <CircularProgress size={28} sx={{ color: GREEN }} />
                                 </Box>
                             ) : dayMsgs && dayMsgs.length > 0 ? (
-                                {/* Cap ~4 items visibles; a partir del 4to empieza el scroll. Ajustá maxHeight si querés más/menos. */}
+                                // Cap ~4 items visibles; a partir del 4to empieza el scroll. Ajustá maxHeight si querés más/menos.
                                 <Stack spacing={1.2} sx={{ flex: 1, overflowY: 'auto', pr: 1, minHeight: 0, maxHeight: 480 }}>
                                     {dayMsgs.map((m) => (
                                         <Box key={m.id} sx={{

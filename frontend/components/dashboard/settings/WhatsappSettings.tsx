@@ -491,11 +491,6 @@ export function WhatsappSettings() {
                                             </Typography>
                                         )}
                                     </Stack>
-                                    {simResult.skipped > 0 && (
-                                        <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 1 }}>
-                                            {simResult.skipped} ya recibieron el recordatorio (no se repiten).
-                                        </Typography>
-                                    )}
                                 </Box>
                             )}
                             {simResult && simPreview.length === 0 && (

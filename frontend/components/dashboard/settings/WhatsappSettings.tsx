@@ -192,7 +192,7 @@ export function WhatsappSettings() {
             const sent = data?.sent ?? 0, errors = data?.errors ?? 0, skipped = data?.skipped ?? 0
             setFeedback({
                 kind: errors > 0 ? 'error' : (sent > 0 ? 'success' : 'info'),
-                msg: `Enviados: ${sent} · Errores: ${errors}`,1
+                msg: `Enviados: ${sent} · Errores: ${errors}`,
             })
         } catch (e: any) {
             setFeedback({ kind: 'error', msg: e?.response?.data?.error || e.message })

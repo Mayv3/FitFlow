@@ -13,7 +13,7 @@ import { GenericModal } from '@/components/ui/modals/GenericModal';
 import { FormModal } from '@/components/ui/modals/FormModal';
 import { Member } from '@/models/Member/Member';
 import { getInputFieldsAlumnos, layoutAlumnos } from '@/const/inputs/alumnos';
-import { columnsMember } from '@/const/columns/members';
+import { columnsMember, normalizeArPhone } from '@/const/columns/members';
 import { estadoVencimiento } from '@/utils/date/dateUtils';
 import { ReactQueryDevtools } from '@tanstack/react-query-devtools';
 import { useChangeItem } from '@/hooks/changeItemCache/useChangeItem';
@@ -295,7 +295,7 @@ export default function MembersList() {
   const renderExpiredRow = (m: any) => {
     const dniKey = `${m.dni}_${m.fecha_de_vencimiento ?? 'sin-fecha'}`;
     const sent = waSent.has(dniKey);
-    const phone = (m.telefono ?? '').replace(/\D/g, '');
+    const phone = normalizeArPhone(m.telefono);
     const planNombre = m.plan_nombre ?? '—';
     const precio = m.plan_precio != null ? `$${m.plan_precio}` : 'consultar precio';
     const fv = m.fecha_de_vencimiento;

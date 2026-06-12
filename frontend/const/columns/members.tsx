@@ -14,7 +14,7 @@ import { StateCheap } from '@/components/ui/cheap/StateCheap';
 
 // Argentina: wa.me needs full international format 54 + 9 + area + number.
 // DB stores 10-digit local numbers (no country code, no leading 0, no 15).
-function normalizeArPhone(raw: string | null | undefined): string {
+export function normalizeArPhone(raw: string | null | undefined): string {
   // strip float artifacts ("3512358228.0") then keep digits only
   let digits = (raw ?? '').split('.')[0].replace(/\D/g, '');
   if (!digits) return '';

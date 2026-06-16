@@ -31,18 +31,21 @@ export function KpisRow() {
   const t = useTheme();
   const { borderRadius } = useGymThemeSettings();
 
-  // Otros KPIs: estado actual sin filtro
-  const { data, isLoading } = useKpis();
-
-  // KPI Facturación: mes+año propio
   const currentYear = new Date().getFullYear();
   const currentMonth = new Date().getMonth() + 1;
+
+  // Otros KPIs: snapshot actual + activos del mes (mismo dato que la torta de Facturación)
+  const { data, isLoading } = useKpis(currentYear, currentMonth);
+
+  // KPI Facturación: mes+año propio
   const [facYear, setFacYear] = useState(currentYear);
   const [facMonth, setFacMonth] = useState(currentMonth);
   const { data: facData, isLoading: facLoading } = useFacturacionMes(facYear, facMonth);
 
   const years = buildYearOptions();
   const kpis = data?.kpis;
+  const charts = data?.charts;
+  const alumnosActivos = charts?.activos ?? 0;
 
   const deltaColor = (pct: number | undefined) =>
     pct == null ? 'text.secondary' : pct > 0 ? 'success.main' : pct < 0 ? 'error.main' : 'text.secondary';
@@ -118,8 +121,8 @@ export function KpisRow() {
         <KpiCard
           title="Alumnos activos"
           loading={isLoading}
-          value={`${kpis?.alumnos_totales > 0 ? Math.round((kpis.alumnos_activos / kpis.alumnos_totales) * 100) : 0}%`}
-          subtitle={`(${kpis?.alumnos_activos ?? 0} de ${kpis?.alumnos_totales ?? 0} alumnos)`}
+          value={`${kpis?.alumnos_totales > 0 ? Math.round((alumnosActivos / kpis.alumnos_totales) * 100) : 0}%`}
+          subtitle={`(${alumnosActivos} de ${kpis?.alumnos_totales ?? 0} alumnos)`}
           borderRadius={borderRadius}
         />
       </div>

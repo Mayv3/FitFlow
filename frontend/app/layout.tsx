@@ -7,7 +7,6 @@ import 'react-toastify/dist/ReactToastify.css'
 import { ToastProvider } from '@/components/ui/toast/ToastProvider'
 import { ThemeProvider } from '../themeProvider/ThemeProvider'
 import { ReactQueryProvider } from '@/providers/ReactQueryProvider';
-import { GlobalCursor } from '@/components/animate-ui/GlobalCursor';
 import { LocalizationProviderClient } from '@/providers/LocalizationProviderClient';
 import { Quicksand, Roboto, Poppins, Montserrat } from "next/font/google"
 
@@ -52,7 +51,6 @@ export default function RootLayout({
                   <SubscriptionProvider>
                     {children}
                     <ToastProvider />
-                    <GlobalCursor />
                   </SubscriptionProvider>
                 </UserProvider>
               </ThemeProvider>

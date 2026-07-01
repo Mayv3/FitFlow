@@ -90,9 +90,9 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
           size={70}
           thickness={3}
           sx={{
-            color: '#0dc985',
+            color: '#16A34A',
             '& circle': {
-              stroke: '#0dc985 !important',
+              stroke: '#16A34A !important',
             }
           }}
         />

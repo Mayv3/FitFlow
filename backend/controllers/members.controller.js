@@ -143,7 +143,7 @@ export const removeAlumno = async (req, res) => {
     console.log('👤 Usuario del token:', {
       uid: decoded.sub,
       email: decoded.email,
-      gym_id: decoded.user_metadata?.gym_id,
+      gym_id: decoded.app_metadata?.gym_id,
     });
 
     const { before } = await deleteAlumno(req.params.dni, req.supa);

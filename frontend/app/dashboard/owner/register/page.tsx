@@ -49,7 +49,7 @@ export default function OwnerDashboardPage() {
         sx={{ 
           mb: 3, 
           p: 3, 
-          backgroundColor: "#0dc985",
+          backgroundColor: "#16A34A",
           borderRadius: 1.5,
         }}
       >

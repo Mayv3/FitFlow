@@ -15,8 +15,8 @@ export type GymSettings = {
 
 export const DEFAULT_SETTINGS: GymSettings = {
   colors: {
-    primary: "#0dc985",
-    secondary: "#4DB6AC",
+    primary: "#16A34A",
+    secondary: "#22C55E",
     background: "#F1F8F6",
     paper: "#FFFFFF",
     textPrimary: "#1A1A1A",

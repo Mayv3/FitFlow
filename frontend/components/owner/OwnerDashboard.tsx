@@ -192,7 +192,7 @@ export function OwnerDashboard() {
           p: 3,
           mb: 3,
           borderRadius: 2,
-          background: "linear-gradient(135deg,#0dc985 0%,#0aa56e 100%)",
+          background: "linear-gradient(135deg,#16A34A 0%,#0aa56e 100%)",
           color: "white",
         }}
       >
@@ -249,7 +249,7 @@ export function OwnerDashboard() {
             label="Gimnasios"
             value={stats.totalGyms}
             icon={<BusinessIcon />}
-            color="#0dc985"
+            color="#16A34A"
           />
         </Grid>
         <Grid item xs={6} md={3}>
@@ -355,7 +355,7 @@ export function OwnerDashboard() {
                   >
                     <CardContent>
                       <Stack direction="row" spacing={2} alignItems="center" mb={2}>
-                        <Avatar src={gym.logo_url || undefined} sx={{ bgcolor: "#0dc985" }}>
+                        <Avatar src={gym.logo_url || undefined} sx={{ bgcolor: "#16A34A" }}>
                           {gym.name[0]?.toUpperCase()}
                         </Avatar>
                         <Box flex={1} minWidth={0}>

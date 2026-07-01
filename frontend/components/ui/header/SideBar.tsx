@@ -53,13 +53,13 @@ function getFeatureFromRoute(route: string): string | null {
 }
 
 function readPrimary(): string {
-  if (typeof window === 'undefined') return '#0dc985'
+  if (typeof window === 'undefined') return '#16A34A'
   try {
     const raw = sessionStorage.getItem('gym_settings')
     const parsed = raw ? JSON.parse(raw) : null
-    return parsed?.colors?.primary || '#0dc985'
+    return parsed?.colors?.primary || '#16A34A'
   } catch {
-    return '#0dc985'
+    return '#16A34A'
   }
 }
 
@@ -236,7 +236,7 @@ export const SideBar = ({ tabs }: HeaderComponentProps) => {
             justifyContent: 'center',
           }}
         >
-          <Typography variant="subtitle1" fontWeight={800} textAlign='center' color="white" noWrap>
+          <Typography variant="subtitle1" fontWeight={700} textAlign='center' color="white" noWrap>
             {gym_name || 'Mi Gimnasio'}
           </Typography>
 

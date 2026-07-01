@@ -101,7 +101,7 @@ const CSS = `
   .lp-logo {
     display:flex; align-items:center; gap:.55rem;
     text-decoration:none;
-    font-family:'Quicksand',sans-serif; font-weight:800; font-size:1.35rem; color:var(--text);
+    font-family:'Quicksand',sans-serif; font-weight:700; font-size:1.35rem; color:var(--text);
   }
   .lp-logo-short { display:none; width:28px; height:28px; object-fit:contain; border-radius:0; }
   .lp-nav-icon { display:none; align-items:center; justify-content:center; }
@@ -168,7 +168,7 @@ const CSS = `
   .lp-h1 {
     font-family:'Quicksand',sans-serif;
     font-size: clamp(2.4rem, 4.2vw, 4rem);
-    font-weight:800; line-height:1.06; letter-spacing:-.035em;
+    font-weight:700; line-height:1.06; letter-spacing:-.035em;
     color:var(--text); margin-bottom:1.8rem;
   }
   .lp-h1 .hl { color:var(--br); }
@@ -224,7 +224,7 @@ const CSS = `
     border-radius:12px; padding:1.1rem 1.2rem;
   }
   .lp-dash-kpi-l { font-size:.68rem; color:var(--text2); text-transform:uppercase; letter-spacing:.07em; margin-bottom:.55rem; }
-  .lp-dash-kpi-v { font-family:'Quicksand',sans-serif; font-size:1.75rem; font-weight:800; color:var(--text); line-height:1; }
+  .lp-dash-kpi-v { font-family:'Quicksand',sans-serif; font-size:1.75rem; font-weight:700; color:var(--text); line-height:1; }
   .lp-dash-kpi-d { font-size:.68rem; color:var(--green); margin-top:.35rem; }
   .lp-dash-kpi-d.r { color:#F87171; }
   .lp-dash-chart { padding:.8rem 1.6rem 1.6rem; }
@@ -241,7 +241,7 @@ const CSS = `
   .lp-side-l { left:-1rem; animation:lp-float 7s ease-in-out infinite; }
   .lp-side-r { right:-1rem; animation:lp-float2 6s ease-in-out infinite; }
   .lp-side-label { font-size:.68rem; color:var(--text2); text-transform:uppercase; letter-spacing:.07em; margin-bottom:.65rem; }
-  .lp-side-val { font-family:'Quicksand',sans-serif; font-size:1.75rem; font-weight:800; color:var(--text); line-height:1; margin-bottom:.4rem; }
+  .lp-side-val { font-family:'Quicksand',sans-serif; font-size:1.75rem; font-weight:700; color:var(--text); line-height:1; margin-bottom:.4rem; }
   .lp-side-sub { font-size:.7rem; color:var(--text2); }
   .lp-side-chip { display:inline-flex; align-items:center; gap:.25rem; padding:.18rem .55rem; border-radius:999px; font-size:.62rem; font-weight:600; margin-top:.5rem; }
   .lp-side-chip.ok  { background:rgba(34,197,94,.12); color:var(--br); }
@@ -268,14 +268,14 @@ const CSS = `
   .lp-stat { padding:2.8rem 2rem; text-align:center; border-right:1px solid var(--line); opacity:0; transform:translateY(16px); transition:opacity .6s ease,transform .6s ease; }
   .lp-stat:last-child { border-right:none; }
   .lp-stat.in { opacity:1; transform:translateY(0); }
-  .lp-stat-n { display:block; font-family:'Quicksand',sans-serif; font-size:2.6rem; font-weight:800; color:var(--br); line-height:1; margin-bottom:.45rem; }
+  .lp-stat-n { display:block; font-family:'Quicksand',sans-serif; font-size:2.6rem; font-weight:700; color:var(--br); line-height:1; margin-bottom:.45rem; }
   .lp-stat-l { font-size:.88rem; color:var(--text2); }
 
   /* SECTIONS */
   .lp-section { padding:7rem 5rem; max-width:1360px; margin:0 auto; }
   .lp-head { text-align:center; margin-bottom:4.5rem; }
   .lp-tag { display:inline-block; padding:.28rem .9rem; background:var(--glow); border:1px solid var(--bgreen); border-radius:999px; font-size:.75rem; font-weight:600; color:var(--green); letter-spacing:.08em; text-transform:uppercase; margin-bottom:1.1rem; }
-  .lp-stitle { font-family:'Quicksand',sans-serif; font-size:clamp(1.9rem,3.5vw,2.9rem); font-weight:800; line-height:1.12; letter-spacing:-.025em; margin-bottom:.9rem; }
+  .lp-stitle { font-family:'Quicksand',sans-serif; font-size:clamp(1.9rem,3.5vw,2.9rem); font-weight:700; line-height:1.12; letter-spacing:-.025em; margin-bottom:.9rem; }
   .lp-sdesc { font-size:1rem; color:var(--text2); max-width:520px; margin:0 auto; line-height:1.75; }
 
   /* FEAT GRID — bento */
@@ -304,7 +304,7 @@ const CSS = `
   .lp-bc-title {
     font-family:'Quicksand',sans-serif;
     font-size:clamp(1.25rem,1.8vw,1.65rem);
-    font-weight:800; line-height:1.15; letter-spacing:-.02em;
+    font-weight:700; line-height:1.15; letter-spacing:-.02em;
     color:var(--text); margin-top:.9rem;
   }
   .lp-bc-top { display:flex; align-items:center; justify-content:space-between; gap:1rem; margin-bottom:.85rem; }
@@ -383,7 +383,7 @@ const CSS = `
   .lp-sc.flip .lp-sc-vis { transform:translateX(-28px); }
   .lp-sc-vis.in { opacity:1; transform:translateX(0); }
   .lp-sc-text .lp-tag { margin-bottom:1.1rem; }
-  .lp-sc-text h2 { font-family:'Quicksand',sans-serif; font-size:clamp(2.2rem,3.4vw,3rem); font-weight:800; line-height:1.1; letter-spacing:-.025em; margin-bottom:1.4rem; }
+  .lp-sc-text h2 { font-family:'Quicksand',sans-serif; font-size:clamp(2.2rem,3.4vw,3rem); font-weight:700; line-height:1.1; letter-spacing:-.025em; margin-bottom:1.4rem; }
   .lp-sc-text p { font-size:1.35rem; color:var(--text2); line-height:1.8; margin-bottom:2rem; }
   .lp-list { list-style:none; display:flex; flex-direction:column; gap:1rem; }
   .lp-list li { display:flex; align-items:flex-start; gap:.8rem; font-size:1.2rem; color:var(--text2); }
@@ -463,17 +463,17 @@ const CSS = `
   .lp-phone-bar { width:60px; height:4px; background:rgba(255,255,255,.1); border-radius:999px; }
   .lp-pi { padding:1.1rem; display:flex; flex-direction:column; gap:.75rem; }
   .lp-ph { padding-bottom:.9rem; border-bottom:1px solid rgba(255,255,255,.07); }
-  .lp-ph-gym  { font-family:'Quicksand',sans-serif; font-size:1rem; font-weight:800; color:var(--green); }
+  .lp-ph-gym  { font-family:'Quicksand',sans-serif; font-size:1rem; font-weight:700; color:var(--green); }
   .lp-ph-user { font-size:.85rem; font-weight:700; color:var(--text); margin-top:.2rem; }
   /* plan card */
   .lp-pcard { background:#161f2e; border:1px solid rgba(255,255,255,.08); border-radius:14px; padding:.9rem 1rem; }
   .lp-pcard-label { font-size:.6rem; color:var(--text3); text-transform:uppercase; letter-spacing:.08em; margin-bottom:.35rem; }
-  .lp-pcard-name { font-family:'Quicksand',sans-serif; font-size:1.05rem; font-weight:800; color:var(--green); }
+  .lp-pcard-name { font-family:'Quicksand',sans-serif; font-size:1.05rem; font-weight:700; color:var(--green); }
   .lp-pcard-price { font-size:.75rem; color:var(--text2); margin-top:.2rem; }
   /* membership status */
   .lp-mcard { background:#161f2e; border:1px solid rgba(255,255,255,.08); border-radius:14px; padding:.9rem 1rem; }
   .lp-mcard-label { font-size:.6rem; color:var(--text3); text-transform:uppercase; letter-spacing:.08em; margin-bottom:.3rem; }
-  .lp-mcard-days { font-family:'Quicksand',sans-serif; font-size:1.5rem; font-weight:800; color:var(--text); line-height:1.1; }
+  .lp-mcard-days { font-family:'Quicksand',sans-serif; font-size:1.5rem; font-weight:700; color:var(--text); line-height:1.1; }
   .lp-mcard-exp { font-size:.7rem; color:var(--text2); margin-top:.2rem; margin-bottom:.6rem; }
   .lp-mbar-wrap { background:rgba(255,255,255,.08); border-radius:999px; height:5px; width:100%; margin-bottom:.55rem; }
   .lp-mbar { background:var(--green); height:5px; border-radius:999px; width:72%; }
@@ -481,7 +481,7 @@ const CSS = `
   /* classes card */
   .lp-clcard { background:#161f2e; border:1px solid rgba(255,255,255,.08); border-radius:14px; padding:.9rem 1rem; }
   .lp-clcard-label { font-size:.6rem; color:var(--text3); text-transform:uppercase; letter-spacing:.08em; margin-bottom:.3rem; }
-  .lp-clcard-num { font-family:'Quicksand',sans-serif; font-size:1.5rem; font-weight:800; color:var(--text); }
+  .lp-clcard-num { font-family:'Quicksand',sans-serif; font-size:1.5rem; font-weight:700; color:var(--text); }
   .lp-clcard-sub { font-size:.7rem; color:var(--text2); margin-top:.1rem; margin-bottom:.6rem; }
   .lp-clbar-wrap { background:rgba(255,255,255,.08); border-radius:999px; height:5px; width:100%; margin-bottom:.55rem; }
   .lp-clbar { background:rgba(255,255,255,.25); height:5px; border-radius:999px; width:100%; }
@@ -489,7 +489,7 @@ const CSS = `
   /* CTA */
   .lp-cta { padding:7rem 5rem; text-align:center; position:relative; overflow:hidden; }
   .lp-cta::before { content:''; position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); width:700px; height:500px; background:radial-gradient(ellipse,rgba(34,197,94,.09) 0%,transparent 70%); pointer-events:none; }
-  .lp-cta h2 { font-family:'Quicksand',sans-serif; font-size:clamp(2.3rem,5vw,3.8rem); font-weight:800; line-height:1.1; letter-spacing:-.03em; margin-bottom:1.1rem; }
+  .lp-cta h2 { font-family:'Quicksand',sans-serif; font-size:clamp(2.3rem,5vw,3.8rem); font-weight:700; line-height:1.1; letter-spacing:-.03em; margin-bottom:1.1rem; }
   .lp-cta p { font-size:1.05rem; color:var(--text2); max-width:480px; margin:0 auto 2.4rem; }
 
   /* FOOTER */
@@ -733,7 +733,7 @@ export default function LandingPage() {
         <div className="lp-hero-inner">
           {/* text block */}
           <div className="lp-hero-text">
-            <div className="lp-pill"><span className="lp-pill-dot" />Software para Gimnasios</div>
+            <div className="lp-pill">Software para Gimnasios</div>
             <h1 className="lp-h1">
               Gestioná tu gimnasio<br />desde un <span className="hl">solo lugar</span>
             </h1>
@@ -772,8 +772,8 @@ export default function LandingPage() {
                 <svg viewBox="0 0 132 130" style={{width:'100%',height:'130px',display:'block'}} preserveAspectRatio="none">
                   <defs>
                     <linearGradient id="hg" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="0%" stopColor="#FF6A00" stopOpacity="0.9"/>
-                      <stop offset="100%" stopColor="#FF2D55" stopOpacity="0.6"/>
+                      <stop offset="0%" stopColor="#22C55E" stopOpacity="0.95"/>
+                      <stop offset="100%" stopColor="#16A34A" stopOpacity="0.65"/>
                     </linearGradient>
                   </defs>
                   {[.5,.56,.53,.68,.76,.71,.80,.73,.87,.95,.85,1.0].map((h,i) => (
@@ -1024,8 +1024,8 @@ export default function LandingPage() {
                 <BarChart data={BAR_DATA} margin={{ top: 4, right: 8, bottom: 0, left: 0 }} barCategoryGap={6}>
                   <defs>
                     <linearGradient id="lp-revenue-grad" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="0%"   stopColor="#FF6A00" />
-                      <stop offset="100%" stopColor="#FF2D55" />
+                      <stop offset="0%"   stopColor="#22C55E" />
+                      <stop offset="100%" stopColor="#16A34A" />
                     </linearGradient>
                     {DONUT_GRADS.map(([c1, c2], i) => (
                       <linearGradient key={i} id={`lp-dg-${i}`} x1="0" y1="0" x2="1" y2="1">

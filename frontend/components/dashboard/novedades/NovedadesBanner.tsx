@@ -79,7 +79,7 @@ const tipoMeta: Record<string, { label: string; icon: React.ReactNode }> = {
 export default function NovedadesModal() {
   const [open, setOpen] = useState(false);
   const [novedades, setNovedades] = useState<Novedad[]>([]);
-  const [primaryColor, setPrimaryColor] = useState('#0dc985');
+  const [primaryColor, setPrimaryColor] = useState('#16A34A');
   const cardRefs = useRef<(HTMLDivElement | null)[]>([]);
 
   useEffect(() => {

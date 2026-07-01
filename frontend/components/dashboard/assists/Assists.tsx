@@ -415,7 +415,7 @@ export default function Assists() {
                             )}
                         </Box>
                     </Zoom>
-                    <Typography variant="h4" fontWeight={800} sx={{ color: 'white', mt: 0.5 }}>
+                    <Typography variant="h4" fontWeight={700} sx={{ color: 'white', mt: 0.5 }}>
                         {(dleft === null || dleft > 0) && clasesOk ? '¡Bienvenido!' : 'Acceso Denegado'}
                     </Typography>
                     <Typography variant="h6" fontWeight={600} sx={{ color: 'rgba(255,255,255,0.88)' }}>
@@ -517,7 +517,7 @@ export default function Assists() {
                             <WarningAmberIcon sx={{ fontSize: 80, color: 'white' }} />
                         </Box>
                     </Zoom>
-                    <Typography variant="h4" fontWeight={800} sx={{ color: 'white', mt: 0.5 }}>
+                    <Typography variant="h4" fontWeight={700} sx={{ color: 'white', mt: 0.5 }}>
                         Ya asistió hoy
                     </Typography>
                     <Typography variant="h6" fontWeight={600} sx={{ color: 'rgba(255,255,255,0.88)' }}>
@@ -544,7 +544,7 @@ export default function Assists() {
                             <Typography variant="caption" color="text.secondary" fontWeight={600} display="block">
                                 Hora de ingreso
                             </Typography>
-                            <Typography variant="h5" fontWeight={800} sx={{ color: theme.palette.warning.dark }}>
+                            <Typography variant="h5" fontWeight={700} sx={{ color: theme.palette.warning.dark }}>
                                 {alreadyInfo?.hora} hs
                             </Typography>
                         </Box>
@@ -602,7 +602,7 @@ export default function Assists() {
                             <CancelIcon sx={{ fontSize: 80, color: 'white' }} />
                         </Box>
                     </Zoom>
-                    <Typography variant="h5" fontWeight={800} sx={{ color: 'white', mt: 0.5, textAlign: 'center' }}>
+                    <Typography variant="h5" fontWeight={700} sx={{ color: 'white', mt: 0.5, textAlign: 'center' }}>
                         {errorModalMsg}
                     </Typography>
                 </Box>

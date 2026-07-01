@@ -83,7 +83,7 @@ export function GymDetailDrawer({ gym, open, onClose }: Props) {
         <Box sx={{ display: "flex", flexDirection: "column", height: "100%" }}>
           <Box sx={{ p: 2, borderBottom: 1, borderColor: "divider" }}>
             <Stack direction="row" alignItems="center" spacing={2}>
-              <Avatar src={gym.logo_url || undefined} sx={{ bgcolor: "#0dc985" }}>
+              <Avatar src={gym.logo_url || undefined} sx={{ bgcolor: "#16A34A" }}>
                 {gym.name[0]?.toUpperCase()}
               </Avatar>
               <Box flex={1}>
@@ -508,7 +508,7 @@ function UsersTab({ gym }: { gym: Gym }) {
               gap: 2,
             }}
           >
-            <Avatar sx={{ bgcolor: "#0dc985" }}>{u.name?.[0]?.toUpperCase() || "?"}</Avatar>
+            <Avatar sx={{ bgcolor: "#16A34A" }}>{u.name?.[0]?.toUpperCase() || "?"}</Avatar>
             <Box flex={1}>
               <Typography fontWeight={600}>{u.name}</Typography>
               <Typography variant="caption" color="text.secondary">

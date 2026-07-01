@@ -902,7 +902,7 @@ export default function GymPanelPage() {
 
                                             <Typography
                                                 variant="h5"
-                                                fontWeight={800}
+                                                fontWeight={700}
                                                 sx={{ lineHeight: 1.1 }}
                                             >
                                                 ${planItem.precio?.toLocaleString()}

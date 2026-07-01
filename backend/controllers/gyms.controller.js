@@ -54,7 +54,7 @@ export async function handleGetGym(req, res) {
 
 export const handleUpdateGymSettings = async (req, res) => {
   try {
-    const gymId = req.user.user_metadata.gym_id;
+    const gymId = req.user.app_metadata.gym_id;
     const settings = req.body
 
     console.log(settings)

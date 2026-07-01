@@ -19,9 +19,9 @@ export const Loading = ({ message = 'Cargando...' }: { message?: string }) => {
         size={50}
         thickness={4}
         sx={{
-          color: '#0dc985',
+          color: '#16A34A',
           '& circle': {
-            stroke: '#0dc985 !important',
+            stroke: '#16A34A !important',
           }
         }}
       />

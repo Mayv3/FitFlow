@@ -3,7 +3,7 @@
 
 export function requireRole(...allowedRoles) {
   return (req, res, next) => {
-    const roleId = Number(req.user?.user_metadata?.role_id)
+    const roleId = Number(req.user?.app_metadata?.role_id)
     if (!roleId || !allowedRoles.includes(roleId)) {
       return res.status(403).json({ error: 'Acceso denegado: rol insuficiente' })
     }

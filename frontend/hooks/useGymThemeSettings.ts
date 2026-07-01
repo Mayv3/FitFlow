@@ -19,7 +19,7 @@ export interface GymThemeSettings {
 
 export function useGymThemeSettings() {
   const [borderRadius, setBorderRadius] = useState<number>(1.5);
-  const [primaryColor, setPrimaryColor] = useState<string>('#FF6A00');
+  const [primaryColor, setPrimaryColor] = useState<string>('#16A34A');
 
   useEffect(() => {
     try {

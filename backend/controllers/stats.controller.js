@@ -75,7 +75,7 @@ export async function getPaymentsStatsController(req, res) {
 
 export async function getKpis(req, res) {
   try {
-    const gymId = req.user?.user_metadata?.gym_id;
+    const gymId = req.user?.app_metadata?.gym_id;
     if (!gymId) {
       return res.status(400).json({ error: "Falta gym_id" });
     }
@@ -116,7 +116,7 @@ export async function getKpis(req, res) {
 
 export async function getActiveMembersPaymentDetailsController(req, res) {
   try {
-    const gymId = req.user?.user_metadata?.gym_id;
+    const gymId = req.user?.app_metadata?.gym_id;
     if (!gymId) return res.status(400).json({ error: "Falta gym_id" });
 
     const year = req.query.year ? Number(req.query.year) : new Date().getFullYear();
@@ -136,7 +136,7 @@ export async function getActiveMembersPaymentDetailsController(req, res) {
 
 export async function getAbandonosDetailsController(req, res) {
   try {
-    const gymId = req.user?.user_metadata?.gym_id;
+    const gymId = req.user?.app_metadata?.gym_id;
     if (!gymId) return res.status(400).json({ error: "Falta gym_id" });
 
     const year = req.query.year ? Number(req.query.year) : new Date().getFullYear();
@@ -156,7 +156,7 @@ export async function getAbandonosDetailsController(req, res) {
 
 export async function getAltasDetailsController(req, res) {
   try {
-    const gymId = req.user?.user_metadata?.gym_id;
+    const gymId = req.user?.app_metadata?.gym_id;
     if (!gymId) return res.status(400).json({ error: "Falta gym_id" });
 
     const year = req.query.year ? Number(req.query.year) : new Date().getFullYear();
@@ -176,7 +176,7 @@ export async function getAltasDetailsController(req, res) {
 
 export async function getDemografiaStatsController(req, res) {
   try {
-    const gymId = req.user?.user_metadata?.gym_id;
+    const gymId = req.user?.app_metadata?.gym_id;
 
     if (!gymId) {
       return res.status(400).json({ error: "Falta gym_id" });
@@ -219,7 +219,7 @@ export async function getDemografiaStatsController(req, res) {
 
 export async function getPlanesStatsController(req, res) {
   try {
-    const gymId = req.user?.user_metadata?.gym_id;
+    const gymId = req.user?.app_metadata?.gym_id;
 
     if (!gymId) {
       return res.status(400).json({ error: "Falta gym_id" });
@@ -324,7 +324,7 @@ export const getAlumnosPorOrigenController = async (req, res) => {
 // Facturación por plan: solo el card de facturación (no afecta top5 ni alumnos)
 export async function getFacturacionPorPlanController(req, res) {
   try {
-    const gymId = req.user?.user_metadata?.gym_id;
+    const gymId = req.user?.app_metadata?.gym_id;
     if (!gymId) return res.status(400).json({ error: 'Falta gym_id' });
 
     const now = new Date();
@@ -347,7 +347,7 @@ export async function getFacturacionPorPlanController(req, res) {
 // KPI Facturación: mes específico vs mes anterior
 export async function getFacturacionMesController(req, res) {
   try {
-    const gymId = req.user?.user_metadata?.gym_id;
+    const gymId = req.user?.app_metadata?.gym_id;
     if (!gymId) return res.status(400).json({ error: 'Falta gym_id' });
 
     const now = new Date();

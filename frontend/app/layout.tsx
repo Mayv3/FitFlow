@@ -16,7 +16,7 @@ export const montserrat = Montserrat({ subsets: ["latin"], weight: ['300', '400'
 
 const quicksand = Quicksand({
   subsets: ['latin'],
-  weight: ['300', '400', '500'],
+  weight: ['300', '400', '500', '600', '700'],
   variable: '--font-quicksand',
 })
 

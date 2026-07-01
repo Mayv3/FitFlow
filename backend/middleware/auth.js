@@ -17,7 +17,7 @@ export async function verifyToken(req, res, next) {
   const cached = await cache.get(cacheKey)
   if (cached) {
     req.user = cached
-    req.gymId = cached.user_metadata?.gym_id
+    req.gymId = cached.app_metadata?.gym_id
     return next()
   }
 
@@ -33,6 +33,6 @@ export async function verifyToken(req, res, next) {
   await cache.set(cacheKey, user, TOKEN_TTL)
 
   req.user = user
-  req.gymId = user.user_metadata?.gym_id
+  req.gymId = user.app_metadata?.gym_id
   next()
 }

@@ -29,7 +29,7 @@ export default function AdminLayout({
         padding: '1rem',
         marginBottom: isDesktop ? '0px' : '60px',
         marginLeft: isDesktop ? '80px' : '0px',
-        width: isDesktop ? '20px' : '100%'
+        width: isDesktop ? 'auto' : '100%'
       }}>
         <NovedadesModal />
         {children}

@@ -164,7 +164,7 @@ export function TodayEmailsBox() {
                 >
                   <Avatar
                     src={g.gym_logo || undefined}
-                    sx={{ bgcolor: "#0dc985", width: 36, height: 36 }}
+                    sx={{ bgcolor: "#16A34A", width: 36, height: 36 }}
                   >
                     {g.gym_nombre[0]?.toUpperCase()}
                   </Avatar>

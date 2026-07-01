@@ -22,7 +22,7 @@ export const createAppointment = async (req, res) => {
     try {
         const values = {
             ...req.body,
-            gym_id: req.user.user_metadata.gym_id,
+            gym_id: req.user.app_metadata.gym_id,
         }
 
         const data = await appointmentService.createAppointment(req.supa, values)

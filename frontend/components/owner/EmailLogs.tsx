@@ -138,7 +138,7 @@ export function EmailLogs({ gymId, hideHeader = false }: EmailLogsProps = {}) {
           <Accordion key={g.gym_id} disableGutters sx={{ mb: 1 }}>
             <AccordionSummary expandIcon={<ExpandMoreIcon />}>
               <Stack direction="row" alignItems="center" spacing={2} sx={{ width: "100%" }}>
-                <Avatar src={g.gym_logo || undefined} sx={{ bgcolor: "#0dc985" }}>
+                <Avatar src={g.gym_logo || undefined} sx={{ bgcolor: "#16A34A" }}>
                   {g.gym_nombre[0]?.toUpperCase()}
                 </Avatar>
                 <Box flex={1}>

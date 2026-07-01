@@ -175,7 +175,7 @@ export default function NovedadesList() {
 
                 <Box sx={{ mb: 5, display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 1 }}>
                     <Box>
-                        <Typography variant="h4" fontWeight={800} color={primaryColor} gutterBottom>
+                        <Typography variant="h4" fontWeight={700} color={primaryColor} gutterBottom>
                             Novedades
                         </Typography>
                         <Typography color="text.secondary">
@@ -322,7 +322,7 @@ export default function NovedadesList() {
 
                                         <Typography
                                             variant="h6"
-                                            fontWeight={800}
+                                            fontWeight={700}
                                             color={primaryColor}
                                             sx={{
                                                 lineHeight: 1.6,
@@ -502,7 +502,7 @@ export default function NovedadesList() {
                                         <Typography
                                             variant="h4"
                                             marginBottom={4}
-                                            fontWeight={800}
+                                            fontWeight={700}
                                             color={getTipoColor(selectedNovedad.tipo, theme)}
                                         >
                                             {selectedNovedad.titulo}

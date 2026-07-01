@@ -118,7 +118,7 @@ io.on('connection', async (socket) => {
     const { data: { user }, error } = await supabaseAdmin.auth.getUser(token)
     if (error || !user) return
 
-    const gymId = user.user_metadata?.gym_id
+    const gymId = user.app_metadata?.gym_id
     if (typeof gymId === 'string' && gymId) {
       socket.join(`gym:${gymId}`)
     }

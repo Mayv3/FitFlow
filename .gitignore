@@ -20,3 +20,5 @@ frontend/test-results/
 backend/sql/
 
 env
+security-pendientes.md
+memory.md

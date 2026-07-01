@@ -56,10 +56,18 @@ export async function restoreGym(gymId) {
   return data
 }
 
+// Whitelist de columnas editables — evita mass-assignment (id/deleted_at nunca por acá)
+const GYM_UPDATABLE_COLUMNS = ['name', 'logo_url', 'settings', 'whatsapp_enabled']
+
 export async function updateGym(gymId, updates) {
+  const safeUpdates = {}
+  for (const col of GYM_UPDATABLE_COLUMNS) {
+    if (Object.prototype.hasOwnProperty.call(updates, col)) safeUpdates[col] = updates[col]
+  }
+
   const { data, error } = await supabaseAdmin
     .from('gyms')
-    .update(updates)
+    .update(safeUpdates)
     .eq('id', gymId)
     .select('id, name, logo_url, settings')
     .single()

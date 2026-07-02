@@ -144,6 +144,29 @@ export async function postTriggerAll(req, res) {
   }
 }
 
+export async function getDryRunAll(req, res) {
+  try {
+    const result = await triggerAllGyms({ simulate: true })
+    const gyms = result.map((r) => {
+      const would_send = (r.results || [])
+        .filter((m) => m.status === 'simulated')
+        .map((m) => ({ alumno_id: m.alumno_id, jid: m.jid, text: m.text }))
+      return {
+        gym_id: r.gym_id,
+        gym_name: r.gym_name,
+        session: r.admin_jid ?? null,
+        status: r.status,
+        count: would_send.length,
+        would_send,
+        skipped: r.skipped ?? 0,
+      }
+    })
+    res.json({ ok: true, total_would_send: gyms.reduce((s, g) => s + g.would_send.length, 0), gyms })
+  } catch (e) {
+    res.status(500).json({ error: e.message })
+  }
+}
+
 export async function patchConfig(req, res) {
   const { gymId } = req.params
   if (!assertGymAccess(req, gymId)) return res.status(403).json({ error: 'forbidden' })

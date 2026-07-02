@@ -12,7 +12,6 @@ import {
     Chip,
     Alert,
     CircularProgress,
-    Avatar,
     Divider,
     Dialog,
     DialogTitle,
@@ -22,10 +21,7 @@ import {
 } from "@mui/material"
 import WarningAmberIcon from '@mui/icons-material/WarningAmber'
 import WhatsAppIcon from '@mui/icons-material/WhatsApp'
-import SendIcon from '@mui/icons-material/Send'
-import GroupsIcon from '@mui/icons-material/Groups'
 import LogoutIcon from '@mui/icons-material/Logout'
-import RocketLaunchIcon from '@mui/icons-material/RocketLaunch'
 import { api } from "@/lib/api"
 import { WhatsappHistory } from "./WhatsappHistory"
 
@@ -82,8 +78,6 @@ export function WhatsappSettings() {
     const [loading, setLoading] = useState(true)
     const [busy, setBusy] = useState<string | null>(null)
     const [feedback, setFeedback] = useState<{ kind: 'success' | 'error' | 'info'; msg: string } | null>(null)
-    const [simResult, setSimResult] = useState<any | null>(null)
-    const [confirmTrigger, setConfirmTrigger] = useState(false)
     const [confirmDisconnect, setConfirmDisconnect] = useState(false)
     const pollRef = useRef<NodeJS.Timeout | null>(null)
     const templateRef = useRef<HTMLTextAreaElement | null>(null)
@@ -160,45 +154,6 @@ export function WhatsappSettings() {
         } finally { setBusy(null) }
     }
 
-    async function sendTestOwner() {
-        if (!adminJid) return
-        setBusy('test')
-        try {
-            await api.post(`/api/whatsapp/gyms/${gymId}/test`, {
-                jid: adminJid,
-                text: '✅ Prueba desde FitFlow — WhatsApp conectado correctamente.',
-            })
-            setFeedback({ kind: 'success', msg: 'Mensaje de prueba enviado' })
-        } catch (e: any) {
-            setFeedback({ kind: 'error', msg: e?.response?.data?.error || e.message })
-        } finally { setBusy(null) }
-    }
-
-    async function simulateAlumnos() {
-        setBusy('simulate'); setSimResult(null)
-        try {
-            const { data } = await api.post(`/api/whatsapp/gyms/${gymId}/simulate`)
-            setSimResult(data)
-        } catch (e: any) {
-            setFeedback({ kind: 'error', msg: e?.response?.data?.error || e.message })
-        } finally { setBusy(null) }
-    }
-
-    async function triggerNow() {
-        setConfirmTrigger(false)
-        setBusy('trigger'); setSimResult(null)
-        try {
-            const { data } = await api.post(`/api/whatsapp/gyms/${gymId}/trigger`)
-            const sent = data?.sent ?? 0, errors = data?.errors ?? 0, skipped = data?.skipped ?? 0
-            setFeedback({
-                kind: errors > 0 ? 'error' : (sent > 0 ? 'success' : 'info'),
-                msg: `Enviados: ${sent} · Errores: ${errors}`,
-            })
-        } catch (e: any) {
-            setFeedback({ kind: 'error', msg: e?.response?.data?.error || e.message })
-        } finally { setBusy(null) }
-    }
-
     function insertVariable(v: string) {
         const ta = templateRef.current
         if (!ta) {
@@ -219,11 +174,6 @@ export function WhatsappSettings() {
     const isConnected = state.status === 'connected'
     const phoneLabel = useMemo(() => formatPhone(adminJid), [adminJid])
     const statusInfo = STATUS_MAP[state.status]
-    // Solo lo que se mandaría AHORA (alumnos nuevos); el backend ya excluye los ya enviados.
-    const simPreview = useMemo(
-        () => (simResult?.results || []).filter((r: any) => r.status === 'simulated'),
-        [simResult]
-    )
 
     if (loading) {
         return (
@@ -356,42 +306,6 @@ export function WhatsappSettings() {
                                 </Typography>
                             </Box>
 
-                            <Divider />
-
-                            <Box>
-                                <Stack direction={{ xs: 'column', md: 'row' }} spacing={1}>
-                                    <Button
-                                        variant="outlined"
-                                        color="success"
-                                        startIcon={<SendIcon />}
-                                        onClick={sendTestOwner}
-                                        disabled={busy === 'test'}
-                                        fullWidth
-                                    >
-                                        Probar a mi WhatsApp
-                                    </Button>
-                                    <Button
-                                        variant="outlined"
-                                        color="success"
-                                        startIcon={<GroupsIcon />}
-                                        onClick={simulateAlumnos}
-                                        disabled={busy === 'simulate'}
-                                        fullWidth
-                                    >
-                                        Simular envío
-                                    </Button>
-                                    <Button
-                                        variant="contained"
-                                        color="warning"
-                                        startIcon={<RocketLaunchIcon />}
-                                        onClick={() => setConfirmTrigger(true)}
-                                        disabled={busy === 'trigger'}
-                                        fullWidth
-                                    >
-                                        Enviar ahora
-                                    </Button>
-                                </Stack>
-                            </Box>
                         </Box>
 
                         {/* Columna derecha: editor plantilla */}
@@ -458,85 +372,10 @@ export function WhatsappSettings() {
                                 </Button>
                             </Box>
 
-                            {simResult && simPreview.length > 0 && (
-                                <Box sx={{
-                                    mt: 1,
-                                    p: 2,
-                                    borderRadius: 1,
-                                    bgcolor: (theme) => theme.palette.mode === 'dark' ? 'rgba(255,255,255,0.04)' : 'grey.50',
-                                    border: (theme) => `1px solid ${theme.palette.divider}`,
-                                }}>
-                                    <Typography variant="caption" color="text.secondary">
-                                        Se enviarían ahora — {simPreview.length} alumno(s){simPreview.length > 2 ? ' (mostrando 2)' : ''}:
-                                    </Typography>
-                                    <Stack spacing={1} sx={{ mt: 1 }}>
-                                        {simPreview.slice(0, 2).map((r: any, i: number) => (
-                                            <Box key={i} sx={{
-                                                p: 1.2,
-                                                borderRadius: 1,
-                                                bgcolor: 'background.paper',
-                                                border: (theme) => `1px solid ${theme.palette.divider}`,
-                                            }}>
-                                                <Typography variant="caption" color="text.secondary" display="block">
-                                                    → {r.jid?.split('@')[0]}
-                                                </Typography>
-                                                <Typography variant="body2" sx={{ whiteSpace: 'pre-wrap', color: 'text.primary' }}>
-                                                    {r.text}
-                                                </Typography>
-                                            </Box>
-                                        ))}
-                                        {simPreview.length > 2 && (
-                                            <Typography variant="caption" color="text.secondary" sx={{ textAlign: 'center', pt: 0.5, display: 'block' }}>
-                                                + {simPreview.length - 2} más
-                                            </Typography>
-                                        )}
-                                    </Stack>
-                                </Box>
-                            )}
-                            {simResult && simPreview.length === 0 && (
-                                <Alert severity="info">
-                                    {simResult.skipped > 0
-                                        ? 'Todos los alumnos del rango ya recibieron el recordatorio. No hay nada nuevo para enviar.'
-                                        : 'Ningún alumno vence en el rango configurado.'}
-                                </Alert>
-                            )}
                         </Box>
                     </Box>
                 )}
             </Box>
-
-            <Dialog
-                open={confirmTrigger}
-                onClose={() => setConfirmTrigger(false)}
-                maxWidth="xs"
-                fullWidth
-            >
-                <DialogTitle sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                    <WarningAmberIcon color="warning" />
-                    Confirmar envío
-                </DialogTitle>
-                <DialogContent>
-                    <DialogContentText>
-                        Se enviarán mensajes <strong>reales</strong> de WhatsApp a los alumnos que vencen hoy o exactamente dentro de {reminderDays} día{reminderDays === 1 ? '' : 's'} (no los días intermedios).
-                    </DialogContentText>
-                    <DialogContentText sx={{ mt: 1.5 }}>
-                        Esta acción no se puede deshacer. ¿Continuar?
-                    </DialogContentText>
-                </DialogContent>
-                <DialogActions sx={{ px: 3, pb: 2 }}>
-                    <Button onClick={() => setConfirmTrigger(false)} color="inherit">
-                        Cancelar
-                    </Button>
-                    <Button
-                        onClick={triggerNow}
-                        variant="contained"
-                        color="warning"
-                        startIcon={<RocketLaunchIcon />}
-                    >
-                        Enviar ahora
-                    </Button>
-                </DialogActions>
-            </Dialog>
 
             <Dialog
                 open={confirmDisconnect}

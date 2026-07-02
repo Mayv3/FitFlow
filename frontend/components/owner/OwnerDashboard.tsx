@@ -50,6 +50,7 @@ import { ManageGymPlans } from "@/components/owner/ManageGymPlans"
 import { ManageNovedades } from "@/components/owner/ManageNovedades"
 import { CommsHistory } from "@/components/owner/CommsHistory"
 import { GymStatsSection } from "@/components/owner/GymStatsSection"
+import { WaDryRun } from "@/components/owner/WaDryRun"
 
 type GymCardData = {
   gym: Gym
@@ -129,6 +130,7 @@ export function OwnerDashboard() {
   const [plansOpen, setPlansOpen] = useState(false)
   const [novedadesOpen, setNovedadesOpen] = useState(false)
   const [deletedOpen, setDeletedOpen] = useState(false)
+  const [dryRunOpen, setDryRunOpen] = useState(false)
 
   useEffect(() => {
     ;(async () => {
@@ -456,9 +458,17 @@ export function OwnerDashboard() {
         <Paper sx={{ p: { xs: 2, md: 3 }, borderRadius: 2, flex: 1, minWidth: 0 }}>
           <Stack direction="row" spacing={1.5} alignItems="center" mb={2}>
             <WhatsAppIcon sx={{ color: "#25D366" }} />
-            <Typography variant="h6" fontWeight={700}>
+            <Typography variant="h6" fontWeight={700} flex={1}>
               WhatsApp enviados
             </Typography>
+            <Button
+              size="small"
+              variant="outlined"
+              onClick={() => setDryRunOpen(true)}
+              sx={{ borderColor: "#25D366", color: "#25D366", whiteSpace: "nowrap" }}
+            >
+              Simular envío
+            </Button>
           </Stack>
           <CommsHistory channel="whatsapp" />
         </Paper>
@@ -475,6 +485,18 @@ export function OwnerDashboard() {
       </Box>
 
       {/* DRAWERS / MODALS */}
+      <Dialog open={dryRunOpen} onClose={() => setDryRunOpen(false)} maxWidth="md" fullWidth>
+        <DialogTitle sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", pr: 1 }}>
+          Simulación de envíos WhatsApp
+          <IconButton onClick={() => setDryRunOpen(false)} size="small">
+            <CloseIcon />
+          </IconButton>
+        </DialogTitle>
+        <DialogContent dividers>
+          <WaDryRun />
+        </DialogContent>
+      </Dialog>
+
       <GymDetailDrawer
         gym={selectedGym}
         open={!!selectedGym}

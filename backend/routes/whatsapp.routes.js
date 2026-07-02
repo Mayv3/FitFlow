@@ -10,6 +10,7 @@ import {
   postSimulate,
   postTriggerGym,
   postTriggerAll,
+  getDryRunAll,
   getMensajes,
   getMensajesCalendar,
   getOwnerMensajes,
@@ -21,6 +22,7 @@ const router = express.Router()
 
 // Cron público con header secret
 router.post('/trigger-all', postTriggerAll)
+router.get('/dry-run-all', verifyToken, requireRole(1), getDryRunAll)
 
 // Owner: mensajes de WhatsApp de todos los gimnasios (rol OWNER = 1)
 router.get('/owner/mensajes', verifyToken, requireRole(1), getOwnerMensajes)

@@ -185,7 +185,7 @@ export async function procesarRecordatorios(gymId, { simulate = false } = {}) {
     await sleep(cfg.delayMs)
   }
 
-  return { gym_id: gymId, status: 'ok', sent, errors, skipped, pending, total: alumnos.length, results }
+  return { gym_id: gymId, gym_name: cfg.gym.name ?? null, admin_jid: cfg.adminJid, status: 'ok', sent, errors, skipped, pending, total: alumnos.length, results }
 }
 
 export async function triggerAllGyms({ simulate = false } = {}) {

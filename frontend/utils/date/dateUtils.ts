@@ -33,7 +33,7 @@ export const estadoVencimiento = (
   if (!fecha) return { label: 'Sin plan', code: 'none', daysDiff: null };
 
   const hoy = moment.tz(TZ).startOf('day');
-  const vence = moment.tz(fecha, TZ).endOf('day');
+  const vence = moment.tz(fecha, TZ).startOf('day');
   const diff = vence.diff(hoy, 'days');
 
   if (vence.isBefore(hoy.clone().subtract(INACTIVE_MONTHS, 'month'))) {

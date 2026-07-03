@@ -1,8 +1,6 @@
 import { supabaseAdmin } from '../config/supabaseClient.js';
 
 export const loginByDniAndGym = async (dni, gymId) => {
-    console.log(`[loginByDniAndGym] Buscando alumno con DNI ${dni} en gym ${gymId}`);
-
     const { data, error } = await supabaseAdmin
         .from('alumnos')
         .select(`
@@ -32,8 +30,6 @@ export const loginByDniAndGym = async (dni, gymId) => {
 };
 
 export const getAlumnoCompleteInfo = async (dni, gymId) => {
-    console.log(`[getAlumnoCompleteInfo] Obteniendo info completa del alumno con DNI ${dni} en gym ${gymId}`);
-
     const { data: alumno, error: alumnoError } = await supabaseAdmin
         .from('alumnos')
         .select(`

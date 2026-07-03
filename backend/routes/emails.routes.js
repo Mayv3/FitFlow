@@ -18,7 +18,6 @@ const router = express.Router()
  */
 router.post('/preview-vencimientos', async (req, res) => {
   try {
-    console.log('🔍 Iniciando preview de vencimientos...')
     const gymIds = (req.body && req.body.gymIds) ? req.body.gymIds : []
     const resultado = await enviarEmailsPorVencer({ previewOnly: true, gymIds })
     res.json({ 
@@ -40,7 +39,6 @@ router.post('/preview-vencimientos', async (req, res) => {
  */
 router.post('/enviar-vencimientos', async (req, res) => {
   try {
-    console.log('📧 Iniciando envío de vencimientos...')
     const gymIds = (req.body && req.body.gymIds) ? req.body.gymIds : []
     await enviarEmailsPorVencer({ previewOnly: false, gymIds })
     res.json({ 
@@ -60,7 +58,6 @@ router.post('/enviar-vencimientos', async (req, res) => {
  */
 router.post('/prueba-plantillas', async (req, res) => {
   try {
-    console.log('🎨 Enviando plantillas de prueba...')
     await enviarPruebaPlantillas()
     res.json({ 
       success: true, 
@@ -83,7 +80,6 @@ router.post('/prueba-plantillas', async (req, res) => {
  */
 router.get('/preview-vencimiento-gym-plans', async (req, res) => {
   try {
-    console.log('🔍 Iniciando preview de vencimiento de gym plans...')
     const resultado = await previewVencimientoGymPlans()
     res.json({
       success: true,
@@ -104,7 +100,6 @@ router.get('/preview-vencimiento-gym-plans', async (req, res) => {
  */
 router.post('/enviar-vencimiento-gym-plans', async (req, res) => {
   try {
-    console.log('📧 Iniciando envío de vencimiento de gym plans...')
     const resultado = await enviarEmailsVencimientoGymPlans()
     res.json({
       success: true,
@@ -124,7 +119,6 @@ router.post('/enviar-vencimiento-gym-plans', async (req, res) => {
  */
 router.post('/test-vencimiento-gym-plan', async (req, res) => {
   try {
-    console.log('🧪 Enviando test de vencimiento de gym plan...')
     const resultado = await enviarTestVencimientoGymPlan()
     res.json({
       success: true,

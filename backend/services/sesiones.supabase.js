@@ -9,8 +9,6 @@ const supabase = supabaseAdmin;
 // ==================== SESIONES ====================
 
 export async function getSesionesByClase(claseId) {
-  console.log(`[getSesionesByClase] Buscando sesiones para clase_id: ${claseId}`);
-
   // 1) Traer sesiones
   const { data: sesiones, error: sesionesError } = await supabase
     .from("clases_sesiones")
@@ -24,8 +22,6 @@ export async function getSesionesByClase(claseId) {
 
   const result = await Promise.all(
     sesiones.map(async (sesion) => {
-      console.log(`\n[getSesionesByClase] === Procesando sesión ${sesion.id} ===`);
-
       // 2) Traer inscripciones
       const { data: inscripciones, error: insError } = await supabase
         .from("clases_inscripciones")
@@ -61,8 +57,6 @@ export async function getSesionesByClase(claseId) {
         .in("id", alumnoIds);
 
       if (alumnosError) throw alumnosError;
-
-      console.log("[getSesionesByClase] Alumnos encontrados en BD:", alumnosDb);
 
       // 4) Crear un mapa para acceso rápido
       const alumnosMap = new Map(

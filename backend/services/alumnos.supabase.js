@@ -48,16 +48,11 @@ export async function getAlumnoByDNI(dni, supaClient) {
 }
 
 export async function getAlumnoById(id) {
-  console.log(`[getAlumnoById] Buscando alumno con id: ${id}`);
-
   const { data, error } = await supabase
     .from('alumnos')
     .select('id, nombre, dni, email')
     .eq('id', id)
     .maybeSingle();
-
-  console.log(`[getAlumnoById] Resultado para id ${id}:`, data);
-  console.log(`[getAlumnoById] Error:`, error);
 
   if (error) {
     console.error(`[getAlumnoById] Error obteniendo alumno:`, error);

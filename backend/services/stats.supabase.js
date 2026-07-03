@@ -210,7 +210,6 @@ export async function fetchKpis(gymId) {
 
 
 export async function getDashboardData({ gymId }) {
-  console.log('Data fetcheada')
   const { data: kpis, error: errorKpis } = await supabaseAdmin
     .from("mv_dashboard_kpis")
     .select("*")

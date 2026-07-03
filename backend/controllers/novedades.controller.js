@@ -48,7 +48,6 @@ export const getNovedadById = async (req, res) => {
   try {
     const { id } = req.params
 
-    console.log(`Received getNovedadById request for id: ${id}`)
 
     const novedad = await getNovedadByIdSvc({
       supa: req.supa,
@@ -73,14 +72,6 @@ export const createNovedad = async (req, res) => {
   try {
     const { titulo, descripcion, tipo, activo, fecha_publicacion, imagen_url } = req.body
 
-    console.log('Received createNovedad request with data:', {
-      titulo,
-      descripcion,
-      tipo,
-      activo,
-      fecha_publicacion,
-      imagen_url
-    })
 
     if (!titulo || titulo.trim() === '') {
       return res.status(400).json({ message: 'El título es obligatorio' })
@@ -123,7 +114,6 @@ export const updateNovedad = async (req, res) => {
     const { id } = req.params
     const { titulo, descripcion, tipo, activo, fecha_publicacion, imagen_url } = req.body
 
-    console.log(`Received updateNovedad request for id: ${id} with data:`, req.body)
 
     if (!titulo || titulo.trim() === '') {
       return res.status(400).json({ message: 'El título es obligatorio' })
@@ -170,7 +160,6 @@ export const deleteNovedad = async (req, res) => {
   try {
     const { id } = req.params
 
-    console.log(`Received deleteNovedad request for id: ${id}`)
 
     const novedad = await deleteNovedadSvc({
       supa: req.supa,
@@ -197,7 +186,6 @@ export const toggleActivoNovedad = async (req, res) => {
     const { id } = req.params
     const { activo } = req.body
 
-    console.log(`Received toggleActivoNovedad request for id: ${id}, activo: ${activo}`)
 
     if (activo === undefined) {
       return res.status(400).json({ message: 'El campo activo es obligatorio' })
@@ -229,7 +217,6 @@ export const updateOrdenNovedad = async (req, res) => {
     const { id } = req.params
     const { orden } = req.body
 
-    console.log(`Received updateOrdenNovedad request for id: ${id}, orden: ${orden}`)
 
     if (orden === undefined) {
       return res.status(400).json({ message: 'El campo orden es obligatorio' })

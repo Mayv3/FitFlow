@@ -41,7 +41,6 @@ export async function handleListAlumnosByGym(req, res) {
 }
 
 export const getAlumno = async (req, res) => {
-  console.log('🔑 JWT metadata:', req.user?.user_metadata);
   try {
     const alumno = await getAlumnoByDNI(req.params.dni, req.supa)
     if (!alumno) {
@@ -138,13 +137,6 @@ export const removeAlumno = async (req, res) => {
       console.warn('⚠️ Token inválido o no decodificable');
       return res.status(401).json({ error: 'Token inválido o corrupto' });
     }
-
-    console.log('🧾 Token recibido en DELETE:', token.slice(0, 25) + '...');
-    console.log('👤 Usuario del token:', {
-      uid: decoded.sub,
-      email: decoded.email,
-      gym_id: decoded.app_metadata?.gym_id,
-    });
 
     const { before } = await deleteAlumno(req.params.dni, req.supa);
 

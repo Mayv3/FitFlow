@@ -39,7 +39,6 @@ function isValidEmail(email = '') {
 async function sendBrevoEmail({ to, subject, text, html }) {
   // Validar que el email exista
   if (!to || typeof to !== 'string') {
-    console.log(`⚠️ Email faltante o inválido`)
     return
   }
 
@@ -47,13 +46,11 @@ async function sendBrevoEmail({ to, subject, text, html }) {
   const emailLower = String(to).trim().toLowerCase()
   
   if (!isValidEmail(emailLower)) {
-    console.log(`⚠️ Email inválido: ${to}`)
     return
   }
   
   // Ignorar emails de prueba
   if (EMAILS_IGNORADOS.includes(emailLower)) {
-    console.log(`⏭️ Email ignorado (prueba): ${emailLower}`)
     return
   }
 
@@ -79,8 +76,6 @@ async function sendBrevoEmail({ to, subject, text, html }) {
     const err = await res.text()
     throw new Error(`Brevo API error: ${res.status} - ${err}`)
   }
-
-  console.log(`📧 Enviado a ${emailLower}`)
 }
 
 function plantillaVenceHoy(nombre, gymLogo, gymColor, gymName) {
@@ -180,8 +175,6 @@ export async function enviarEmailsPorVencer({ previewOnly = true, gymIds = [] } 
   const hoyStr = hoy.format('YYYY-MM-DD')
   const tresDiasStr = hoy.add(3, 'day').format('YYYY-MM-DD')
 
-  console.log(`📅 Buscando alumnos con vencimiento HOY (${hoyStr}) o en 3 días (${tresDiasStr})...`)
-
   let gymsQuery = supabase.from('gyms').select('id,name,logo_url,settings')
   
   if (gymIds?.length) {
@@ -192,11 +185,8 @@ export async function enviarEmailsPorVencer({ previewOnly = true, gymIds = [] } 
   if (gymsError) throw gymsError
 
   if (!gyms || gyms.length === 0) {
-    console.log('📭 No hay gimnasios disponibles.')
     return
   }
-
-  console.log(`\n🏋️ Procesando ${gyms.length} gimnasio(s)...\n`)
 
   let query = supabase
     .from('alumnos')
@@ -210,7 +200,6 @@ export async function enviarEmailsPorVencer({ previewOnly = true, gymIds = [] } 
   const alumnosFiltrados = data?.filter(a => !EMAILS_IGNORADOS.includes(a.email?.toLowerCase())) || []
 
   if (!alumnosFiltrados.length) {
-    console.log('📭 No hay alumnos para enviar recordatorios.')
     return
   }
 
@@ -290,7 +279,6 @@ export async function enviarEmailsPorVencer({ previewOnly = true, gymIds = [] } 
     
     // Validar que el alumno tenga email
     if (!email) {
-      console.log(`⚠️ Alumno sin email: ${nombre || 'Sin nombre'} (ID: ${alumno.id})`)
       continue
     }
     
@@ -335,12 +323,9 @@ export async function enviarEmailsPorVencer({ previewOnly = true, gymIds = [] } 
     }
   }
 
-  console.log('✅ Proceso de envío finalizado.')
-
   // Reconcilia con Brevo por si algún logGymEmail falló o Brevo aceptó algo no logueado
   try {
-    const r = await backfillBrevoLogs({})
-    console.log(`🔄 Backfill post-envío: +${r.insertados} log(s)`)
+    await backfillBrevoLogs({})
   } catch (e) {
     console.error('⚠️ Backfill post-envío falló:', e.message)
   }
@@ -352,8 +337,6 @@ export async function enviarPruebaPlantillas() {
   const subjectHoy = '📅 ¡Tu plan vence hoy!'
   const subjectTres = '⚠️ Tu plan vence en 3 días'
 
-  console.log('🚀 Enviando prueba de las dos plantillas a tu email personal...')
-
   const htmlHoy = plantillaVenceHoy(nombre)
   const textHoy = `${subjectHoy}\n\nPrueba de visualización de la plantilla de vencimiento HOY.\n\n— ${BRAND_NAME}`
   await sendBrevoEmail({ to, subject: subjectHoy, text: textHoy, html: htmlHoy })
@@ -361,8 +344,6 @@ export async function enviarPruebaPlantillas() {
   const htmlTres = plantillaVenceEnTres(nombre)
   const textTres = `${subjectTres}\n\nPrueba de visualización de la plantilla de vencimiento en 3 días.\n\n— ${BRAND_NAME}`
   await sendBrevoEmail({ to, subject: subjectTres, text: textTres, html: htmlTres })
-
-  console.log('✅ Correos de prueba enviados a tu cuenta personal.')
 }
 
 // ===================================================================
@@ -626,11 +607,8 @@ export async function enviarEmailsVencimientoGymPlans() {
   const todos = [...vencidos, ...proximosAVencer]
 
   if (todos.length === 0) {
-    console.log('📭 No hay gimnasios con planes vencidos o por vencer.')
     return { enviados: 0, mensaje: 'No hay gimnasios con planes vencidos o por vencer.' }
   }
-
-  console.log(`📧 Enviando ${todos.length} email(s) de vencimiento...`)
 
   let enviados = 0
   let errores = 0
@@ -645,7 +623,6 @@ export async function enviarEmailsVencimientoGymPlans() {
     const emailAdmin = await getGymAdminEmail(s.gym_id)
 
     if (!emailAdmin) {
-      console.log(`⚠️ No se encontró email de administrador para ${gymName} (gym_id: ${s.gym_id})`)
       sinEmail++
       detalle.push({
         gym: gymName,
@@ -679,7 +656,6 @@ export async function enviarEmailsVencimientoGymPlans() {
 
     try {
       await sendBrevoEmail({ to: emailAdmin, subject, text, html })
-      console.log(`   📧 → ${emailAdmin} (${gymName})`)
       enviados++
       detalle.push({
         gym: gymName,
@@ -721,8 +697,6 @@ export async function enviarEmailsVencimientoGymPlans() {
       })
     }
   }
-
-  console.log(`✅ Envío finalizado. Enviados: ${enviados} | Errores: ${errores} | Sin email: ${sinEmail}`)
 
   return {
     enviados,
@@ -870,7 +844,6 @@ export async function backfillBrevoLogs({ fecha = null } = {}) {
     offset += limit
   }
 
-  console.log(`✅ Backfill ${dia}: insertados=${insertados} saltados=${saltados} sin_gym=${sinGym}`)
   return { fecha: dia, insertados, saltados, sin_gym: sinGym }
 }
 
@@ -890,9 +863,7 @@ export async function enviarTestVencimientoGymPlan() {
   })
   const text = 'Este es un email de prueba para verificar la plantilla de vencimiento de plan de gimnasio.\n\n— Fitness Flow'
 
-  console.log(`🧪 Enviando test de vencimiento a ${TEST_EMAIL}...`)
   await sendBrevoEmail({ to: TEST_EMAIL, subject, text, html })
-  console.log(`✅ Test enviado a ${TEST_EMAIL}`)
 
   return { enviado: true, email: TEST_EMAIL }
 }

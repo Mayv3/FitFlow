@@ -7,7 +7,6 @@ import { supabase } from '../config/supabaseClient.js'
  */
 
 async function batchLoadAlumnos(dnis) {
-  console.log('▶️ batchLoadAlumnos con estos DNIs:', dnis);
   const { data: alumnos, error } = await supabase
     .from('alumnos')
     .select('*')

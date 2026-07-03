@@ -57,9 +57,6 @@ export const handleUpdateGymSettings = async (req, res) => {
     const gymId = req.user.app_metadata.gym_id;
     const settings = req.body
 
-    console.log(settings)
-    console.log(gymId)
-
     if (!gymId) {
       return res.status(400).json({ error: "No se encontró gym_id en el token" })
     }

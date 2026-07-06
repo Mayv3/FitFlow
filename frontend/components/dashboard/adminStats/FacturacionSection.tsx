@@ -533,7 +533,7 @@ export function FacturacionSection() {
                       content={<BillingTooltip />}
                     />
 
-                    <Bar dataKey="facturacion" fill="url(#revenueGrad)" radius={[8, 8, 0, 0]} barSize={barSize} onClick={handleBarClick} style={{ cursor: 'pointer' }} />
+                    <Bar dataKey="facturacion" fill={primaryColor} radius={[8, 8, 0, 0]} barSize={barSize} onClick={handleBarClick} style={{ cursor: 'pointer' }} />
 
                   </BarChart>
                 </ResponsiveContainer>

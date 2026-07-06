@@ -60,7 +60,7 @@ export function PlanesSection() {
   const { data: facData, isLoading: facLoading } = useFacturacionPorPlan(facYear, facMonth);
   const t = useTheme();
   const isMobile = useMediaQuery(t.breakpoints.down('sm'));
-  const { borderRadius } = useGymThemeSettings();
+  const { borderRadius, primaryColor } = useGymThemeSettings();
 
   const cardSx = {
     borderRadius: borderRadius,
@@ -296,7 +296,7 @@ export function PlanesSection() {
                   <Bar
                     dataKey="value"
                     radius={[8, 8, 0, 0]}
-                    fill="url(#barGradient)"
+                    fill={primaryColor}
                   />
                 </BarChart>
               </ResponsiveContainer>
@@ -385,7 +385,7 @@ export function PlanesSection() {
                   <Bar
                     dataKey="actual"
                     radius={[0, 8, 8, 0]}
-                    fill="url(#barGradient)"
+                    fill={primaryColor}
                   />
                 </BarChart>
               </ResponsiveContainer>

@@ -19,6 +19,7 @@ import WhatsAppIcon from "@mui/icons-material/WhatsApp"
 import ExpandMoreIcon from "@mui/icons-material/ExpandMore"
 import ExpandLessIcon from "@mui/icons-material/ExpandLess"
 import PlayArrowIcon from "@mui/icons-material/PlayArrow"
+import DataObjectIcon from "@mui/icons-material/DataObject"
 
 const GREEN = "#25D366"
 
@@ -123,6 +124,7 @@ export function WaDryRun() {
   const [loading, setLoading] = useState(false)
   const [result, setResult] = useState<DryRunResult | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const [showJson, setShowJson] = useState(false)
 
   async function run() {
     setLoading(true)
@@ -179,7 +181,37 @@ export function WaDryRun() {
               label={`${result.gyms.length} gimnasio${result.gyms.length !== 1 ? "s" : ""} evaluados`}
               variant="outlined"
             />
+            <Button
+              size="small"
+              variant="outlined"
+              startIcon={<DataObjectIcon />}
+              onClick={() => setShowJson((v) => !v)}
+              sx={{ ml: "auto" }}
+            >
+              {showJson ? "Ocultar JSON" : "Ver JSON"}
+            </Button>
           </Box>
+
+          <Collapse in={showJson}>
+            <Box
+              component="pre"
+              sx={{
+                p: 1.5,
+                mb: 2,
+                borderRadius: 1,
+                fontSize: 12,
+                lineHeight: 1.5,
+                overflow: "auto",
+                maxHeight: 400,
+                bgcolor: (t) => (t.palette.mode === "dark" ? "rgba(255,255,255,0.04)" : "grey.900"),
+                color: (t) => (t.palette.mode === "dark" ? "grey.300" : "grey.100"),
+                border: (t) => `1px solid ${t.palette.divider}`,
+                fontFamily: "monospace",
+              }}
+            >
+              {JSON.stringify(result, null, 2)}
+            </Box>
+          </Collapse>
 
           <Divider sx={{ mb: 2 }} />
 

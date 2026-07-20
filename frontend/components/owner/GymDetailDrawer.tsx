@@ -291,7 +291,9 @@ function SubscriptionTab({ gym }: { gym: Gym }) {
         ? new Date(currentSub.end_at)
         : new Date()
     const next = new Date(base)
-    next.setMonth(next.getMonth() + 1)
+    // +1 mes, pero fijar al día 1 del mes siguiente
+    next.setMonth(next.getMonth() + 1, 1)
+    next.setHours(12, 0, 0, 0)
     const nextStr = next.toISOString().split("T")[0]
     try {
       await updateSub.mutateAsync({

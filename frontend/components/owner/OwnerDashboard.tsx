@@ -10,13 +10,9 @@ import {
   Stack,
   TextField,
   InputAdornment,
-  Card,
-  CardActionArea,
-  CardContent,
   Avatar,
   Chip,
   CircularProgress,
-  Grid,
   Dialog,
   DialogTitle,
   DialogContent,
@@ -27,7 +23,7 @@ import AddIcon from "@mui/icons-material/Add"
 import SearchIcon from "@mui/icons-material/Search"
 import BusinessIcon from "@mui/icons-material/Business"
 import GroupIcon from "@mui/icons-material/Group"
-import WarningIcon from "@mui/icons-material/Warning"
+import WarningAmberIcon from "@mui/icons-material/WarningAmber"
 import EmailIcon from "@mui/icons-material/Email"
 import WhatsAppIcon from "@mui/icons-material/WhatsApp"
 import InsightsIcon from "@mui/icons-material/Insights"
@@ -36,6 +32,7 @@ import AnnouncementIcon from "@mui/icons-material/Announcement"
 import RestoreIcon from "@mui/icons-material/Restore"
 import CloseIcon from "@mui/icons-material/Close"
 import AutorenewIcon from "@mui/icons-material/Autorenew"
+import CheckCircleIcon from "@mui/icons-material/CheckCircle"
 
 import { Gym, useGyms, useDeletedGyms, useRestoreGym } from "@/hooks/gyms/useGyms"
 import {
@@ -52,45 +49,103 @@ import { CommsHistory } from "@/components/owner/CommsHistory"
 import { GymStatsSection } from "@/components/owner/GymStatsSection"
 import { WaDryRun } from "@/components/owner/WaDryRun"
 
+const GREEN = "#16A34A"
+
+/* Estado WhatsApp de un gym:
+   - "activado": módulo on + número cargado (admin_jid)
+   - "habilitado": módulo on pero sin número
+   - "off": módulo deshabilitado */
+type WaState = "activado" | "habilitado" | "off"
+function waStatus(gym: Gym): WaState {
+  const s = gym.settings || {}
+  if (!s.whatsapp_module_enabled) return "off"
+  return s.whatsapp?.admin_jid ? "activado" : "habilitado"
+}
+
+const WA_META: Record<WaState, { label: string; full: string; sx: object }> = {
+  activado: {
+    label: "Activado",
+    full: "WhatsApp habilitado y activado",
+    sx: { bgcolor: "#25D366", color: "#fff", "& .MuiChip-icon": { color: "#fff" } },
+  },
+  habilitado: {
+    label: "Habilitado",
+    full: "WhatsApp habilitado, sin número",
+    sx: { borderColor: "#25D366", color: "#128C7E", "& .MuiChip-icon": { color: "#25D366" } },
+  },
+  off: {
+    label: "No hab.",
+    full: "WhatsApp no habilitado",
+    sx: { color: "text.disabled", "& .MuiChip-icon": { color: "text.disabled" } },
+  },
+}
+
+function WaChip({ gym }: { gym: Gym }) {
+  const state = waStatus(gym)
+  const meta = WA_META[state]
+  return (
+    <Tooltip title={meta.full}>
+      <Chip
+        icon={<WhatsAppIcon />}
+        label={meta.label}
+        size="small"
+        variant={state === "activado" ? "filled" : "outlined"}
+        sx={{ fontWeight: 600, ...meta.sx }}
+      />
+    </Tooltip>
+  )
+}
+
 type GymCardData = {
   gym: Gym
   subscription: Suscription | null
   alumnosCount: number
 }
 
-const getPlanBadgeSx = (planName?: string | null) => {
-  if (!planName) return {}
-  const n = planName.toLowerCase()
-  if (n.includes("max")) return { bgcolor: "#ec4899", color: "white" }
-  if (n.includes("enterprise")) return { bgcolor: "#7c3aed", color: "white" }
-  if (n.includes("premium")) return { bgcolor: "#f59e0b", color: "white" }
-  return {}
-}
-
-function StatCard({
-  label,
-  value,
-  icon,
-  color = "primary.main",
+/* ---------- Tira de métricas compacta ---------- */
+function StatStrip({
+  items,
 }: {
-  label: string
-  value: number | string
-  icon: React.ReactNode
-  color?: string
+  items: { label: string; value: number | string; color: string; icon: React.ReactNode }[]
 }) {
   return (
-    <Paper variant="outlined" sx={{ p: 2, borderRadius: 2 }}>
-      <Stack direction="row" spacing={2} alignItems="center">
-        <Avatar sx={{ bgcolor: color, width: 44, height: 44 }}>{icon}</Avatar>
-        <Box>
-          <Typography variant="caption" color="text.secondary">
-            {label}
-          </Typography>
-          <Typography variant="h5" fontWeight={700}>
-            {value}
-          </Typography>
-        </Box>
-      </Stack>
+    <Paper
+      variant="outlined"
+      sx={{
+        borderRadius: 2,
+        overflow: "hidden",
+        display: "grid",
+        gridTemplateColumns: { xs: "1fr 1fr", sm: "repeat(4, 1fr)" },
+      }}
+    >
+      {items.map((it, i) => (
+        <Stack
+          key={it.label}
+          direction="row"
+          spacing={1.25}
+          alignItems="center"
+          sx={{
+            p: { xs: 1.5, sm: 1.75 },
+            minWidth: 0,
+            borderColor: "divider",
+            // divisores: vertical entre columnas, horizontal en fila 1 (solo xs)
+            borderRight: { xs: i % 2 === 0 ? 1 : 0, sm: i < 3 ? 1 : 0 },
+            borderBottom: { xs: i < 2 ? 1 : 0, sm: 0 },
+          }}
+        >
+          <Avatar variant="rounded" sx={{ bgcolor: `${it.color}1A`, color: it.color, width: 34, height: 34, flexShrink: 0 }}>
+            {it.icon}
+          </Avatar>
+          <Box minWidth={0}>
+            <Typography variant="h6" fontWeight={800} lineHeight={1.1}>
+              {it.value}
+            </Typography>
+            <Typography variant="caption" color="text.secondary" noWrap sx={{ display: "block" }}>
+              {it.label}
+            </Typography>
+          </Box>
+        </Stack>
+      ))}
     </Paper>
   )
 }
@@ -109,7 +164,8 @@ export function OwnerDashboard() {
         ? new Date(sub.end_at)
         : new Date()
     const next = new Date(base)
-    next.setMonth(next.getMonth() + 1)
+    // +1 mes, pero fijar al día 1 del mes siguiente
+    next.setMonth(next.getMonth() + 1, 1)
     next.setHours(12, 0, 0, 0)
     setRenewingId(sub.id)
     try {
@@ -186,107 +242,82 @@ export function OwnerDashboard() {
   const loading = loadingGyms || loadingSubs
 
   return (
-    <Box>
-      {/* HEADER */}
-      <Paper
-        elevation={0}
-        sx={{
-          p: 3,
-          mb: 3,
-          borderRadius: 2,
-          background: "linear-gradient(135deg,#16A34A 0%,#0aa56e 100%)",
-          color: "white",
-        }}
-      >
-        <Stack
-          direction={{ xs: "column", md: "row" }}
-          alignItems={{ md: "center" }}
-          justifyContent="space-between"
-          spacing={2}
-        >
-          <Box>
-            <Typography variant="h4" fontWeight={700}>
-              Panel Owner
-            </Typography>
-            <Typography variant="body2" sx={{ opacity: 0.9 }}>
-              Gestioná gimnasios, suscripciones, planes y comunicaciones desde acá.
-            </Typography>
-          </Box>
-          <Stack direction="row" spacing={1} flexWrap="wrap">
-            <Button
-              variant="contained"
-              color="inherit"
-              startIcon={<AddIcon />}
-              onClick={() => setCreateOpen(true)}
-              sx={{ color: "#0aa56e", bgcolor: "white", fontWeight: 600 }}
-            >
-              Crear gimnasio
-            </Button>
-            <Button
-              variant="outlined"
-              color="inherit"
-              startIcon={<CardMembershipIcon />}
-              onClick={() => setPlansOpen(true)}
-              sx={{ borderColor: "white", color: "white" }}
-            >
-              Planes
-            </Button>
-            <Button
-              variant="outlined"
-              color="inherit"
-              startIcon={<AnnouncementIcon />}
-              onClick={() => setNovedadesOpen(true)}
-              sx={{ borderColor: "white", color: "white" }}
-            >
-              Novedades
-            </Button>
-          </Stack>
-        </Stack>
-      </Paper>
-
-      {/* STATS */}
-      <Grid container spacing={2} sx={{ mb: 3 }}>
-        <Grid item xs={6} md={3}>
-          <StatCard
-            label="Gimnasios"
-            value={stats.totalGyms}
-            icon={<BusinessIcon />}
-            color="#16A34A"
-          />
-        </Grid>
-        <Grid item xs={6} md={3}>
-          <StatCard
-            label="Suscripciones activas"
-            value={stats.activas}
-            icon={<CardMembershipIcon />}
-            color="#3b82f6"
-          />
-        </Grid>
-        <Grid item xs={6} md={3}>
-          <StatCard
-            label="Por vencer (7 días)"
-            value={stats.porVencer}
-            icon={<WarningIcon />}
-            color="#f59e0b"
-          />
-        </Grid>
-        <Grid item xs={6} md={3}>
-          <StatCard
-            label="Vencidas"
-            value={stats.vencidas}
-            icon={<WarningIcon />}
-            color="#ef4444"
-          />
-        </Grid>
-      </Grid>
-
-      {/* SEARCH + DELETED */}
+    <Box sx={{ maxWidth: 1200, mx: "auto" }}>
+      {/* HEADER — barra fina */}
       <Stack
         direction={{ xs: "column", sm: "row" }}
-        spacing={2}
         alignItems={{ sm: "center" }}
         justifyContent="space-between"
-        mb={2}
+        spacing={1.5}
+        mb={2.5}
+      >
+        <Stack direction="row" spacing={1.5} alignItems="center">
+          <Avatar variant="rounded" sx={{ bgcolor: GREEN, width: 38, height: 38 }}>
+            <BusinessIcon fontSize="small" />
+          </Avatar>
+          <Box>
+            <Typography variant="h6" fontWeight={800} lineHeight={1.1}>
+              Panel Owner
+            </Typography>
+            <Typography variant="caption" color="text.secondary">
+              {stats.totalGyms} gimnasios · {stats.activas} activos
+            </Typography>
+          </Box>
+        </Stack>
+
+        <Stack direction="row" spacing={1} sx={{ width: { xs: "100%", sm: "auto" } }}>
+          <Button
+            variant="contained"
+            size="small"
+            disableElevation
+            startIcon={<AddIcon />}
+            onClick={() => setCreateOpen(true)}
+            sx={{ bgcolor: GREEN, "&:hover": { bgcolor: "#128a3d" }, flex: { xs: 1, sm: "none" }, whiteSpace: "nowrap" }}
+          >
+            Crear
+          </Button>
+          <Button
+            size="small"
+            variant="outlined"
+            color="inherit"
+            startIcon={<CardMembershipIcon />}
+            onClick={() => setPlansOpen(true)}
+            sx={{ flex: { xs: 1, sm: "none" } }}
+          >
+            Planes
+          </Button>
+          <Button
+            size="small"
+            variant="outlined"
+            color="inherit"
+            startIcon={<AnnouncementIcon />}
+            onClick={() => setNovedadesOpen(true)}
+            sx={{ flex: { xs: 1, sm: "none" } }}
+          >
+            Novedades
+          </Button>
+        </Stack>
+      </Stack>
+
+      {/* STATS — tira compacta */}
+      <Box mb={2.5}>
+        <StatStrip
+          items={[
+            { label: "Gimnasios", value: stats.totalGyms, color: GREEN, icon: <BusinessIcon fontSize="small" /> },
+            { label: "Suscripciones activas", value: stats.activas, color: "#3b82f6", icon: <CheckCircleIcon fontSize="small" /> },
+            { label: "Por vencer (7 días)", value: stats.porVencer, color: "#f59e0b", icon: <WarningAmberIcon fontSize="small" /> },
+            { label: "Vencidas", value: stats.vencidas, color: "#ef4444", icon: <WarningAmberIcon fontSize="small" /> },
+          ]}
+        />
+      </Box>
+
+      {/* TOOLBAR */}
+      <Stack
+        direction={{ xs: "column", sm: "row" }}
+        spacing={1.5}
+        alignItems={{ sm: "center" }}
+        justifyContent="space-between"
+        mb={1.5}
       >
         <TextField
           size="small"
@@ -300,19 +331,14 @@ export function OwnerDashboard() {
               </InputAdornment>
             ),
           }}
-          sx={{ minWidth: { sm: 320 } }}
+          sx={{ minWidth: { sm: 300 } }}
         />
-        <Button
-          variant="outlined"
-          color="error"
-          size="small"
-          onClick={() => setDeletedOpen(true)}
-        >
+        <Button variant="text" color="inherit" size="small" startIcon={<RestoreIcon fontSize="small" />} onClick={() => setDeletedOpen(true)}>
           Eliminados {deletedGyms.length > 0 && `(${deletedGyms.length})`}
         </Button>
       </Stack>
 
-      {/* GYM GRID */}
+      {/* GYM LIST — filas densas */}
       {loading ? (
         <Box display="flex" justifyContent="center" py={6}>
           <CircularProgress />
@@ -320,168 +346,49 @@ export function OwnerDashboard() {
       ) : cards.length === 0 ? (
         <Paper variant="outlined" sx={{ p: 4, textAlign: "center", borderRadius: 2 }}>
           <Typography color="text.secondary">
-            {gyms.length === 0
-              ? "Aún no hay gimnasios. Creá el primero."
-              : "Ningún gimnasio coincide con la búsqueda."}
+            {gyms.length === 0 ? "Aún no hay gimnasios. Creá el primero." : "Ningún gimnasio coincide con la búsqueda."}
           </Typography>
         </Paper>
       ) : (
-        <Grid container spacing={2}>
-          {cards.map(({ gym, subscription, alumnosCount }) => {
-            const isExpired =
-              subscription?.end_at && new Date(subscription.end_at).getTime() < Date.now()
-            const isExpiringSoon =
-              !isExpired &&
-              subscription?.end_at &&
-              new Date(subscription.end_at).getTime() <=
-                Date.now() + 7 * 24 * 60 * 60 * 1000
-
-            return (
-              <Grid item xs={12} sm={6} md={4} lg={3} key={gym.id}>
-                <Card
-                  variant="outlined"
-                  sx={{
-                    borderRadius: 2,
-                    height: "100%",
-                    transition: "transform .15s, box-shadow .15s",
-                    "&:hover": {
-                      transform: "translateY(-2px)",
-                      boxShadow: 3,
-                    },
-                  }}
-                >
-                  <CardActionArea
-                    onClick={() => setSelectedGym(gym)}
-                    sx={{ p: 0 }}
-                    component="div"
-                  >
-                    <CardContent>
-                      <Stack direction="row" spacing={2} alignItems="center" mb={2}>
-                        <Avatar src={gym.logo_url || undefined} sx={{ bgcolor: "#16A34A" }}>
-                          {gym.name[0]?.toUpperCase()}
-                        </Avatar>
-                        <Box flex={1} minWidth={0}>
-                          <Typography fontWeight={700} noWrap>
-                            {gym.name}
-                          </Typography>
-                          <Typography variant="caption" color="text.secondary">
-                            {subscription?.gym_plans?.name || "Sin plan"}
-                          </Typography>
-                        </Box>
-                      </Stack>
-
-                      <Stack direction="row" spacing={1} flexWrap="wrap" mb={1.5}>
-                        {subscription?.gym_plans ? (
-                          <Chip
-                            label={subscription.gym_plans.name}
-                            size="small"
-                            sx={getPlanBadgeSx(subscription.gym_plans.name)}
-                          />
-                        ) : (
-                          <Chip label="Sin plan" size="small" variant="outlined" />
-                        )}
-                        {subscription ? (
-                          <Chip label="Activo" size="small" color="success" />
-                        ) : (
-                          <Chip label="Inactivo" size="small" color="default" variant="outlined" />
-                        )}
-                        {isExpired && <Chip label="Vencido" size="small" color="error" />}
-                        {isExpiringSoon && (
-                          <Chip label="Por vencer" size="small" color="warning" />
-                        )}
-                      </Stack>
-
-                      <Stack direction="row" spacing={2}>
-                        <Stack direction="row" spacing={0.5} alignItems="center">
-                          <GroupIcon fontSize="small" color="action" />
-                          <Typography variant="body2">{alumnosCount} alumnos</Typography>
-                        </Stack>
-                        {subscription?.end_at && (
-                          <Typography
-                            variant="body2"
-                            color={
-                              isExpired
-                                ? "error.main"
-                                : isExpiringSoon
-                                ? "warning.main"
-                                : "text.secondary"
-                            }
-                          >
-                            Vence: {new Date(subscription.end_at).toLocaleDateString("es-AR")}
-                          </Typography>
-                        )}
-                      </Stack>
-                    </CardContent>
-                  </CardActionArea>
-                  {subscription && (
-                    <Box sx={{ px: 2, pb: 2 }}>
-                      <Button
-                        fullWidth
-                        size="small"
-                        variant="outlined"
-                        color="success"
-                        startIcon={<AutorenewIcon />}
-                        disabled={renewingId === subscription.id}
-                        onClick={(e) => {
-                          e.stopPropagation()
-                          handleRenewSub(subscription)
-                        }}
-                      >
-                        {renewingId === subscription.id ? (
-                          <CircularProgress size={18} />
-                        ) : (
-                          "Renovar +1 mes"
-                        )}
-                      </Button>
-                    </Box>
-                  )}
-                </Card>
-              </Grid>
-            )
-          })}
-        </Grid>
+        <Paper variant="outlined" sx={{ borderRadius: 2, overflow: "hidden" }}>
+          {cards.map(({ gym, subscription, alumnosCount }, i) => (
+            <GymRow
+              key={gym.id}
+              gym={gym}
+              subscription={subscription}
+              alumnosCount={alumnosCount}
+              divider={i < cards.length - 1}
+              renewing={renewingId === subscription?.id}
+              onOpen={() => setSelectedGym(gym)}
+              onRenew={() => subscription && handleRenewSub(subscription)}
+            />
+          ))}
+        </Paper>
       )}
 
       {/* ESTADÍSTICAS POR GIMNASIO */}
-      <Paper sx={{ p: { xs: 2, md: 3 }, borderRadius: 2, mt: 3 }}>
-        <Stack direction="row" spacing={1.5} alignItems="center" mb={2}>
-          <InsightsIcon color="primary" />
-          <Typography variant="h6" fontWeight={700}>
-            Estadísticas por gimnasio
-          </Typography>
-        </Stack>
+      <SectionPaper icon={<InsightsIcon sx={{ color: GREEN }} />} title="Estadísticas por gimnasio" sx={{ mt: 3 }}>
         <GymStatsSection />
-      </Paper>
+      </SectionPaper>
 
-      {/* COMUNICACIONES: dos secciones iguales (WhatsApp + Emails) */}
-      <Box sx={{ display: "flex", flexDirection: { xs: "column", md: "row" }, gap: 3, mt: 3, alignItems: "stretch" }}>
-        <Paper sx={{ p: { xs: 2, md: 3 }, borderRadius: 2, flex: 1, minWidth: 0 }}>
-          <Stack direction="row" spacing={1.5} alignItems="center" mb={2}>
-            <WhatsAppIcon sx={{ color: "#25D366" }} />
-            <Typography variant="h6" fontWeight={700} flex={1}>
-              WhatsApp enviados
-            </Typography>
-            <Button
-              size="small"
-              variant="outlined"
-              onClick={() => setDryRunOpen(true)}
-              sx={{ borderColor: "#25D366", color: "#25D366", whiteSpace: "nowrap" }}
-            >
-              Simular envío
+      {/* COMUNICACIONES */}
+      <Box sx={{ display: "flex", flexDirection: { xs: "column", md: "row" }, gap: 2, mt: 3, alignItems: "stretch" }}>
+        <SectionPaper
+          icon={<WhatsAppIcon sx={{ color: "#25D366" }} />}
+          title="WhatsApp enviados"
+          action={
+            <Button size="small" variant="outlined" onClick={() => setDryRunOpen(true)} sx={{ borderColor: "#25D366", color: "#128C7E", whiteSpace: "nowrap" }}>
+              Simular
             </Button>
-          </Stack>
+          }
+          sx={{ flex: 1, minWidth: 0 }}
+        >
           <CommsHistory channel="whatsapp" />
-        </Paper>
+        </SectionPaper>
 
-        <Paper sx={{ p: { xs: 2, md: 3 }, borderRadius: 2, flex: 1, minWidth: 0 }}>
-          <Stack direction="row" spacing={1.5} alignItems="center" mb={2}>
-            <EmailIcon color="primary" />
-            <Typography variant="h6" fontWeight={700}>
-              Emails enviados
-            </Typography>
-          </Stack>
+        <SectionPaper icon={<EmailIcon sx={{ color: "#7c3aed" }} />} title="Emails enviados" sx={{ flex: 1, minWidth: 0 }}>
           <CommsHistory channel="email" />
-        </Paper>
+        </SectionPaper>
       </Box>
 
       {/* DRAWERS / MODALS */}
@@ -497,11 +404,7 @@ export function OwnerDashboard() {
         </DialogContent>
       </Dialog>
 
-      <GymDetailDrawer
-        gym={selectedGym}
-        open={!!selectedGym}
-        onClose={() => setSelectedGym(null)}
-      />
+      <GymDetailDrawer gym={selectedGym} open={!!selectedGym} onClose={() => setSelectedGym(null)} />
 
       <CreateGymModal open={createOpen} onClose={() => setCreateOpen(false)} />
 
@@ -509,20 +412,11 @@ export function OwnerDashboard() {
         <ManageGymPlans />
       </SectionDialog>
 
-      <SectionDialog
-        open={novedadesOpen}
-        onClose={() => setNovedadesOpen(false)}
-        title="Novedades"
-      >
+      <SectionDialog open={novedadesOpen} onClose={() => setNovedadesOpen(false)} title="Novedades">
         <ManageNovedades />
       </SectionDialog>
 
-      <Dialog
-        open={deletedOpen}
-        onClose={() => setDeletedOpen(false)}
-        maxWidth="sm"
-        fullWidth
-      >
+      <Dialog open={deletedOpen} onClose={() => setDeletedOpen(false)} maxWidth="sm" fullWidth>
         <DialogTitle sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", pr: 1 }}>
           Gimnasios eliminados
           <IconButton onClick={() => setDeletedOpen(false)} size="small">
@@ -556,11 +450,7 @@ export function OwnerDashboard() {
                     </Typography>
                   </Box>
                   <Tooltip title="Restaurar">
-                    <IconButton
-                      color="primary"
-                      onClick={() => restoreGym.mutate(g.id)}
-                      disabled={restoreGym.isPending}
-                    >
+                    <IconButton color="primary" onClick={() => restoreGym.mutate(g.id)} disabled={restoreGym.isPending}>
                       <RestoreIcon />
                     </IconButton>
                   </Tooltip>
@@ -571,6 +461,176 @@ export function OwnerDashboard() {
         </DialogContent>
       </Dialog>
     </Box>
+  )
+}
+
+/* ---------- Fila de gimnasio ---------- */
+function GymRow({
+  gym,
+  subscription,
+  alumnosCount,
+  divider,
+  renewing,
+  onOpen,
+  onRenew,
+}: {
+  gym: Gym
+  subscription: Suscription | null
+  alumnosCount: number
+  divider: boolean
+  renewing: boolean
+  onOpen: () => void
+  onRenew: () => void
+}) {
+  const isExpired = !!subscription?.end_at && new Date(subscription.end_at).getTime() < Date.now()
+  const isExpiringSoon =
+    !isExpired && !!subscription?.end_at && new Date(subscription.end_at).getTime() <= Date.now() + 7 * 24 * 60 * 60 * 1000
+  const venceStr = subscription?.end_at ? new Date(subscription.end_at).toLocaleDateString("es-AR") : null
+  const venceColor = isExpired ? "error.main" : isExpiringSoon ? "warning.main" : "text.secondary"
+
+  const statusChip = isExpired ? (
+    <Chip label="Vencido" size="small" color="error" />
+  ) : isExpiringSoon ? (
+    <Chip label="Por vencer" size="small" color="warning" />
+  ) : subscription ? (
+    <Chip label="Activo" size="small" color="success" variant="outlined" />
+  ) : (
+    <Chip label="Inactivo" size="small" variant="outlined" />
+  )
+
+  return (
+    <Box
+      onClick={onOpen}
+      sx={{
+        display: "flex",
+        alignItems: "center",
+        gap: { xs: 1.25, sm: 1.5 },
+        px: { xs: 1.5, sm: 2 },
+        py: { xs: 1.5, sm: 1.25 },
+        cursor: "pointer",
+        borderBottom: divider ? 1 : 0,
+        borderColor: "divider",
+        "&:active": { bgcolor: "action.selected" },
+        "@media (hover: hover)": { "&:hover": { bgcolor: "action.hover" } },
+      }}
+    >
+      <Avatar src={gym.logo_url || undefined} sx={{ bgcolor: GREEN, width: 40, height: 40, fontSize: "0.95rem", flexShrink: 0 }}>
+        {gym.name[0]?.toUpperCase()}
+      </Avatar>
+
+      {/* Nombre + meta */}
+      <Box sx={{ flex: 1, minWidth: 0 }}>
+        <Typography fontWeight={700} noWrap>
+          {gym.name}
+        </Typography>
+
+        {/* Plan (subtítulo solo desktop) */}
+        <Typography variant="caption" color="text.secondary" noWrap sx={{ display: { xs: "none", md: "block" } }}>
+          {subscription?.gym_plans?.name || "Sin plan"}
+        </Typography>
+
+        {/* Chips inline (mobile / tablet) */}
+        <Stack direction="row" spacing={0.75} alignItems="center" flexWrap="wrap" useFlexGap sx={{ display: { md: "none" }, mt: 0.75 }}>
+          <WaChip gym={gym} />
+          {statusChip}
+        </Stack>
+
+        {/* Meta inline (mobile / tablet) */}
+        <Typography variant="caption" color="text.secondary" noWrap sx={{ display: { md: "none" }, mt: 0.5 }}>
+          {subscription?.gym_plans?.name || "Sin plan"} · {alumnosCount} alumnos
+          {venceStr && (
+            <>
+              {" · "}
+              <Box component="span" sx={{ color: venceColor }}>
+                Vence {venceStr}
+              </Box>
+            </>
+          )}
+        </Typography>
+      </Box>
+
+      {/* --- Columnas desktop (md+) --- */}
+      <Box sx={{ display: { xs: "none", md: "flex" }, width: 124, justifyContent: "center" }}>
+        <WaChip gym={gym} />
+      </Box>
+
+      <Box sx={{ display: { xs: "none", md: "flex" }, width: 96, justifyContent: "center" }}>
+        {statusChip}
+      </Box>
+
+      <Stack direction="row" spacing={0.5} alignItems="center" sx={{ display: { xs: "none", md: "flex" }, width: 68, justifyContent: "flex-end" }}>
+        <GroupIcon fontSize="small" color="action" />
+        <Typography variant="body2" fontWeight={600}>
+          {alumnosCount}
+        </Typography>
+      </Stack>
+
+      <Box sx={{ display: { xs: "none", md: "block" }, width: 120, textAlign: "right" }}>
+        {venceStr ? (
+          <Typography variant="body2" color={venceColor} noWrap>
+            {venceStr}
+          </Typography>
+        ) : (
+          <Typography variant="body2" color="text.disabled">
+            —
+          </Typography>
+        )}
+      </Box>
+
+      {/* Renovar (siempre) */}
+      <Box sx={{ flexShrink: 0, display: "flex", justifyContent: "center" }}>
+        {subscription && (
+          <Tooltip title="Renovar +1 mes">
+            <span>
+              <IconButton
+                size="small"
+                color="success"
+                disabled={renewing}
+                onClick={(e) => {
+                  e.stopPropagation()
+                  onRenew()
+                }}
+              >
+                {renewing ? <CircularProgress size={16} /> : <AutorenewIcon fontSize="small" />}
+              </IconButton>
+            </span>
+          </Tooltip>
+        )}
+      </Box>
+    </Box>
+  )
+}
+
+/* ---------- Paper de sección con header compacto ---------- */
+function SectionPaper({
+  icon,
+  title,
+  action,
+  children,
+  sx,
+}: {
+  icon: React.ReactNode
+  title: string
+  action?: React.ReactNode
+  children: React.ReactNode
+  sx?: object
+}) {
+  return (
+    <Paper variant="outlined" sx={{ borderRadius: 2, ...sx }}>
+      <Stack
+        direction="row"
+        spacing={1.25}
+        alignItems="center"
+        sx={{ px: 2, py: 1.25, borderBottom: 1, borderColor: "divider" }}
+      >
+        {icon}
+        <Typography variant="subtitle1" fontWeight={700} flex={1} noWrap>
+          {title}
+        </Typography>
+        {action}
+      </Stack>
+      <Box sx={{ p: { xs: 1.5, md: 2 } }}>{children}</Box>
+    </Paper>
   )
 }
 

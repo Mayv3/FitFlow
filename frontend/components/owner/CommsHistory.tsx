@@ -7,8 +7,15 @@ import {
     Chip,
     Avatar,
     Button,
+    Stack,
+    Divider,
+    Dialog,
+    DialogTitle,
+    DialogContent,
+    IconButton,
 } from "@mui/material"
 import RefreshIcon from "@mui/icons-material/Refresh"
+import CloseIcon from "@mui/icons-material/Close"
 import { api } from "@/lib/api"
 import { CommsCalendar, DayRef } from "./CommsCalendar"
 
@@ -56,6 +63,7 @@ export function CommsHistory({ channel }: { channel: Mode }) {
     const [year, setYear] = useState(today.getFullYear())
     const [month, setMonth] = useState(today.getMonth())
     const [selectedDay, setSelectedDay] = useState<DayRef | null>(null)
+    const [detailGym, setDetailGym] = useState<GymGroup | null>(null)
 
     const [emailRows, setEmailRows] = useState<CommRow[] | null>(null)
     const [waRows, setWaRows] = useState<CommRow[]>([])
@@ -200,7 +208,7 @@ export function CommsHistory({ channel }: { channel: Mode }) {
                 byDay={byDay}
                 loadingCalendar={loading && !selectedDay}
                 selectedDay={selectedDay}
-                onSelectDay={(y, m, d) => setSelectedDay({ y, m, d })}
+                onSelectDay={(y, m, d) => { setSelectedDay({ y, m, d }); setDetailGym(null) }}
                 unit={unit}
                 legendText={mode === "email" ? "Día con emails" : "Día con mensajes"}
                 placeholderText="Seleccioná un día con envíos para ver el detalle por gimnasio."
@@ -211,7 +219,16 @@ export function CommsHistory({ channel }: { channel: Mode }) {
                         </Typography>
                         <Box sx={{ flex: 1, overflowY: "auto", pr: 0.5, maxHeight: { xs: 320, md: 340 } }}>
                             {dayGroups.map((g) => (
-                                <Box key={g.gym_id} sx={{ display: "flex", alignItems: "center", gap: 1.5, py: 1, borderBottom: (t) => `1px solid ${t.palette.divider}` }}>
+                                <Box
+                                    key={g.gym_id}
+                                    onClick={() => setDetailGym(g)}
+                                    sx={{
+                                        display: "flex", alignItems: "center", gap: 1.5, py: 1,
+                                        cursor: "pointer", borderRadius: 1,
+                                        borderBottom: (t) => `1px solid ${t.palette.divider}`,
+                                        "&:hover": { bgcolor: (t) => t.palette.action.hover },
+                                    }}
+                                >
                                     <Avatar src={g.gym_logo || undefined} sx={{ bgcolor: accent.main, width: 30, height: 30, fontSize: "0.85rem" }}>
                                         {g.gym_nombre[0]?.toUpperCase()}
                                     </Avatar>
@@ -228,6 +245,79 @@ export function CommsHistory({ channel }: { channel: Mode }) {
                     </>
                 }
             />
+
+            <Dialog
+                open={!!detailGym}
+                onClose={() => setDetailGym(null)}
+                fullWidth
+                maxWidth="sm"
+                PaperProps={{ sx: { borderRadius: 2 } }}
+            >
+                {detailGym && (
+                    <>
+                        <DialogTitle sx={{ pr: 6 }}>
+                            <Stack direction="row" alignItems="center" spacing={1.5}>
+                                <Avatar src={detailGym.gym_logo || undefined} sx={{ bgcolor: accent.main, width: 34, height: 34, fontSize: "0.9rem" }}>
+                                    {detailGym.gym_nombre[0]?.toUpperCase()}
+                                </Avatar>
+                                <Box>
+                                    <Typography fontWeight={700} noWrap>{detailGym.gym_nombre}</Typography>
+                                    <Typography variant="caption" color="text.secondary">
+                                        {unit(detailGym.items.length)}
+                                    </Typography>
+                                </Box>
+                            </Stack>
+                            <IconButton
+                                onClick={() => setDetailGym(null)}
+                                sx={{ position: "absolute", right: 8, top: 8 }}
+                            >
+                                <CloseIcon />
+                            </IconButton>
+                        </DialogTitle>
+                        <DialogContent dividers>
+                            <Stack divider={<Divider />} spacing={0}>
+                                {detailGym.items.map((m) => (
+                                    <Box key={m.id} sx={{ py: 1.25 }}>
+                                        <Stack direction="row" alignItems="center" spacing={1} flexWrap="wrap">
+                                            <Chip
+                                                label={m.estado || "—"}
+                                                size="small"
+                                                color={m.estado === "enviado" ? "success" : m.estado === "error" ? "error" : "warning"}
+                                            />
+                                            <Typography variant="body2" fontWeight={600}>
+                                                {mode === "whatsapp" ? (m.nombre || "(sin nombre)") : (m.asunto || "(sin asunto)")}
+                                            </Typography>
+                                            <Typography variant="caption" color="text.secondary">
+                                                {mode === "whatsapp"
+                                                    ? (m.telefono ? `+${m.telefono}` : "sin teléfono")
+                                                    : (m.email_destino || "sin email")}
+                                            </Typography>
+                                            <Typography variant="caption" color="text.secondary" sx={{ ml: "auto" }}>
+                                                {new Date(m.date).toLocaleTimeString("es-AR", { hour: "2-digit", minute: "2-digit" })}
+                                            </Typography>
+                                        </Stack>
+                                        {mode === "whatsapp" && m.mensaje && (
+                                            <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5, whiteSpace: "pre-wrap" }}>
+                                                {m.mensaje}
+                                            </Typography>
+                                        )}
+                                        {((mode === "whatsapp" ? m.plan : m.plan_nombre)) && (
+                                            <Typography variant="caption" color="text.secondary" display="block" mt={0.25}>
+                                                Plan: {mode === "whatsapp" ? m.plan : m.plan_nombre}
+                                            </Typography>
+                                        )}
+                                        {m.error_msg && (
+                                            <Typography variant="caption" color="error" display="block" mt={0.25}>
+                                                Error: {m.error_msg}
+                                            </Typography>
+                                        )}
+                                    </Box>
+                                ))}
+                            </Stack>
+                        </DialogContent>
+                    </>
+                )}
+            </Dialog>
         </Box>
     )
 }

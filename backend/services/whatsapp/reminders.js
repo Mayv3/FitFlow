@@ -1,6 +1,7 @@
 import dayjs from 'dayjs'
 import { supabaseAdmin } from '../../config/supabaseClient.js'
 import { whatsappManager } from './WhatsappManager.js'
+import { notifyWaDown } from './notify.js'
 
 const DEFAULT_TEMPLATE =
   'Hola {nombre}, tu plan {plan} {estado} el {fecha}. ¡Renoválo para seguir entrenando! 💪'
@@ -93,6 +94,10 @@ export async function procesarRecordatorios(gymId, { simulate = false } = {}) {
   }
 
   if (!simulate && !whatsappManager.isConnected(gymId)) {
+    // El módulo está habilitado pero el socket no está conectado: los recordatorios
+    // NO se envían. Antes fallaba mudo (así estuvimos días caídos sin enterarnos).
+    const waStatus = whatsappManager.getState(gymId)?.status ?? 'none'
+    notifyWaDown(gymId, 'not_connected', `status=${waStatus}`).catch(() => {})
     return {
       gym_id: gymId,
       status: 'not_connected',

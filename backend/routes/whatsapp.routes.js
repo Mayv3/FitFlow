@@ -7,6 +7,7 @@ import {
   getQr,
   postDisconnect,
   postTest,
+  postTestAlert,
   postSimulate,
   postTriggerGym,
   postTriggerAll,
@@ -33,6 +34,9 @@ router.get('/gyms/:gymId/status', verifyToken, getStatus)
 router.get('/gyms/:gymId/qr', verifyToken, getQr)
 router.post('/gyms/:gymId/disconnect', verifyToken, postDisconnect)
 router.post('/gyms/:gymId/test', verifyToken, postTest)
+// Prueba de alerta: sin JWT, protegido por CRON_SECRET. GET para abrir desde el browser.
+router.get('/gyms/:gymId/test-alert', postTestAlert)
+router.post('/gyms/:gymId/test-alert', postTestAlert)
 router.post('/gyms/:gymId/simulate', verifyToken, postSimulate)
 router.post('/gyms/:gymId/trigger', verifyToken, postTriggerGym)
 router.get('/gyms/:gymId/mensajes', verifyToken, getMensajes)

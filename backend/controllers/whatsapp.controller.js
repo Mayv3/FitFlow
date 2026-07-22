@@ -1,5 +1,6 @@
 import { whatsappManager } from '../services/whatsapp/WhatsappManager.js'
 import { procesarRecordatorios, triggerAllGyms } from '../services/whatsapp/reminders.js'
+import { notifyWaDown } from '../services/whatsapp/notify.js'
 import { supabaseAdmin } from '../config/supabaseClient.js'
 
 function assertGymAccess(req, gymId) {
@@ -104,6 +105,24 @@ export async function postTest(req, res) {
   try {
     await whatsappManager.sendText(gymId, jid, text)
     res.json({ ok: true })
+  } catch (e) {
+    res.status(500).json({ error: e.message })
+  }
+}
+
+// Envía una alerta de prueba al mail configurado (o WA_ALERT_EMAIL) para ver
+// cómo llega el aviso de "WhatsApp caído". No refleja el estado real del gym.
+// Sin JWT: protegido solo por CRON_SECRET (header x-cron-secret o ?secret=)
+// para que no sea un endpoint público que spamee el mail.
+export async function postTestAlert(req, res) {
+  const { gymId } = req.params
+  const secret = req.headers['x-cron-secret'] || req.query.secret
+  if (!process.env.CRON_SECRET || secret !== process.env.CRON_SECRET) {
+    return res.status(401).json({ error: 'unauthorized' })
+  }
+  try {
+    await notifyWaDown(gymId, 'test_alert', 'Alerta de PRUEBA disparada manualmente', { force: true })
+    res.json({ ok: true, message: 'Alerta de prueba enviada al mail configurado.' })
   } catch (e) {
     res.status(500).json({ error: e.message })
   }

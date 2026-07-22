@@ -10,6 +10,15 @@ import pino from 'pino'
 import QRCode from 'qrcode'
 import { useSupabaseAuthState, deleteSession } from './supabaseAuthState.js'
 import { supabaseAdmin } from '../../config/supabaseClient.js'
+import { notifyWaDown } from './notify.js'
+
+// Recuperación tras 440 (connectionReplaced). En deploys de Render dos instancias
+// se solapan con las mismas creds -> 440. Ceder es correcto para no entrar en guerra,
+// PERO si la que reemplazó era la instancia vieja que Render está por matar, quedaríamos
+// sin nadie conectado y en corte mudo. Por eso: tras ceder, chequear a los N segundos
+// y reconectar si seguimos caídos, con un tope de intentos para no hacer ping-pong.
+const REPLACED_RECOVERY_MS = 90 * 1000 // esperar a que Render mate la instancia vieja
+const MAX_REPLACED_RECOVERIES = 3
 
 const logger = pino({ level: 'silent' })
 
@@ -27,6 +36,7 @@ class WhatsappManager {
     this.connecting = new Map() // gymId -> Promise (avoid double connect)
     this.reconnectTimers = new Map() // gymId -> NodeJS.Timeout (cancel en disconnect)
     this.reconnectAttempts = new Map() // gymId -> number (para backoff exponencial)
+    this.replacedRecoveries = new Map() // gymId -> number (intentos de recuperación tras 440)
   }
 
   _clearReconnect(gymId) {
@@ -179,6 +189,7 @@ class WhatsappManager {
         inst.qrDataUrl = null
         inst.lastError = null
         this.reconnectAttempts.delete(gymId) // reset backoff al conectar OK
+        this.replacedRecoveries.delete(gymId) // reset recuperación 440 al conectar OK
         // Persistir el número server-side (autoritativo para el chequeo de unicidad).
         this._persistAdminJid(gymId, myJid).catch((e) =>
           console.warn(`[wa ${gymId}] persist admin_jid:`, e.message)
@@ -213,13 +224,39 @@ class WhatsappManager {
 
         if (replaced) {
           // Otra conexión tomó la sesión (otra instancia/proceso con las mismas creds).
-          // Reconectar acá se la roba de vuelta => guerra 440 infinita. CEDEMOS.
-          // Recuperar: asegurar una sola instancia y reconectar manual (o reiniciar server).
+          // Reconectar YA se la roba de vuelta => guerra 440. Cedemos de inmediato.
           this._clearReconnect(gymId)
           inst.sock = null
           inst.status = 'replaced'
           inst.lastError = 'connection_replaced'
-          console.warn(`[wa ${gymId}] reemplazada por otra sesión — NO reconecto. Verificá que solo UNA instancia use estas creds.`)
+
+          // Pero no cedemos para siempre: si la que reemplazó era la instancia vieja
+          // que Render está por matar (deploy con overlap), quedaríamos sin nadie
+          // conectado. Chequeo diferido: si a los REPLACED_RECOVERY_MS seguimos caídos,
+          // reconecto UNA vez. Con tope para no hacer ping-pong si la otra sigue viva.
+          const recoveries = this.replacedRecoveries.get(gymId) || 0
+          if (recoveries >= MAX_REPLACED_RECOVERIES) {
+            console.warn(`[wa ${gymId}] cedí ${recoveries} veces sin recuperar — abandono para evitar guerra 440. Requiere restart.`)
+            notifyWaDown(gymId, 'replaced_giveup', `tras ${recoveries} intentos de recuperación`).catch(() => {})
+            return
+          }
+          this.replacedRecoveries.set(gymId, recoveries + 1)
+          console.warn(`[wa ${gymId}] reemplazada por otra sesión — cedo. Chequeo recuperación en ${REPLACED_RECOVERY_MS / 1000}s (intento ${recoveries + 1}/${MAX_REPLACED_RECOVERIES}).`)
+
+          const t = setTimeout(() => {
+            this.reconnectTimers.delete(gymId)
+            // Si otra ruta ya reconectó, no tocar nada.
+            if (this.instances.get(gymId)?.status === 'connected') {
+              this.replacedRecoveries.delete(gymId)
+              return
+            }
+            console.warn(`[wa ${gymId}] sigo caído tras cede — reconecto (recuperación ${recoveries + 1}/${MAX_REPLACED_RECOVERIES}).`)
+            this.instances.delete(gymId)
+            this.connect(gymId).catch((e) =>
+              console.warn(`[wa ${gymId}] recovery reconnect failed:`, e.message)
+            )
+          }, REPLACED_RECOVERY_MS)
+          this.reconnectTimers.set(gymId, t)
           return
         }
 
@@ -250,6 +287,7 @@ class WhatsappManager {
 
   async disconnect(gymId) {
     this._clearReconnect(gymId)
+    this.replacedRecoveries.delete(gymId)
     const inst = this.instances.get(gymId)
     if (inst?.sock) {
       try { inst.sock.ev?.removeAllListeners?.() } catch {}

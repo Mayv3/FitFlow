@@ -27,7 +27,7 @@ async function getGymConfig(gymId) {
     gym: data,
     moduleEnabled: !!data.settings?.whatsapp_module_enabled,
     countryPrefix: wa.country_prefix || '549',
-    daysBefore: Number.isFinite(wa.reminder_days_before) ? wa.reminder_days_before : 4,
+    daysBefore: Number.isFinite(wa.reminder_days_before) ? wa.reminder_days_before : 3,
     template: wa.template || DEFAULT_TEMPLATE,
     adminJid: wa.admin_jid || null,
     delayMs: Number.isFinite(wa.send_delay_ms) ? wa.send_delay_ms : 2000

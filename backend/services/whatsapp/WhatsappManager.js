@@ -178,9 +178,9 @@ class WhatsappManager {
           try { sock.ev?.removeAllListeners?.() } catch {}
           try { await sock.logout() } catch { try { sock.end?.(undefined) } catch {} }
           inst.sock = null
-          try { await deleteSession(gymId) } catch (e) {
-            console.warn(`[wa ${gymId}] cleanup error:`, e.message)
-          }
+          // No borrar las credenciales guardadas por un conflicto detectado al
+          // vincular. La limpieza de sesión es una acción explícita del usuario
+          // mediante disconnect(gymId), nunca una consecuencia automática.
           return
         }
 
@@ -210,15 +210,13 @@ class WhatsappManager {
 
         if (loggedOut) {
           inst.status = 'logged_out'
-          inst.lastError = null
+          inst.lastError = 'WhatsApp invalidó la sesión (401). Las credenciales se conservaron; reconectá escaneando un QR nuevo cuando corresponda.'
           this._clearReconnect(gymId)
-          this.instances.delete(gymId)
-          try {
-            await deleteSession(gymId)
-            await this._clearAdminJid(gymId) // liberar el número
-          } catch (e) {
-            console.warn(`[wa ${gymId}] cleanup error:`, e.message)
-          }
+          // Un 401 lo informa WhatsApp, pero no implica que debamos borrar la
+          // evidencia de la sesión ni liberar el número automáticamente.
+          // La eliminación queda reservada para la desconexión explícita del
+          // usuario mediante disconnect(gymId).
+          inst.sock = null
           return
         }
 
@@ -285,7 +283,7 @@ class WhatsappManager {
     return inst
   }
 
-  async disconnect(gymId) {
+  async disconnect(gymId, { deleteCredentials = false } = {}) {
     this._clearReconnect(gymId)
     this.replacedRecoveries.delete(gymId)
     const inst = this.instances.get(gymId)
@@ -298,7 +296,11 @@ class WhatsappManager {
       }
     }
     this.instances.delete(gymId)
-    await deleteSession(gymId)
+    // Mantener las credenciales salvo que el controlador haya pedido una
+    // desvinculación manual de forma explícita.
+    if (deleteCredentials) {
+      await deleteSession(gymId, { reason: 'manual_disconnect' })
+    }
   }
 
   buildJid(numero, prefix = '549') {

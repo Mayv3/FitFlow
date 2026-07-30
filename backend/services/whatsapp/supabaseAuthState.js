@@ -132,7 +132,12 @@ export async function useSupabaseAuthState(gymId) {
   }
 }
 
-export async function deleteSession(gymId) {
+// Borrar una sesión es destructivo. Solo puede hacerlo la ruta de
+// desvinculación manual; los errores de conexión nunca deben llegar acá.
+export async function deleteSession(gymId, { reason } = {}) {
+  if (reason !== 'manual_disconnect') {
+    throw new Error('Refusing to delete WhatsApp session without explicit manual_disconnect reason')
+  }
   const { error } = await supabaseAdmin
     .from(TABLE)
     .delete()

@@ -78,7 +78,7 @@ export async function postDisconnect(req, res) {
   const { gymId } = req.params
   if (!assertGymAccess(req, gymId)) return res.status(403).json({ error: 'forbidden' })
   try {
-    await whatsappManager.disconnect(gymId)
+    await whatsappManager.disconnect(gymId, { deleteCredentials: true })
     // Liberar el número: limpiar admin_jid para que pueda vincularse en otro gimnasio.
     const { data: gym } = await supabaseAdmin
       .from('gyms')

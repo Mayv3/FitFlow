@@ -14,6 +14,13 @@ function sleep(ms) {
   return new Promise((r) => setTimeout(r, ms))
 }
 
+// Delay fijo entre envíos = patrón robótico, señal de riesgo pal antispam de
+// WhatsApp. Jitter +/-40% para que el intervalo no sea siempre idéntico.
+function withJitter(ms) {
+  const jitter = ms * 0.4 * (Math.random() * 2 - 1)
+  return Math.max(1000, Math.round(ms + jitter))
+}
+
 async function getGymConfig(gymId) {
   const { data, error } = await supabaseAdmin
     .from('gyms')
@@ -30,7 +37,7 @@ async function getGymConfig(gymId) {
     daysBefore: Number.isFinite(wa.reminder_days_before) ? wa.reminder_days_before : 3,
     template: wa.template || DEFAULT_TEMPLATE,
     adminJid: wa.admin_jid || null,
-    delayMs: Number.isFinite(wa.send_delay_ms) ? wa.send_delay_ms : 2000
+    delayMs: Number.isFinite(wa.send_delay_ms) ? wa.send_delay_ms : 5000
   }
 }
 
@@ -167,7 +174,8 @@ export async function procesarRecordatorios(gymId, { simulate = false } = {}) {
         vencimiento: a.fecha_de_vencimiento,
         mensaje: text,
         tipo,
-        estado: 'enviado'
+        estado: 'enviado',
+        remitente_jid: cfg.adminJid
       })
       results.push({ alumno_id: a.id, status: 'sent' })
     } catch (e) {
@@ -182,12 +190,13 @@ export async function procesarRecordatorios(gymId, { simulate = false } = {}) {
         mensaje: text,
         tipo,
         estado: 'error',
-        error_msg: e.message
+        error_msg: e.message,
+        remitente_jid: cfg.adminJid
       })
       results.push({ alumno_id: a.id, status: 'error', error: e.message })
     }
 
-    await sleep(cfg.delayMs)
+    await sleep(withJitter(cfg.delayMs))
   }
 
   return { gym_id: gymId, gym_name: cfg.gym.name ?? null, admin_jid: cfg.adminJid, status: 'ok', sent, errors, skipped, pending, total: alumnos.length, results }

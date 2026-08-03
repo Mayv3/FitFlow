@@ -25,7 +25,7 @@ import LogoutIcon from '@mui/icons-material/Logout'
 import { api } from "@/lib/api"
 import { WhatsappHistory } from "./WhatsappHistory"
 
-type Status = 'disconnected' | 'connecting' | 'qr' | 'connected' | 'logged_out' | 'number_in_use' | 'replaced'
+type Status = 'disconnected' | 'connecting' | 'qr' | 'connected' | 'logged_out' | 'number_in_use' | 'replaced' | 'forbidden'
 
 interface WAState {
     status: Status
@@ -65,6 +65,7 @@ const STATUS_MAP: Record<Status, { label: string; color: 'default' | 'success' |
     logged_out: { label: 'Sesión cerrada', color: 'error' },
     number_in_use: { label: 'Número en uso', color: 'error' },
     replaced: { label: 'Reemplazada', color: 'warning' },
+    forbidden: { label: 'Bloqueado por WhatsApp', color: 'error' },
 }
 
 export function WhatsappSettings() {
@@ -228,7 +229,7 @@ export function WhatsappSettings() {
                                     {busy === 'connect' ? 'Conectando…' : 'Vincular WhatsApp'}
                                 </Button>
                                 {state.lastError && (
-                                    state.status === 'number_in_use' ? (
+                                    (state.status === 'number_in_use' || state.status === 'forbidden') ? (
                                         <Alert severity="error" sx={{ maxWidth: 420 }}>
                                             {state.lastError}
                                         </Alert>

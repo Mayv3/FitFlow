@@ -54,6 +54,18 @@ const REASON_COPY = {
       (detail ? `${detail}\n` : '') +
       `\nSe borraron las credenciales y se liberó el número.\n` +
       `Los recordatorios NO se envían hasta escanear un QR nuevo.`
+  },
+  forbidden: {
+    subject: (name) => `🚫 WhatsApp bloqueó la cuenta (403) — ${name}`,
+    body: (label, detail) =>
+      `WhatsApp rechazó la conexión del gimnasio ${label} con código 403 (forbidden).\n` +
+      (detail ? `${detail}\n` : '') +
+      `\nGeneralmente pasa por patrón de envío (mensajes masivos a números que no\n` +
+      `tienen el contacto guardado, poco tiempo entre uno y otro). Puede ser\n` +
+      `restricción temporal o ban del número.\n` +
+      `\nLas credenciales NO se borraron: si la restricción se levanta, reconecta sola.\n` +
+      `Revisá WhatsApp en el celu vinculado por si aparece un aviso de cuenta restringida.\n` +
+      `\nLos recordatorios NO se envían hasta que reconecte.`
   }
 }
 

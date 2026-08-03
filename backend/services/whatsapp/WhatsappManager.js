@@ -23,7 +23,7 @@ const MAX_REPLACED_RECOVERIES = 3
 // Estados sin socket vivo detrás: volver a llamar connect() debe abrir uno nuevo.
 // 'logged_out' y 'number_in_use' son rechazos terminales de WhatsApp; 'replaced'
 // tiene su propio timer de recuperación pero también puede reintentarse a mano.
-const RECONNECTABLE_STATES = new Set(['disconnected', 'logged_out', 'number_in_use'])
+const RECONNECTABLE_STATES = new Set(['disconnected', 'logged_out', 'number_in_use', 'forbidden'])
 
 const logger = pino({ level: 'silent' })
 
@@ -213,7 +213,8 @@ class WhatsappManager {
         const loggedOut = code === DisconnectReason.loggedOut
         const restartRequired = code === DisconnectReason.restartRequired
         const replaced = code === DisconnectReason.connectionReplaced // 440
-        console.warn(`[wa ${gymId}] closed (${code}) loggedOut=${loggedOut} restart=${restartRequired} replaced=${replaced}`)
+        const forbidden = code === DisconnectReason.forbidden // 403
+        console.warn(`[wa ${gymId}] closed (${code}) loggedOut=${loggedOut} restart=${restartRequired} replaced=${replaced} forbidden=${forbidden}`)
 
         // cerrar socket viejo SIEMPRE
         try { inst.sock?.ev?.removeAllListeners?.() } catch {}
@@ -284,6 +285,19 @@ class WhatsappManager {
             )
           }, REPLACED_RECOVERY_MS)
           this.reconnectTimers.set(gymId, t)
+          return
+        }
+
+        if (forbidden) {
+          // WhatsApp rechaza esta cuenta explícito (403) — a diferencia de 408/428/515
+          // (ambiguos, reconectan solos), acá reintentar en loop no sirve mientras dure
+          // el bloqueo: solo quema recursos en Render. NO borramos creds: si es
+          // restricción temporal, las mismas creds vuelven a andar cuando se levante.
+          this._clearReconnect(gymId)
+          inst.status = 'forbidden'
+          inst.lastError = 'WhatsApp bloqueó esta cuenta (403). Puede ser restricción temporal o ban — revisar el número en el celu vinculado.'
+          inst.sock = null
+          notifyWaDown(gymId, 'forbidden', 'WhatsApp devolvió 403 (forbidden) al conectar', { force: true }).catch(() => {})
           return
         }
 

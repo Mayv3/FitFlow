@@ -86,6 +86,14 @@ export async function postDisconnect(req, res) {
       .eq('id', gymId)
       .maybeSingle()
     const settings = gym?.settings || {}
+    // Registro por mail: distingue "lo desvinculó alguien desde el panel" de un 401
+    // del lado de WhatsApp. Ambos eventos avisan, con textos distintos.
+    notifyWaDown(
+      gymId,
+      'manual_disconnect',
+      `Número liberado: ${settings?.whatsapp?.admin_jid || 'sin registrar'}. Usuario: ${req.user?.email || req.user?.id || 'desconocido'}`,
+      { force: true }
+    ).catch(() => {})
     if (settings.whatsapp) settings.whatsapp = { ...settings.whatsapp, admin_jid: null }
     await supabaseAdmin
       .from('gyms')
@@ -120,8 +128,10 @@ export async function postTestAlert(req, res) {
   if (!process.env.CRON_SECRET || secret !== process.env.CRON_SECRET) {
     return res.status(401).json({ error: 'unauthorized' })
   }
+  // ?reason=logged_out permite ver el texto real de cada aviso, no solo el genérico.
+  const reason = req.query.reason || 'test_alert'
   try {
-    await notifyWaDown(gymId, 'test_alert', 'Alerta de PRUEBA disparada manualmente', { force: true })
+    await notifyWaDown(gymId, reason, 'Alerta de PRUEBA disparada manualmente', { force: true })
     res.json({ ok: true, message: 'Alerta de prueba enviada al mail configurado.' })
   } catch (e) {
     res.status(500).json({ error: e.message })

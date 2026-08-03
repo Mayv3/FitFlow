@@ -20,6 +20,11 @@ import { notifyWaDown } from './notify.js'
 const REPLACED_RECOVERY_MS = 90 * 1000 // esperar a que Render mate la instancia vieja
 const MAX_REPLACED_RECOVERIES = 3
 
+// Estados sin socket vivo detrás: volver a llamar connect() debe abrir uno nuevo.
+// 'logged_out' y 'number_in_use' son rechazos terminales de WhatsApp; 'replaced'
+// tiene su propio timer de recuperación pero también puede reintentarse a mano.
+const RECONNECTABLE_STATES = new Set(['disconnected', 'logged_out', 'number_in_use'])
+
 const logger = pino({ level: 'silent' })
 
 // Silence Baileys "Closing session" spam once
@@ -112,9 +117,11 @@ class WhatsappManager {
 
     // Si ya hay un socket vivo (conectando/qr/conectado) o cedido por replace,
     // NO abrir otro: dos sockets con las mismas creds => WhatsApp tira 440 en loop.
-    // 'number_in_use' es un rechazo terminal: permitir reintento (escanear otro número).
+    // Los estados terminales sí permiten reintento: no hay socket detrás (inst.sock=null)
+    // y sin esto el gym queda trabado para siempre — el botón "Vincular" devolvía la
+    // instancia muerta y nunca emitía QR.
     const existing = this.instances.get(gymId)
-    if (existing && existing.status !== 'disconnected' && existing.status !== 'number_in_use') return existing
+    if (existing && !RECONNECTABLE_STATES.has(existing.status)) return existing
 
     const p = this._connect(gymId).finally(() => this.connecting.delete(gymId))
     this.connecting.set(gymId, p)
@@ -178,9 +185,13 @@ class WhatsappManager {
           try { sock.ev?.removeAllListeners?.() } catch {}
           try { await sock.logout() } catch { try { sock.end?.(undefined) } catch {} }
           inst.sock = null
-          // No borrar las credenciales guardadas por un conflicto detectado al
-          // vincular. La limpieza de sesión es una acción explícita del usuario
-          // mediante disconnect(gymId), nunca una consecuencia automática.
+          // El logout de arriba desvinculó el dispositivo: las creds que se
+          // acababan de guardar al escanear el QR ya no sirven. Dejarlas solo
+          // ensucia la tabla y hace que el próximo connect() reintente con una
+          // sesión muerta en vez de pedir QR.
+          deleteSession(gymId, { reason: 'logged_out' }).catch((e) =>
+            console.warn(`[wa ${gymId}] limpieza tras number_in_use falló:`, e.message)
+          )
           return
         }
 
@@ -210,13 +221,31 @@ class WhatsappManager {
 
         if (loggedOut) {
           inst.status = 'logged_out'
-          inst.lastError = 'WhatsApp invalidó la sesión (401). Las credenciales se conservaron; reconectá escaneando un QR nuevo cuando corresponda.'
+          inst.lastError = 'WhatsApp cerró la sesión (401). Volvé a vincular escaneando un QR nuevo.'
           this._clearReconnect(gymId)
-          // Un 401 lo informa WhatsApp, pero no implica que debamos borrar la
-          // evidencia de la sesión ni liberar el número automáticamente.
-          // La eliminación queda reservada para la desconexión explícita del
-          // usuario mediante disconnect(gymId).
+          // El número se lee ANTES de soltar el socket: es lo único que identifica
+          // qué línea se cayó, y se va con las creds cuando las borremos.
+          const jid = jidNormalizedUser(inst.sock?.user?.id || '') || null
           inst.sock = null
+
+          // Un 401 no es ambiguo: WhatsApp dice que este dispositivo ya no está
+          // registrado. Esas creds no vuelven a funcionar — reconectar con ellas
+          // da 401 de nuevo y nunca emite QR, dejando al gym trabado. Se borran
+          // para que el próximo connect() arranque de cero.
+          deleteSession(gymId, { reason: 'logged_out' })
+            .then(() => console.warn(`[wa ${gymId}] sesión borrada tras 401 (${jid || 'jid desconocido'})`))
+            .catch((e) => console.error(`[wa ${gymId}] no se pudo borrar la sesión tras 401:`, e.message))
+
+          // Evento terminal y puntual: avisar SIEMPRE (force) para tener registro
+          // del momento exacto en que se cayó el vínculo. Sin esto solo nos
+          // enterábamos por el cron, hasta 24h después y filtrado por el dedupe.
+          // El mail queda como único rastro del número, ya que las creds se borran.
+          notifyWaDown(
+            gymId,
+            'logged_out',
+            jid ? `Número afectado: ${jid}` : '',
+            { force: true }
+          ).catch(() => {})
           return
         }
 

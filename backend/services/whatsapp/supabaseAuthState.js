@@ -132,11 +132,17 @@ export async function useSupabaseAuthState(gymId) {
   }
 }
 
-// Borrar una sesión es destructivo. Solo puede hacerlo la ruta de
-// desvinculación manual; los errores de conexión nunca deben llegar acá.
+// Borrar una sesión es destructivo: solo motivos donde la sesión ya está muerta
+// del lado de WhatsApp. Los errores de conexión ambiguos (408, 428, 440) NUNCA
+// deben llegar acá — reconectan con las mismas creds, que siguen siendo válidas.
+//   manual_disconnect: el usuario apretó Desvincular.
+//   logged_out: 401. WhatsApp dice que el dispositivo ya no está registrado;
+//     las creds no sirven más y conservarlas deja al gym sin poder re-vincular.
+const DELETE_REASONS = new Set(['manual_disconnect', 'logged_out'])
+
 export async function deleteSession(gymId, { reason } = {}) {
-  if (reason !== 'manual_disconnect') {
-    throw new Error('Refusing to delete WhatsApp session without explicit manual_disconnect reason')
+  if (!DELETE_REASONS.has(reason)) {
+    throw new Error(`Refusing to delete WhatsApp session: invalid reason "${reason}"`)
   }
   const { error } = await supabaseAdmin
     .from(TABLE)

@@ -32,13 +32,38 @@ async function getGymName(gymId) {
   }
 }
 
+// Texto por motivo. El default sirve para caídas transitorias (reconecta solo);
+// los motivos terminales necesitan decir qué acción manual destraba la sesión.
+const REASON_COPY = {
+  logged_out: {
+    subject: (name) => `🔴 WhatsApp desvinculado — ${name}`,
+    body: (label, detail) =>
+      `WhatsApp cerró la sesión del gimnasio ${label} (código 401).\n` +
+      (detail ? `${detail}\n` : '') +
+      `\nEsto pasa cuando el dispositivo "FitFlow (Ubuntu)" se elimina desde\n` +
+      `WhatsApp → Dispositivos vinculados, o si se reinstaló/cambió el teléfono.\n` +
+      `\nLas credenciales quedaron inservibles y se borraron solas: este mail es el\n` +
+      `único registro del número afectado, guardalo.\n` +
+      `\nLos recordatorios NO se envían hasta volver a vincular.\n` +
+      `Para recuperarlo: panel del gym → Vincular WhatsApp → escanear el QR.`
+  },
+  manual_disconnect: {
+    subject: (name) => `🔌 WhatsApp desvinculado desde el panel — ${name}`,
+    body: (label, detail) =>
+      `Se desvinculó el WhatsApp del gimnasio ${label} desde el panel de FitFlow.\n` +
+      (detail ? `${detail}\n` : '') +
+      `\nSe borraron las credenciales y se liberó el número.\n` +
+      `Los recordatorios NO se envían hasta escanear un QR nuevo.`
+  }
+}
+
 /**
  * Notifica que el WhatsApp de un gym está caído.
  * Dedupe 6h por (gymId, reason). Si no hay config de email, solo loguea.
  * @param {string} gymId
- * @param {string} reason  identificador corto del motivo (not_connected, replaced_giveup, ...)
+ * @param {string} reason  identificador corto del motivo (not_connected, logged_out, manual_disconnect, replaced_giveup, ...)
  * @param {string} [detail]
- * @param {{ force?: boolean }} [opts]  force=true saltea el dedupe (para pruebas)
+ * @param {{ force?: boolean }} [opts]  force=true saltea el dedupe (para pruebas y eventos puntuales)
  */
 export async function notifyWaDown(gymId, reason, detail = '', { force = false } = {}) {
   const key = `${gymId}:${reason}`
@@ -53,6 +78,19 @@ export async function notifyWaDown(gymId, reason, detail = '', { force = false }
 
   if (!BREVO_API_KEY || !ALERT_EMAIL) return // sin config -> el console.error de arriba es la alerta
 
+  const copy = REASON_COPY[reason]
+  const when = new Date().toLocaleString('es-AR', { timeZone: 'America/Argentina/Buenos_Aires' })
+  const subject = copy
+    ? copy.subject(gymName || gymId)
+    : `⚠️ WhatsApp caído — ${gymName || gymId}`
+  const body = copy
+    ? copy.body(label, detail)
+    : `El WhatsApp del gimnasio ${label} no se está conectando bien.\n` +
+      `Motivo: ${reason}\n` +
+      (detail ? `Detalle: ${detail}\n` : '') +
+      `\nLos recordatorios NO se están enviando para este gym.\n` +
+      `Revisá los logs o reiniciá el backend en Render.`
+
   try {
     const res = await fetch('https://api.brevo.com/v3/smtp/email', {
       method: 'POST',
@@ -64,13 +102,8 @@ export async function notifyWaDown(gymId, reason, detail = '', { force = false }
       body: JSON.stringify({
         sender: { email: FROM_EMAIL, name: 'FitFlow Alertas' },
         to: [{ email: ALERT_EMAIL }],
-        subject: `⚠️ WhatsApp caído — ${gymName || gymId}`,
-        textContent:
-          `El WhatsApp del gimnasio ${label} no se está conectando bien.\n` +
-          `Motivo: ${reason}\n` +
-          (detail ? `Detalle: ${detail}\n` : '') +
-          `\nLos recordatorios NO se están enviando para este gym.\n` +
-          `Revisá los logs o reiniciá el backend en Render.`
+        subject,
+        textContent: `${body}\n\nFecha del evento: ${when} (hora Argentina)\nMotivo interno: ${reason}\nGym ID: ${gymId}`
       })
     })
     if (!res.ok) console.error(`[wa alert] brevo ${res.status}: ${await res.text()}`)

@@ -8,18 +8,26 @@ import {
   Typography,
   CircularProgress,
   Alert,
+  AlertTitle,
   Chip,
   Divider,
   Paper,
   Stack,
   Collapse,
   IconButton,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogContentText,
+  DialogActions,
 } from "@mui/material"
 import WhatsAppIcon from "@mui/icons-material/WhatsApp"
 import ExpandMoreIcon from "@mui/icons-material/ExpandMore"
 import ExpandLessIcon from "@mui/icons-material/ExpandLess"
 import PlayArrowIcon from "@mui/icons-material/PlayArrow"
 import DataObjectIcon from "@mui/icons-material/DataObject"
+import SendIcon from "@mui/icons-material/Send"
+import WarningAmberIcon from "@mui/icons-material/WarningAmber"
 
 const GREEN = "#25D366"
 
@@ -43,6 +51,23 @@ interface DryRunResult {
   ok: boolean
   total_would_send: number
   gyms: DryRunGym[]
+}
+
+interface SendGym {
+  gym_id: string
+  gym_name: string | null
+  status: string
+  sent: number
+  errors: number
+  skipped: number
+  failures: { alumno_id: string; error: string }[]
+}
+
+interface SendResult {
+  ok: boolean
+  total_sent: number
+  total_errors: number
+  gyms: SendGym[]
 }
 
 function formatJid(jid: string | null) {
@@ -125,11 +150,15 @@ export function WaDryRun() {
   const [result, setResult] = useState<DryRunResult | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [showJson, setShowJson] = useState(false)
+  const [confirmOpen, setConfirmOpen] = useState(false)
+  const [sending, setSending] = useState(false)
+  const [sendResult, setSendResult] = useState<SendResult | null>(null)
 
   async function run() {
     setLoading(true)
     setError(null)
     setResult(null)
+    setSendResult(null)
     try {
       const { data } = await api.get("/api/whatsapp/dry-run-all")
       setResult(data)
@@ -137,6 +166,24 @@ export function WaDryRun() {
       setError(e?.response?.data?.error || e.message)
     } finally {
       setLoading(false)
+    }
+  }
+
+  // Envío REAL. Solo se llega acá desde el diálogo de confirmación.
+  async function send() {
+    setSending(true)
+    setError(null)
+    setSendResult(null)
+    try {
+      const { data } = await api.post("/api/whatsapp/owner/trigger-all")
+      setSendResult(data)
+      // La simulación ya no refleja la realidad: lo enviado pasa a estar deduplicado.
+      setResult(null)
+    } catch (e: any) {
+      setError(e?.response?.data?.error || e.message)
+    } finally {
+      setSending(false)
+      setConfirmOpen(false)
     }
   }
 
@@ -148,23 +195,64 @@ export function WaDryRun() {
             Simulación de envíos WhatsApp
           </Typography>
           <Typography variant="body2" color="text.secondary">
-            Muestra a quién se le enviaría el recordatorio hoy. No envía nada.
+            La simulación muestra a quién se le enviaría el recordatorio hoy, sin enviar nada.
+            "Enviar reales" dispara el envío de verdad.
           </Typography>
         </Box>
-        <Button
-          variant="contained"
-          startIcon={loading ? <CircularProgress size={16} color="inherit" /> : <PlayArrowIcon />}
-          onClick={run}
-          disabled={loading}
-          sx={{ bgcolor: GREEN, "&:hover": { bgcolor: "#128C7E" }, whiteSpace: "nowrap" }}
-        >
-          {loading ? "Consultando…" : "Ejecutar simulación"}
-        </Button>
+        <Stack direction="row" spacing={1}>
+          <Button
+            variant="contained"
+            startIcon={loading ? <CircularProgress size={16} color="inherit" /> : <PlayArrowIcon />}
+            onClick={run}
+            disabled={loading || sending}
+            sx={{ bgcolor: GREEN, "&:hover": { bgcolor: "#128C7E" }, whiteSpace: "nowrap" }}
+          >
+            {loading ? "Consultando…" : "Ejecutar simulación"}
+          </Button>
+          <Button
+            variant="outlined"
+            color="error"
+            startIcon={sending ? <CircularProgress size={16} color="inherit" /> : <SendIcon />}
+            onClick={() => setConfirmOpen(true)}
+            disabled={loading || sending}
+            sx={{ whiteSpace: "nowrap" }}
+          >
+            {sending ? "Enviando…" : "Enviar reales"}
+          </Button>
+        </Stack>
       </Box>
 
       {error && (
         <Alert severity="error" onClose={() => setError(null)} sx={{ mb: 2 }}>
           {error}
+        </Alert>
+      )}
+
+      {sendResult && (
+        <Alert
+          severity={sendResult.total_errors > 0 ? "warning" : "success"}
+          onClose={() => setSendResult(null)}
+          sx={{ mb: 2 }}
+        >
+          <AlertTitle>
+            {sendResult.total_sent} mensaje{sendResult.total_sent !== 1 ? "s" : ""} enviado
+            {sendResult.total_sent !== 1 ? "s" : ""}
+            {sendResult.total_errors > 0 && ` · ${sendResult.total_errors} con error`}
+          </AlertTitle>
+          <Stack spacing={0.5} sx={{ mt: 1 }}>
+            {sendResult.gyms.map((g) => (
+              <Typography key={g.gym_id} variant="body2">
+                <strong>{g.gym_name ?? g.gym_id}</strong> — {g.status} · {g.sent} enviados
+                {g.errors > 0 && ` · ${g.errors} errores`}
+                {g.skipped > 0 && ` · ${g.skipped} ya enviados antes`}
+                {g.failures.length > 0 && (
+                  <Typography component="span" variant="caption" color="error" sx={{ display: "block", pl: 2 }}>
+                    {g.failures.map((f) => f.error).join(" · ")}
+                  </Typography>
+                )}
+              </Typography>
+            ))}
+          </Stack>
         </Alert>
       )}
 
@@ -222,6 +310,50 @@ export function WaDryRun() {
           </Stack>
         </>
       )}
+
+      <Dialog open={confirmOpen} onClose={() => !sending && setConfirmOpen(false)} maxWidth="xs" fullWidth>
+        <DialogTitle sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+          <WarningAmberIcon color="error" />
+          Enviar WhatsApps reales
+        </DialogTitle>
+        <DialogContent>
+          <DialogContentText component="div">
+            Se envían los recordatorios de vencimiento a los alumnos de{" "}
+            <strong>todos los gimnasios</strong> con WhatsApp conectado. Los mensajes llegan a los
+            teléfonos de verdad y no se pueden deshacer.
+            {result && (
+              <Box sx={{ mt: 2 }}>
+                <Chip
+                  icon={<WhatsAppIcon />}
+                  label={`${result.total_would_send} mensajes según la última simulación`}
+                  color={result.total_would_send > 0 ? "warning" : "default"}
+                  sx={{ fontWeight: 600 }}
+                />
+              </Box>
+            )}
+            {!result && (
+              <Typography variant="body2" sx={{ mt: 2 }} color="text.secondary">
+                No corriste la simulación todavía, así que no se sabe cuántos mensajes son. Conviene
+                simular primero.
+              </Typography>
+            )}
+          </DialogContentText>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setConfirmOpen(false)} disabled={sending}>
+            Cancelar
+          </Button>
+          <Button
+            onClick={send}
+            variant="contained"
+            color="error"
+            disabled={sending}
+            startIcon={sending ? <CircularProgress size={16} color="inherit" /> : <SendIcon />}
+          >
+            {sending ? "Enviando…" : "Sí, enviar"}
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Box>
   )
 }

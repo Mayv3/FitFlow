@@ -173,6 +173,36 @@ export async function postTriggerAll(req, res) {
   }
 }
 
+// Envío REAL de todos los gyms, disparado a mano por el owner desde el panel.
+// Mismo trabajo que postTriggerAll (el del cron), pero autenticado por JWT+rol
+// en vez de CRON_SECRET, que el frontend no tiene ni debe tener.
+export async function postTriggerAllOwner(req, res) {
+  try {
+    const result = await triggerAllGyms({ simulate: false })
+    const gyms = result.map((r) => ({
+      gym_id: r.gym_id,
+      gym_name: r.gym_name ?? null,
+      status: r.status,
+      sent: r.sent ?? 0,
+      errors: r.errors ?? 0,
+      skipped: r.skipped ?? 0,
+      // Solo los errores: el detalle de los enviados ya queda en whatsapp_mensajes.
+      failures: (r.results || [])
+        .filter((m) => m.status === 'error' || m.status === 'invalid_phone')
+        .map((m) => ({ alumno_id: m.alumno_id, error: m.error || m.status })),
+    }))
+    console.log(`[wa] envío real disparado por ${req.user?.email || req.user?.id}`)
+    res.json({
+      ok: true,
+      total_sent: gyms.reduce((s, g) => s + g.sent, 0),
+      total_errors: gyms.reduce((s, g) => s + g.errors, 0),
+      gyms,
+    })
+  } catch (e) {
+    res.status(500).json({ error: e.message })
+  }
+}
+
 export async function getDryRunAll(req, res) {
   try {
     const result = await triggerAllGyms({ simulate: true })

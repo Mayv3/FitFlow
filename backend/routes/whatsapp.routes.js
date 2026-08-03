@@ -11,6 +11,7 @@ import {
   postSimulate,
   postTriggerGym,
   postTriggerAll,
+  postTriggerAllOwner,
   getDryRunAll,
   getMensajes,
   getMensajesCalendar,
@@ -27,6 +28,8 @@ router.get('/dry-run-all', verifyToken, requireRole(1), getDryRunAll)
 
 // Owner: mensajes de WhatsApp de todos los gimnasios (rol OWNER = 1)
 router.get('/owner/mensajes', verifyToken, requireRole(1), getOwnerMensajes)
+// Owner: envío REAL manual de todos los gyms (el del cron usa CRON_SECRET)
+router.post('/owner/trigger-all', verifyToken, requireRole(1), postTriggerAllOwner)
 
 // Operaciones por gym (auth requerida)
 router.post('/gyms/:gymId/connect', verifyToken, postConnect)

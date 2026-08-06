@@ -232,7 +232,7 @@ export async function patchConfig(req, res) {
   const patch = req.body || {}
   // admin_jid lo gestiona el backend al conectar (no editable por el cliente:
   // es la clave de unicidad del número entre gimnasios).
-  const allowed = ['country_prefix', 'reminder_days_before', 'send_delay_ms', 'template', 'enabled']
+  const allowed = ['country_prefix', 'reminder_days_before', 'template', 'enabled']
   const clean = {}
   for (const k of allowed) if (k in patch) clean[k] = patch[k]
 

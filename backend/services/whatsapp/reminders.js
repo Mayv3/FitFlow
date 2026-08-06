@@ -15,10 +15,10 @@ function sleep(ms) {
 }
 
 // Delay fijo entre envíos = patrón robótico, señal de riesgo pal antispam de
-// WhatsApp. Jitter +/-40% para que el intervalo no sea siempre idéntico.
-function withJitter(ms) {
-  const jitter = ms * 0.4 * (Math.random() * 2 - 1)
-  return Math.max(1000, Math.round(ms + jitter))
+// WhatsApp. Random uniforme entre 5s y 13s para que el intervalo no sea
+// siempre idéntico.
+function withJitter() {
+  return Math.round(5000 + Math.random() * 8000)
 }
 
 async function getGymConfig(gymId) {
@@ -36,8 +36,7 @@ async function getGymConfig(gymId) {
     countryPrefix: wa.country_prefix || '549',
     daysBefore: Number.isFinite(wa.reminder_days_before) ? wa.reminder_days_before : 3,
     template: wa.template || DEFAULT_TEMPLATE,
-    adminJid: wa.admin_jid || null,
-    delayMs: Number.isFinite(wa.send_delay_ms) ? wa.send_delay_ms : 5000
+    adminJid: wa.admin_jid || null
   }
 }
 
@@ -196,7 +195,7 @@ export async function procesarRecordatorios(gymId, { simulate = false } = {}) {
       results.push({ alumno_id: a.id, status: 'error', error: e.message })
     }
 
-    await sleep(withJitter(cfg.delayMs))
+    await sleep(withJitter())
   }
 
   return { gym_id: gymId, gym_name: cfg.gym.name ?? null, admin_jid: cfg.adminJid, status: 'ok', sent, errors, skipped, pending, total: alumnos.length, results }

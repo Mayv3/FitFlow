@@ -81,7 +81,7 @@ export const SideBar = ({ tabs }: HeaderComponentProps) => {
   const [user_name, setUserName] = useState<string | null>(null)
   const [user_role, setUserRole] = useState<string | null>(null)
 
-  const { planName, hasFeature, isSubscriptionActive, isSubscriptionLoading,
+  const { planName, hasFeature, isSubscriptionActive, isSubscriptionLoading, isUnverified,
   } = useSubscription()
 
   const [sidebarBg, setSidebarBg] = useState<string>(theme.palette.primary.main)
@@ -96,6 +96,9 @@ export const SideBar = ({ tabs }: HeaderComponentProps) => {
   const isTabEnabled = (route: string): boolean => {
     const feature = getFeatureFromRoute(route)
     if (!feature) return true
+    // Fallo al verificar (backend caido/cold-start) no es lo mismo que "sin
+    // plan": no bloqueamos funciones por una duda de red.
+    if (isUnverified) return true
     if (!isSubscriptionActive) return false
     return hasFeature(feature) === true
   }

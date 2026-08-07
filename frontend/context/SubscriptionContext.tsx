@@ -1,7 +1,8 @@
 'use client'
 
-import { createContext, useContext, useCallback, ReactNode } from 'react'
+import { createContext, useContext, useCallback, useEffect, useState, ReactNode } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
+import { usePathname } from 'next/navigation'
 import { api } from '@/lib/api'
 import Cookies from 'js-cookie'
 
@@ -47,6 +48,7 @@ export type FeatureKey = keyof Omit<
 interface SubscriptionContextType {
   subscriptionData: SubscriptionData | null
   isSubscriptionLoading: boolean
+  isUnverified: boolean
   error: string | null
   refetch: () => Promise<void>
   hasFeature: (feature: FeatureKey) => boolean | null
@@ -76,12 +78,36 @@ export const SubscriptionProvider = ({
 }: {
   children: ReactNode
 }) => {
-  const gymId = Cookies.get('gym_id')
-  const userRole = Cookies.get('rol')
+  const pathname = usePathname()
+  const [auth, setAuth] = useState<{ gymId?: string; userRole?: string } | null>(null)
+  const gymId = auth?.gymId
+  const userRole = auth?.userRole
+
+  // Este provider vive en el layout raiz, asi que sigue montado desde /login:
+  // leer la cookie en el render la capturaba vacia y, como el elemento children
+  // del RSC no cambia de identidad, React no re-renderizaba el provider al
+  // navegar al dashboard. Resultado: gym_id quedaba undefined toda la sesion,
+  // la query nunca se habilitaba y la app mostraba "Sin plan". Se re-lee al
+  // montar, en cada navegacion y cuando el login avisa que cambio la sesion.
+  useEffect(() => {
+    const sync = () => {
+      const next = { gymId: Cookies.get('gym_id') || undefined, userRole: Cookies.get('rol') || undefined }
+      setAuth((prev) =>
+        prev && prev.gymId === next.gymId && prev.userRole === next.userRole ? prev : next
+      )
+    }
+    sync()
+    window.addEventListener('gym-settings-updated', sync)
+    window.addEventListener('storage', sync)
+    return () => {
+      window.removeEventListener('gym-settings-updated', sync)
+      window.removeEventListener('storage', sync)
+    }
+  }, [pathname])
 
   const {
     data: subscriptionData,
-    isLoading,
+    isPending,
     error,
     refetch: queryRefetch,
   } = useQuery<SubscriptionData>({
@@ -90,9 +116,23 @@ export const SubscriptionProvider = ({
     enabled: !!gymId,
     staleTime: 1000 * 60 * 60, // 1h
     gcTime: 1000 * 60 * 60 * 24, // 24h
-    retry: 1,
+    retry: 3, // backend Render free duerme y tarda en despertar, 1 solo intento fallaba en frio
     refetchOnWindowFocus: false,
+    // Si quedo en error (cold-start, blip de red) reintenta solo hasta resolver;
+    // sin esto el estado "error" queda pegado hasta un refetch manual o remount.
+    refetchInterval: (query) => (query.state.error ? 15000 : false),
   })
+
+  // Mientras no leimos cookies, o la query esta pendiente, el estado real es
+  // desconocido. Ojo: no alcanza con isLoading (isPending && isFetching) porque
+  // una query deshabilitada queda pending pero idle => isLoading false y el
+  // consumidor lo leia como "sin plan confirmado".
+  const isResolving = auth === null || (!!gymId && isPending)
+
+  // Termino de resolver pero no sabemos: fallo la red / backend en cold-start,
+  // o el usuario no tiene gym (owner). No es lo mismo que "confirmado sin plan":
+  // sin esto el sidebar bloquea funciones y el modal se abre por las dudas.
+  const isUnverified = !isResolving && (!subscriptionData || !gymId)
 
   const refetch = useCallback(async () => {
     await queryRefetch()
@@ -101,11 +141,11 @@ export const SubscriptionProvider = ({
 
   const hasFeature = useCallback(
     (feature: FeatureKey): boolean | null => {
-      if (isLoading) return null
+      if (isResolving) return null
       if (!subscriptionData?.plan) return false
       return subscriptionData.plan[feature] === true
     },
-    [subscriptionData, isLoading]
+    [subscriptionData, isResolving]
   )
 
   const maxAlumnos = subscriptionData?.plan?.max_alumnos ?? 0
@@ -132,7 +172,7 @@ export const SubscriptionProvider = ({
   const isOwner = userRole === '1'
 
   const isPaymentWarning = (() => {
-    if (isLoading || isOwner) return false
+    if (isResolving || isUnverified || isOwner) return false
     const today = new Date()
     const dayOfMonth = today.getDate()
     const isInWarningWindow = dayOfMonth >= PAYMENT_WARNING_START_DAY && dayOfMonth < PAYMENT_SUSPENSION_DAY
@@ -145,7 +185,8 @@ export const SubscriptionProvider = ({
     <SubscriptionContext.Provider
       value={{
         subscriptionData: subscriptionData ?? null,
-        isSubscriptionLoading: isLoading,
+        isSubscriptionLoading: isResolving,
+        isUnverified,
         error: error ? (error as Error).message : null,
         refetch,
         hasFeature,

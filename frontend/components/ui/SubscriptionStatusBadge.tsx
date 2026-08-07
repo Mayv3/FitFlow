@@ -102,6 +102,7 @@ export const SubscriptionStatusBadge = () => {
     subscriptionData,
     isSubscriptionLoading,
     isPaymentWarning,
+    isUnverified,
   } = useSubscription()
 
   const { isDarkMode, toggleDarkMode } = useDarkMode()
@@ -112,13 +113,15 @@ export const SubscriptionStatusBadge = () => {
   // pendiente. No es estado derivable: el usuario puede cerrarlo y debe quedar
   // cerrado, asi que el efecto solo lo abre cuando terminan de cargar los datos.
   useEffect(() => {
-    if (!isSubscriptionLoading && (status === 'none' || isPaymentWarning)) {
+    if (!isSubscriptionLoading && !isUnverified && (status === 'none' || isPaymentWarning)) {
       // eslint-disable-next-line react-hooks/set-state-in-effect
       setOpen(true)
     }
-  }, [isSubscriptionLoading, status, isPaymentWarning])
+  }, [isSubscriptionLoading, isUnverified, status, isPaymentWarning])
 
-  if (isSubscriptionLoading) return null
+  // Loading o error-sin-datos: todavia no sabemos el estado real, no mostrar
+  // "Sin plan" de prepo (backend puede estar en cold-start, no es "sin plan").
+  if (isSubscriptionLoading || isUnverified) return null
 
   const config = STATUS_CONFIG[status]
   const subscription = subscriptionData?.subscription

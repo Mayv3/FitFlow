@@ -18,6 +18,14 @@ function withJitter() {
   return Math.round(5000 + Math.random() * 8000)
 }
 
+// Ráfaga continua (aunque tenga jitter) es señal de bot pal antispam. Cada
+// TANDA_SIZE envíos, una pausa larga random en vez de la jitter normal —
+// simula un humano que corta a mandar mensajes cada tanto.
+const TANDA_SIZE = 25
+function withTandaPause() {
+  return Math.round(60000 + Math.random() * 60000)
+}
+
 // ── Corridas en curso y cancelación ──────────────────────────────────────────
 // Una corrida de 150 alumnos tarda ~20 minutos por el jitter entre envíos. Si
 // se disparó por error hay que poder frenarla sin reiniciar el server: cada
@@ -26,10 +34,6 @@ function withJitter() {
 
 /** @type {Map<string, {gymId:string, gymName:string|null, simulate:boolean, startedAt:number, total:number, sent:number, errors:number, skipped:number, cancelada:boolean, cancelPor:string|null, despertar:(()=>void)|null}>} */
 const corridas = new Map()
-
-// Cancelar una corrida "de todos los gyms" tiene que impedir además que arranque
-// el siguiente gimnasio de la lista, no solo frenar el que está enviando.
-let cancelarGlobal = false
 
 function nuevaCorrida(gymId, { gymName, simulate, total }) {
   const run = {
@@ -92,9 +96,8 @@ export function cancelarEnvio(gymId, porQuien = 'desconocido') {
   }
 }
 
-/** Cancela todas las corridas activas y frena el recorrido por gimnasios. */
+/** Cancela todas las corridas activas de todos los gimnasios. */
 export function cancelarTodo(porQuien = 'desconocido') {
-  cancelarGlobal = true
   const frenadas = []
   for (const gymId of corridas.keys()) {
     const r = cancelarEnvio(gymId, porQuien)
@@ -144,12 +147,9 @@ async function getGymConfig(gymId) {
 
 async function fetchAlumnosToRemind(gymId, daysBefore) {
   const today = dayjs().startOf('day')
-  // Solo 2 fechas exactas: vencen HOY y vencen dentro de `daysBefore` días.
-  // NO los días intermedios. (Si daysBefore=0, queda solo hoy.)
-  const dueDays = Array.from(new Set([
-    today.format('YYYY-MM-DD'),
-    today.add(daysBefore, 'day').format('YYYY-MM-DD')
-  ]))
+  // Recordatorio previo deshabilitado por ahora — solo se avisa el día que vence.
+  // (daysBefore queda sin usar; para reactivar, sumar de nuevo today.add(daysBefore, 'day'))
+  const dueDays = [today.format('YYYY-MM-DD')]
 
   const { data, error } = await supabaseAdmin
     .from('alumnos')
@@ -259,16 +259,21 @@ export async function procesarRecordatorios(gymId, { simulate = false } = {}) {
   let errors = 0
   let skipped = 0
   let pending = 0
+  let enTanda = 0
   const results = []
   const today = dayjs().startOf('day')
 
+  const aEnviar = alumnos.length - sentSet.size
+  const tandas = Math.floor(Math.max(0, aEnviar - 1) / TANDA_SIZE)
   waLog(gymId, simulate ? 'Simulación de recordatorios' : 'Arranca envío de recordatorios', {
     level: 'start',
     detalle: {
       Candidatos: alumnos.length,
       'Ya enviados antes': sentSet.size,
       'Días de aviso previo': cfg.daysBefore,
-      'Tiempo estimado': simulate ? '—' : `~${duracion(alumnos.length * 9000)} (9s promedio entre envíos)`,
+      'Tiempo estimado': simulate
+        ? '—'
+        : `~${duracion(aEnviar * 9000 + tandas * 90000)} (9s promedio entre envíos + pausa larga cada ${TANDA_SIZE})`,
       'Se puede frenar': simulate ? '—' : 'sí, con el botón Cancelar del panel'
     }
   })
@@ -379,7 +384,16 @@ export async function procesarRecordatorios(gymId, { simulate = false } = {}) {
         results.push({ alumno_id: a.id, status: 'error', error: e.message })
       }
 
-      await esperar(withJitter(), run)
+      enTanda++
+      if (enTanda % TANDA_SIZE === 0) {
+        const pausaMs = withTandaPause()
+        waLog(gymId, `Pausa larga cada ${TANDA_SIZE} envíos — ${duracion(pausaMs)}`, {
+          detalle: { Progreso: `${sent + errors}/${alumnos.length - skipped}` }
+        })
+        await esperar(pausaMs, run)
+      } else {
+        await esperar(withJitter(), run)
+      }
     }
   } finally {
     // Sacar la corrida del registro pase lo que pase: si queda colgada, el panel
@@ -431,43 +445,37 @@ export async function triggerAllGyms({ simulate = false } = {}) {
   const eligibles = (data || []).filter((g) => !!g.settings?.whatsapp_module_enabled)
 
   const t0 = Date.now()
-  cancelarGlobal = false // arranca limpio: una cancelación vieja no frena esta corrida
   waLog(null, `===== ${simulate ? 'SIMULACIÓN' : 'CORRIDA'} de recordatorios: ${eligibles.length} gimnasios =====`, {
     level: 'start'
   })
 
-  const out = []
-  let cortadaGlobal = false
-  for (const g of eligibles) {
-    // Cancelar durante el gym 2 de 5 no debe arrancar el gym 3.
-    if (cancelarGlobal) {
-      cortadaGlobal = true
-      waLog(null, `Corrida cortada: quedaron ${eligibles.length - out.length} gimnasios sin procesar`, {
-        level: 'warn'
-      })
-      break
-    }
-    try {
-      out.push(await procesarRecordatorios(g.id, { simulate }))
-    } catch (e) {
-      waLog(g.id, 'La corrida de este gym se cortó por un error', {
-        level: 'error',
-        detalle: { Error: e.message, 'Qué hago': 'Sigo con el resto de los gimnasios.' }
-      })
-      out.push({ gym_id: g.id, status: 'error', error: e.message })
-    }
-  }
+  // Cada gym tiene su propia conexión WhatsApp y su propio candado de corrida
+  // (corridas.has(gymId)) — no se pisan entre sí, van todos en paralelo.
+  // cancelarTodo() sigue funcionando: recorre corridas.keys() y frena cada una
+  // ya registrada, sin necesitar frenar "antes de que arranque" como en el loop viejo.
+  const out = await Promise.all(
+    eligibles.map(async (g) => {
+      try {
+        return await procesarRecordatorios(g.id, { simulate })
+      } catch (e) {
+        waLog(g.id, 'La corrida de este gym se cortó por un error', {
+          level: 'error',
+          detalle: { Error: e.message, 'Qué hago': 'Sigo con el resto de los gimnasios.' }
+        })
+        return { gym_id: g.id, status: 'error', error: e.message }
+      }
+    })
+  )
 
   const totalSent = out.reduce((s, r) => s + (r.sent || 0), 0)
   const totalErrors = out.reduce((s, r) => s + (r.errors || 0), 0)
   const caidos = out.filter((r) => r.status === 'not_connected').length
   const cancelados = out.filter((r) => r.cancelled).length
-  cancelarGlobal = false
   waLog(
     null,
-    `===== ${cortadaGlobal || cancelados ? 'CANCELADA' : 'Fin'}: ${totalSent} enviados, ${totalErrors} errores en ${duracion(Date.now() - t0)} =====`,
+    `===== ${cancelados ? 'CANCELADA' : 'Fin'}: ${totalSent} enviados, ${totalErrors} errores en ${duracion(Date.now() - t0)} =====`,
     {
-      level: totalErrors > 0 || caidos > 0 || cortadaGlobal ? 'warn' : 'end',
+      level: totalErrors > 0 || caidos > 0 ? 'warn' : 'end',
       detalle: {
         'Gyms sin WhatsApp conectado': caidos || undefined,
         'Gyms cancelados a mano': cancelados || undefined

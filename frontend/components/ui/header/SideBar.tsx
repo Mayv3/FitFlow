@@ -17,8 +17,6 @@ import {
   Dialog,
   DialogTitle,
   DialogContent,
-  DialogActions,
-  Button,
 } from '@mui/material'
 import { useTheme } from '@mui/material/styles'
 import LogoutIcon from '@mui/icons-material/Logout'
@@ -30,12 +28,13 @@ import { useLogout } from '@/hooks/logout/useLogout'
 import Cookies from 'js-cookie'
 import { useRouter, usePathname } from 'next/navigation'
 import { ROLE_ROUTES } from '@/const/roles/roles'
-import { useSubscription } from '@/context/SubscriptionContext'
+import { useSubscription, type FeatureKey } from '@/context/SubscriptionContext'
 import { SidebarSkeleton } from './SideBarSkeleton'
+import { FlushDialogActions } from '@/components/ui/modals/FlushDialogActions'
 type TabItem = { label: string; icon: React.ReactNode; route: string; section?: string }
 type HeaderComponentProps = { tabs: TabItem[] }
 
-const ROUTE_FEATURE_MAP: Record<string, string> = {
+const ROUTE_FEATURE_MAP: Record<string, FeatureKey> = {
   'stats': 'stats',
   'clases': 'classes',
   'services': 'services',
@@ -45,7 +44,7 @@ const ROUTE_FEATURE_MAP: Record<string, string> = {
   'products': 'products',
 }
 
-function getFeatureFromRoute(route: string): string | null {
+function getFeatureFromRoute(route: string): FeatureKey | null {
   for (const [key, feature] of Object.entries(ROUTE_FEATURE_MAP)) {
     if (route.includes(key)) return feature
   }
@@ -98,7 +97,7 @@ export const SideBar = ({ tabs }: HeaderComponentProps) => {
     const feature = getFeatureFromRoute(route)
     if (!feature) return true
     if (!isSubscriptionActive) return false
-    return hasFeature(feature as any) === true
+    return hasFeature(feature) === true
   }
 
 
@@ -121,7 +120,11 @@ export const SideBar = ({ tabs }: HeaderComponentProps) => {
     return ROLE_ROUTES[user_role ?? ""] || "/dashboard"
   }
 
+  // Cookies y sessionStorage solo existen en el cliente. Leerlos en el render
+  // rompe la hidratacion de las rutas prerenderizadas, asi que se leen al montar
+  // a proposito. React Compiler no puede distinguir este caso.
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setGymName(Cookies.get('gym_name') ?? null)
     setUserName(Cookies.get('name') ?? null)
     setUserRole(Cookies.get('rol') ?? null)
@@ -132,8 +135,12 @@ export const SideBar = ({ tabs }: HeaderComponentProps) => {
     setSidebarBg(readPrimary())
   }, [])
 
+  // No es estado puramente derivado: los handlers lo setean de forma optimista
+  // (lineas ~107 y ~587) para pintar el tab antes de que termine la navegacion,
+  // y este efecto lo resincroniza cuando el pathname real cambia.
   useEffect(() => {
     const idx = tabs.findIndex(t => t.route === pathname)
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setSelectedIndex(idx)
   }, [pathname, tabs])
 
@@ -162,7 +169,10 @@ export const SideBar = ({ tabs }: HeaderComponentProps) => {
     return () => clearTimeout(t)
   }, [pathname, isLocked])
 
+  // Guard de hidratacion: el server no puede saber el estado real del sidebar,
+  // asi que la primera pasada renderiza el skeleton y recien despues el contenido.
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setMounted(true)
   }, [])
 
@@ -213,7 +223,7 @@ export const SideBar = ({ tabs }: HeaderComponentProps) => {
           component="img"
           src={isDefaultLogo ? defaultLogo : (gym_logo_url as string)}
           alt={gym_name || 'Gym'}
-          onError={(e: any) => { e.currentTarget.src = defaultLogo }}
+          onError={(e: React.SyntheticEvent<HTMLImageElement>) => { e.currentTarget.src = defaultLogo }}
           sx={{
             width: isExpanded ? (isCompact ? 40 : 50) : (isCompact ? 26 : 30),
             height: isExpanded ? (isCompact ? 40 : 50) : (isCompact ? 26 : 30),
@@ -440,7 +450,7 @@ export const SideBar = ({ tabs }: HeaderComponentProps) => {
       PaperProps={{
         sx: {
           borderRadius: 3,
-          p: 1,
+          overflow: 'hidden',
         }
       }}
     >
@@ -466,7 +476,7 @@ export const SideBar = ({ tabs }: HeaderComponentProps) => {
       </DialogTitle>
       <DialogContent sx={{ textAlign: 'center', pb: 2 }}>
         <Typography variant="body1" color="text.secondary" sx={{ mb: 2 }}>
-          La funcionalidad <strong>"{blockedFeatureName}"</strong> está disponible a partir del <strong>Plan Premium</strong>.
+          La funcionalidad <strong>&quot;{blockedFeatureName}&quot;</strong> está disponible a partir del <strong>Plan Premium</strong>.
         </Typography>
         <Typography variant="body2" color="text.secondary">
           Actualizá tu plan para desbloquear esta y más funcionalidades avanzadas para tu gimnasio.
@@ -489,29 +499,19 @@ export const SideBar = ({ tabs }: HeaderComponentProps) => {
           </Typography>
         </Box>
       </DialogContent>
-      <DialogActions sx={{ justifyContent: 'center', pb: 3, gap: 2 }}>
-        <Button
-          variant="outlined"
-          onClick={() => setUpgradeModalOpen(false)}
-          sx={{ px: 4 }}
-        >
-          Cerrar
-        </Button>
-        <Button
-          variant="contained"
-          onClick={() => {
-            window.open('mailto:contactofitnessflow@gmail.com?subject=Upgrade de Plan - ' + gym_name, '_blank')
-            setUpgradeModalOpen(false)
-          }}
-          sx={{
-            px: 4,
-            bgcolor: '#F59E0B',
-            '&:hover': { bgcolor: '#D97706' }
-          }}
-        >
-          Contactar
-        </Button>
-      </DialogActions>
+      <FlushDialogActions
+        actions={[
+          { label: 'Cerrar', onClick: () => setUpgradeModalOpen(false), tone: 'neutral' },
+          {
+            label: 'Contactar',
+            onClick: () => {
+              window.open('mailto:contactofitnessflow@gmail.com?subject=Upgrade de Plan - ' + gym_name, '_blank')
+              setUpgradeModalOpen(false)
+            },
+            sx: { bgcolor: '#F59E0B', color: '#fff', '&:hover': { bgcolor: '#D97706' } },
+          },
+        ]}
+      />
     </Dialog>
   )
 

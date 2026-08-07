@@ -1,5 +1,30 @@
-import { UseQueryResult } from "@tanstack/react-query";
 import { FieldLayout } from "./FieldLayout";
+
+/**
+ * Opcion de un `select`. Los ids del backend llegan como number (alumnos, planes)
+ * o como string (productos, servicios via String(s.id)), asi que el contrato
+ * admite ambos. null = opcion vacia.
+ */
+export type SelectOption = {
+  label: string;
+  value: string | number | null;
+  disabled?: boolean;
+  /**
+   * Metadata que las options de planes adjuntan (ver hooks/plans/usePlanesPrecios)
+   * para que el form de pagos autocomplete monto y clases al elegir un plan.
+   */
+  precio?: number;
+  numero_clases?: number;
+};
+
+/**
+ * Valor que puede tomar un campo del form. `string[]` cubre el campo `emails`,
+ * el unico multivaluado.
+ */
+export type FieldValue = string | number | boolean | string[] | null | undefined;
+
+/** Estado de un formulario indexado por `Field['name']`. */
+export type FormValues = Record<string, FieldValue>;
 
 export type Field = {
   label: string;
@@ -11,17 +36,14 @@ export type Field = {
   min?: number;
   max?: number;
   placeholder?: string;
-  defaultValue?: any;
+  defaultValue?: FieldValue;
   inputProps?: React.InputHTMLAttributes<HTMLInputElement>;
   regex?: RegExp;
   disabled?: boolean;
-  options?: Array<{ label: string; value: string | number | null }>;
+  options?: SelectOption[];
   onBlur?: (value: string) => void;
-  validate?: (value: any) => string | null;
-  searchFromCache?: (gymId: string, q: string) => { label: string; value: any }[];
-  onChange?:
-  | ((value: any, values: Record<string, any>) => Record<string, any>)
-  | ((value: any, values: Record<string, any>) => void);
+  validate?: (value: FieldValue) => string | null;
+  searchFromCache?: (gymId: string, q: string) => SelectOption[];
 };
 
 
@@ -29,7 +51,8 @@ export interface FormModalProps<T> {
   open: boolean;
   title: string;
   fields: Field[];
-  initialValues?: T | null;
+  /** Semilla del form: puede ser parcial (ej. solo `origen_pago`). */
+  initialValues?: Partial<T> | null;
   onClose: () => void;
   onSubmit: (values: T) => void | Promise<void>;
   confirmText?: string;
@@ -39,7 +62,7 @@ export interface FormModalProps<T> {
   layout?: Record<string, FieldLayout>;
   mode?: 'create' | 'edit';
   lockedFields?: string[];
-  asyncValidators?: Record<string, (value: any, values: T) => Promise<string | null>>;
+  asyncValidators?: Record<string, (value: FieldValue, values: T) => Promise<string | null>>;
   asyncTrigger?: 'blur' | 'change';
   asyncDebounceMs?: number;
   gymId?: string;

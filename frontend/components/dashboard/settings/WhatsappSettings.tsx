@@ -1,6 +1,7 @@
 "use client"
 
-import { useEffect, useMemo, useRef, useState } from "react"
+import { useMemo, useRef, useState } from "react"
+import { useQuery, useQueryClient } from "@tanstack/react-query"
 import Cookies from "js-cookie"
 import {
     Box,
@@ -17,15 +18,26 @@ import {
     DialogTitle,
     DialogContent,
     DialogContentText,
-    DialogActions,
 } from "@mui/material"
 import WarningAmberIcon from '@mui/icons-material/WarningAmber'
 import WhatsAppIcon from '@mui/icons-material/WhatsApp'
 import LogoutIcon from '@mui/icons-material/Logout'
 import { api } from "@/lib/api"
 import { WhatsappHistory } from "./WhatsappHistory"
+import { useClientSnapshot } from "@/hooks/useClientSnapshot"
+import { getApiErrorMessage, getErrorMessage } from "@/utils/errors/apiError"
+import { FlushDialogActions } from "@/components/ui/modals/FlushDialogActions"
+
+const leerGymIdDeCookie = () => Cookies.get("gym_id") || ""
+const sinGymId = () => ""
 
 type Status = 'disconnected' | 'connecting' | 'qr' | 'connected' | 'logged_out' | 'number_in_use' | 'replaced' | 'forbidden'
+
+interface WhatsappConfig {
+    template?: string
+    admin_jid?: string | null
+    reminder_days_before?: number
+}
 
 interface WAState {
     status: Status
@@ -37,6 +49,10 @@ interface WAState {
 
 const DEFAULT_TEMPLATE =
     "Hola {nombre}, tu plan {plan} {estado} el {fecha}. ¡Renoválo para seguir entrenando! 💪"
+
+const ESTADO_INICIAL: WAState = {
+    status: 'disconnected', qr: null, qrDataUrl: null, lastError: null,
+}
 
 const GREEN = '#25D366'
 const DARK_GREEN = '#128C7E'
@@ -57,78 +73,73 @@ function formatPhone(jid: string | null): string {
     return '+' + raw
 }
 
-const STATUS_MAP: Record<Status, { label: string; color: 'default' | 'success' | 'warning' | 'error' | 'info' }> = {
-    disconnected: { label: 'Desconectado', color: 'default' },
-    connecting: { label: 'Conectando…', color: 'info' },
-    qr: { label: 'Escaneá el QR', color: 'warning' },
-    connected: { label: 'Conectado', color: 'success' },
-    logged_out: { label: 'Sesión cerrada', color: 'error' },
-    number_in_use: { label: 'Número en uso', color: 'error' },
-    replaced: { label: 'Reemplazada', color: 'warning' },
-    forbidden: { label: 'Bloqueado por WhatsApp', color: 'error' },
-}
-
 export function WhatsappSettings() {
-    const [gymId, setGymId] = useState<string>("")
-    const [adminJid, setAdminJid] = useState<string | null>(null)
+    // La cookie solo existe en el cliente; useClientSnapshot la lee sin el render
+    // extra que provocaba el useEffect de abajo.
+    const gymId = useClientSnapshot(leerGymIdDeCookie, sinGymId)
+    const queryClient = useQueryClient()
     const [template, setTemplate] = useState("")
     const [reminderDays, setReminderDays] = useState<number>(4)
-    const [state, setState] = useState<WAState>({
-        status: 'disconnected', qr: null, qrDataUrl: null, lastError: null,
-    })
-    const [loading, setLoading] = useState(true)
     const [busy, setBusy] = useState<string | null>(null)
     const [feedback, setFeedback] = useState<{ kind: 'success' | 'error' | 'info'; msg: string } | null>(null)
     const [confirmDisconnect, setConfirmDisconnect] = useState(false)
-    const pollRef = useRef<NodeJS.Timeout | null>(null)
     const templateRef = useRef<HTMLTextAreaElement | null>(null)
 
-    useEffect(() => { setGymId(Cookies.get("gym_id") || "") }, [])
+    const configKey = ['whatsappConfig', gymId] as const
+    const statusKey = ['whatsappStatus', gymId] as const
 
-    useEffect(() => {
-        if (!gymId) return
-        loadConfig(); loadStatus()
-        return () => { if (pollRef.current) clearInterval(pollRef.current) }
-    }, [gymId])
-
-    useEffect(() => {
-        if (state.status === 'qr' || state.status === 'connecting') {
-            if (!pollRef.current) pollRef.current = setInterval(loadStatus, 2000)
-        } else if (pollRef.current) {
-            clearInterval(pollRef.current); pollRef.current = null
-        }
-    }, [state.status])
-
-    async function loadConfig() {
-        try {
+    const { data: config, isPending: loadingConfig, error: configError } = useQuery({
+        queryKey: configKey,
+        enabled: Boolean(gymId),
+        queryFn: async () => {
             const { data } = await api.get(`/api/whatsapp/gyms/${gymId}/config`)
-            const cfg = data.config || {}
-            setTemplate(cfg.template ?? DEFAULT_TEMPLATE)
-            setAdminJid(cfg.admin_jid || null)
-            setReminderDays(cfg.reminder_days_before ?? 4)
-        } catch (e: any) {
-            setFeedback({ kind: 'error', msg: e?.response?.data?.error || e.message })
-        } finally { setLoading(false) }
+            return (data.config || {}) as WhatsappConfig
+        },
+    })
+
+    // El polling mientras se escanea el QR lo maneja refetchInterval, en vez del
+    // setInterval + ref manual que habia antes.
+    const { data: state = ESTADO_INICIAL } = useQuery({
+        queryKey: statusKey,
+        enabled: Boolean(gymId),
+        queryFn: async (): Promise<WAState> => {
+            const { data } = await api.get(`/api/whatsapp/gyms/${gymId}/status`)
+            return data
+        },
+        refetchInterval: (query) => {
+            const status = query.state.data?.status
+            return status === 'qr' || status === 'connecting' ? 2000 : false
+        },
+    })
+
+    // El backend persiste admin_jid al conectar, asi que el numero sale del
+    // estado en vivo si esta conectado y si no del config guardado.
+    const adminJid =
+        (state.status === 'connected' ? state.me?.id : null) ?? config?.admin_jid ?? null
+
+    // Los inputs editables arrancan con lo que vino del server y despues los
+    // maneja el usuario: se sincronizan al llegar el config, no en un efecto.
+    const [configPrevio, setConfigPrevio] = useState<typeof config>(undefined)
+    if (config && config !== configPrevio) {
+        setConfigPrevio(config)
+        setTemplate(config.template ?? DEFAULT_TEMPLATE)
+        setReminderDays(config.reminder_days_before ?? 4)
     }
 
-    async function loadStatus() {
-        try {
-            const { data } = await api.get(`/api/whatsapp/gyms/${gymId}/status`)
-            setState(data)
-            // El backend persiste admin_jid al conectar; acá solo refrescamos el label local.
-            if (data.status === 'connected' && data?.me?.id && data.me.id !== adminJid) {
-                setAdminJid(data.me.id)
-            }
-        } catch { /* silent */ }
+    if (configError && !feedback) {
+        setFeedback({ kind: 'error', msg: getApiErrorMessage(configError) ?? getErrorMessage(configError) ?? '' })
     }
+
+    const loading = Boolean(gymId) && loadingConfig
+    const loadStatus = () => { queryClient.invalidateQueries({ queryKey: statusKey }) }
 
     async function saveTemplate() {
         setBusy('save')
         try {
             await api.patch(`/api/whatsapp/gyms/${gymId}/config`, { template })
             setFeedback({ kind: 'success', msg: 'Plantilla guardada' })
-        } catch (e: any) {
-            setFeedback({ kind: 'error', msg: e?.response?.data?.error || e.message })
+        } catch (e: unknown) {
+            setFeedback({ kind: 'error', msg: getApiErrorMessage(e) ?? getErrorMessage(e) ?? '' })
         } finally { setBusy(null) }
     }
 
@@ -138,8 +149,8 @@ export function WhatsappSettings() {
             await api.patch(`/api/whatsapp/gyms/${gymId}/config`, { enabled: true })
             await api.post(`/api/whatsapp/gyms/${gymId}/connect`)
             loadStatus()
-        } catch (e: any) {
-            setFeedback({ kind: 'error', msg: e?.response?.data?.error || e.message })
+        } catch (e: unknown) {
+            setFeedback({ kind: 'error', msg: getApiErrorMessage(e) ?? getErrorMessage(e) ?? '' })
         } finally { setBusy(null) }
     }
 
@@ -148,10 +159,10 @@ export function WhatsappSettings() {
         setBusy('disconnect')
         try {
             await api.post(`/api/whatsapp/gyms/${gymId}/disconnect`)
-            setAdminJid(null)
-            setState({ status: 'disconnected', qr: null, qrDataUrl: null, lastError: null })
-        } catch (e: any) {
-            setFeedback({ kind: 'error', msg: e?.response?.data?.error || e.message })
+            queryClient.setQueryData<WAState>(statusKey, ESTADO_INICIAL)
+            queryClient.setQueryData<WhatsappConfig>(configKey, (prev) => ({ ...(prev ?? {}), admin_jid: null }))
+        } catch (e: unknown) {
+            setFeedback({ kind: 'error', msg: getApiErrorMessage(e) ?? getErrorMessage(e) ?? '' })
         } finally { setBusy(null) }
     }
 
@@ -174,7 +185,6 @@ export function WhatsappSettings() {
 
     const isConnected = state.status === 'connected'
     const phoneLabel = useMemo(() => formatPhone(adminJid), [adminJid])
-    const statusInfo = STATUS_MAP[state.status]
 
     if (loading) {
         return (
@@ -201,6 +211,7 @@ export function WhatsappSettings() {
                             state.qrDataUrl ? (
                                 <>
                                     <Box sx={{ p: 2, borderRadius: 2, border: `2px solid ${GREEN}`, bgcolor: 'white' }}>
+                                        {/* eslint-disable-next-line @next/next/no-img-element -- next/image no aporta nada aca: next.config.mjs usa images.unoptimized; ademas es un data: URI generado en runtime. */}
                                         <img src={state.qrDataUrl} alt="QR" style={{ width: 220, height: 220, display: 'block' }} />
                                     </Box>
                                     <Typography variant="body2" color="text.secondary" textAlign="center">
@@ -383,6 +394,7 @@ export function WhatsappSettings() {
                 onClose={() => setConfirmDisconnect(false)}
                 maxWidth="xs"
                 fullWidth
+                PaperProps={{ sx: { overflow: 'hidden' } }}
             >
                 <DialogTitle sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                     <WarningAmberIcon color="error" />
@@ -396,19 +408,12 @@ export function WhatsappSettings() {
                         Para volver a usarlo deberás escanear el QR nuevamente. ¿Continuar?
                     </DialogContentText>
                 </DialogContent>
-                <DialogActions sx={{ px: 3, pb: 2 }}>
-                    <Button onClick={() => setConfirmDisconnect(false)} color="inherit">
-                        Cancelar
-                    </Button>
-                    <Button
-                        onClick={disconnect}
-                        variant="contained"
-                        color="error"
-                        startIcon={<LogoutIcon />}
-                    >
-                        Desvincular
-                    </Button>
-                </DialogActions>
+                <FlushDialogActions
+                    actions={[
+                        { label: 'Cancelar', onClick: () => setConfirmDisconnect(false), tone: 'neutral' },
+                        { label: 'Desvincular', onClick: disconnect, tone: 'danger' },
+                    ]}
+                />
             </Dialog>
         </Paper>
         {isConnected && gymId && <WhatsappHistory gymId={gymId} />}

@@ -21,14 +21,8 @@ import Cookies from 'js-cookie';
 
 const API_BASE = `${process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:3001'}/api`;
 
-interface Novedad {
-  id: number;
-  titulo: string;
-  descripcion?: string;
-  tipo: string;
-  fecha_publicacion: string;
-  imagen_url?: string;
-}
+import type { Novedad } from '@/models/Novedad';
+import { useGymThemeSettings } from '@/hooks/useGymThemeSettings';
 
 const THREE_DAYS_MS = 3 * 24 * 60 * 60 * 1000;
 const DISMISSED_KEY = 'novedadesDismissedAt';
@@ -79,18 +73,9 @@ const tipoMeta: Record<string, { label: string; icon: React.ReactNode }> = {
 export default function NovedadesModal() {
   const [open, setOpen] = useState(false);
   const [novedades, setNovedades] = useState<Novedad[]>([]);
-  const [primaryColor, setPrimaryColor] = useState('#16A34A');
+  // Reutiliza el hook de tema en vez de releer y parsear gym_settings a mano.
+  const { primaryColor } = useGymThemeSettings();
   const cardRefs = useRef<(HTMLDivElement | null)[]>([]);
-
-  useEffect(() => {
-    try {
-      const raw = sessionStorage.getItem('gym_settings');
-      if (raw) {
-        const parsed = JSON.parse(raw);
-        if (parsed?.colors?.primary) setPrimaryColor(parsed.colors.primary);
-      }
-    } catch {}
-  }, []);
 
   useEffect(() => {
     if (wasDismissed()) return;
@@ -178,7 +163,7 @@ export default function NovedadesModal() {
           return (
             <Box
               key={n.id}
-              ref={(el) => { cardRefs.current[i] = el; }}
+              ref={(el: HTMLDivElement | null) => { cardRefs.current[i] = el; }}
               sx={{
                 p: 1.5,
                 mb: 0.8,

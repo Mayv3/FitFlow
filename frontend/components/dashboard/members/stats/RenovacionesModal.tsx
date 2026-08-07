@@ -15,13 +15,11 @@ import { useGymThemeSettings } from '@/hooks/useGymThemeSettings';
 type Props = {
     open: boolean;
     onClose: () => void;
-    gymId?: string;
 };
 
 export function RenovacionesModal({
     open,
     onClose,
-    gymId,
 }: Props) {
     const t = useTheme();
     const { primaryColor } = useGymThemeSettings();
@@ -88,7 +86,7 @@ export function RenovacionesModal({
                     </Typography>
                 ) : (
                     <Box display="grid" gap={1.5}>
-                        {items.map((a: any) => (
+                        {items.map((a) => (
                             <Box key={a.id} sx={itemSx}>
                                 <Box display="flex" justifyContent="space-between" alignItems="center">
                                     <Box overflow="hidden">

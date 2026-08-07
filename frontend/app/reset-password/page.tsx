@@ -1,6 +1,7 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState } from "react"
+import { useClientSnapshot } from "@/hooks/useClientSnapshot"
 import { useRouter } from "next/navigation"
 import {
   Box,
@@ -14,6 +15,13 @@ import {
 } from "@mui/material"
 import { api } from "@/lib/api"
 import { Visibility, VisibilityOff } from "@mui/icons-material"
+import { getApiErrorMessage } from "@/utils/errors/apiError"
+
+function leerAccessTokenDelHash(): string {
+  return new URLSearchParams(window.location.hash.substring(1)).get("access_token") ?? ""
+}
+
+const sinToken = () => ""
 
 export default function ResetPasswordPage() {
   const router = useRouter()
@@ -21,18 +29,14 @@ export default function ResetPasswordPage() {
   const [repeatPassword, setRepeatPassword] = useState("")
   const [loading, setLoading] = useState(false)
   const [message, setMessage] = useState("")
-  const [accessToken, setAccessToken] = useState("")
+  // El token llega en el fragmento de la URL (#access_token=...), que solo existe
+  // en el cliente. useClientSnapshot lo lee sin provocar un render extra al montar.
+  const accessToken = useClientSnapshot(leerAccessTokenDelHash, sinToken)
   const [showPassword, setShowPassword] = useState(false)
   const [showRepeatPassword, setShowRepeatPassword] = useState(false)
 
   const handleTogglePassword = () => setShowPassword((prev) => !prev)
   const handleToggleRepeatPassword = () => setShowRepeatPassword((prev) => !prev)
-
-  useEffect(() => {
-    const hashParams = new URLSearchParams(window.location.hash.substring(1))
-    const token = hashParams.get("access_token")
-    if (token) setAccessToken(token)
-  }, [])
 
   const handleResetPassword = async () => {
     setMessage("")
@@ -54,9 +58,9 @@ export default function ResetPasswordPage() {
 
       setMessage(res.data.message || "Contraseña cambiada")
       setTimeout(() => router.push("/login"), 2000)
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error("Error reset password:", err)
-      setMessage(err.response?.data?.error || "Error al cambiar la contraseña")
+      setMessage(getApiErrorMessage(err) || "Error al cambiar la contraseña")
     } finally {
       setLoading(false)
     }

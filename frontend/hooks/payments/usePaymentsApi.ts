@@ -2,7 +2,7 @@
 import { useQuery, useMutation, keepPreviousData, useQueryClient } from '@tanstack/react-query';
 import axios from 'axios';
 import Cookies from 'js-cookie';
-import { Payment } from '@/models/Payment/Payment';
+import { Payment, PaymentPayload } from '@/models/Payment/Payment';
 
 const API_URL = process.env.NEXT_PUBLIC_BACKEND_URL;
 
@@ -45,8 +45,9 @@ export function usePagosByGym(
     queryKey: key(gymId, page, limit, q, filters?.fromDate, filters?.toDate),
     enabled: Boolean(gymId),
     placeholderData: keepPreviousData,
-    staleTime: 2 * 60 * 1000,
+    staleTime: 0,
     retry: 1,
+    refetchOnMount: 'always',
     refetchOnWindowFocus: false,
     queryFn: async () => {
       const { data } = await axiosInstance.get('/api/pagos', {
@@ -63,11 +64,11 @@ export function usePagosByGym(
   });
 }
 
-export function useAddPago(gymId: string, filters?: { fromDate?: string | null; toDate?: string | null }) {
+export function useAddPago(gymId: string) {
   const qc = useQueryClient();
 
   return useMutation({
-    mutationFn: async (values: Record<string, any>) => {
+    mutationFn: async (values: PaymentPayload) => {
       const { data } = await axiosInstance.post('/api/pagos', values);
       return data as Payment;
     },
@@ -79,14 +80,11 @@ export function useAddPago(gymId: string, filters?: { fromDate?: string | null; 
   });
 }
 
-export function useEditPago(
-  gymId: string,
-  filters?: { fromDate?: string | null; toDate?: string | null }
-) {
+export function useEditPago(gymId: string) {
   const qc = useQueryClient();
 
   return useMutation({
-    mutationFn: async ({ id, values }: { id: number; values: Record<string, any> }) => {
+    mutationFn: async ({ id, values }: { id: number; values: PaymentPayload }) => {
       const { data } = await axiosInstance.put(`/api/pagos/${id}`, values);
       return data as Payment;
     },
@@ -98,9 +96,7 @@ export function useEditPago(
   });
 }
 
-export function useDeletePago(
-  gymId: string,
-  filters?: { fromDate?: string | null; toDate?: string | null }) {
+export function useDeletePago(gymId: string) {
   const qc = useQueryClient();
 
   return useMutation({
@@ -108,19 +104,7 @@ export function useDeletePago(
       const { data } = await axiosInstance.delete(`/api/pagos/${id}`);
       return data;
     },
-    onSuccess: (resumen) => {
-      console.group('%c🗑️ Pago eliminado — proceso de restauración', 'color:#e11d48;font-weight:bold');
-      console.log('¿Ya estaba eliminado?:', resumen?.ya_estaba_eliminado);
-      console.log('Pago eliminado:', resumen?.pago_eliminado);
-      console.log('Alumno ANTES:', resumen?.alumno_antes);
-      console.log('Alumno DESPUÉS (restaurado):', resumen?.alumno_despues);
-      console.log('Origen restauración:', resumen?.restauracion_origen); // 'snapshot' | 'pago_anterior' | 'reset' | null
-      console.log('Snapshot (estado previo guardado):', resumen?.snapshot);
-      console.log('Pago de plan vigente (fallback):', resumen?.pago_vigente);
-      console.log('Stock producto:', resumen?.stock);
-      console.log('Respuesta completa:', resumen);
-      console.groupEnd();
-
+    onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['payments', gymId] });
       qc.invalidateQueries({ queryKey: ['paymentsStats', gymId] });
       qc.invalidateQueries({ queryKey: ['members', gymId] });

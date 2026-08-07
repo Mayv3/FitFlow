@@ -6,8 +6,9 @@ import { useTheme, alpha, lighten, darken } from '@mui/material/styles'
 import AttachMoneyIcon from '@mui/icons-material/AttachMoney'
 import PaymentIcon from '@mui/icons-material/Payment'
 import CategoryIcon from '@mui/icons-material/Category'
+import { PaymentsByMethod, PaymentsByTipo, PaymentsStats as PaymentsStatsData } from '@/models/Stats/PaymentsStats'
 
-export const PaymentStats = ({ data, isLoading }: { data?: any; isLoading: boolean }) => {
+export const PaymentStats = ({ data, isLoading }: { data?: PaymentsStatsData | null; isLoading: boolean }) => {
   const theme = useTheme()
   const iconStyle = { color: theme.palette.primary.main, fontSize: 40 }
 
@@ -53,7 +54,7 @@ export const PaymentStats = ({ data, isLoading }: { data?: any; isLoading: boole
         chart={
           <Box display="flex" flexDirection="column" width="100%" mt={1}>
             <Box display="flex" height={10} borderRadius={5} overflow="hidden">
-              {byTipo.map((t: any, index: number) => {
+              {byTipo.map((t: PaymentsByTipo, index: number) => {
                 const percent = Math.round((t.count * 100) / (totalPagos || 1))
                 return (
                   <Tooltip
@@ -68,7 +69,7 @@ export const PaymentStats = ({ data, isLoading }: { data?: any; isLoading: boole
             </Box>
 
             <Box display="flex" flexWrap="wrap" gap={1} mt={1}>
-              {byTipo.map((t: any, index: number) => {
+              {byTipo.map((t: PaymentsByTipo, index: number) => {
                 const percent = Math.round((t.count * 100) / (totalPagos || 1))
                 return (
                   <Box key={t.tipo} display="flex" alignItems="center" gap={0.5}>
@@ -92,7 +93,7 @@ export const PaymentStats = ({ data, isLoading }: { data?: any; isLoading: boole
           <Box display="flex" flexDirection="column" width="100%" mt={1}>
             {/* Barra segmentada */}
             <Box display="flex" height={10} borderRadius={5} overflow="hidden">
-              {byMethod.map((m: any, index: number) => {
+              {byMethod.map((m: PaymentsByMethod, index: number) => {
                 const percent = Math.round((m.count * 100) / (totalPagos || 1))
                 return (
                   <Tooltip
@@ -107,7 +108,7 @@ export const PaymentStats = ({ data, isLoading }: { data?: any; isLoading: boole
             </Box>
 
             <Box display="flex" flexWrap="wrap" gap={1} mt={1}>
-              {byMethod.map((m: any, index: number) => {
+              {byMethod.map((m: PaymentsByMethod, index: number) => {
                 const percent = Math.round((m.count * 100) / (totalPagos || 1))
                 return (
                   <Box key={m.metodo} display="flex" alignItems="center" gap={0.5}>

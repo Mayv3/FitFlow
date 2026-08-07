@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useQuery } from "@tanstack/react-query"
 import {
   Box,
   Card,
@@ -16,6 +16,7 @@ import {
   Divider,
   Button,
 } from "@mui/material"
+import type { ChipProps } from "@mui/material"
 import ExpandMoreIcon from "@mui/icons-material/ExpandMore"
 import EmailIcon from "@mui/icons-material/Email"
 import RefreshIcon from "@mui/icons-material/Refresh"
@@ -43,7 +44,7 @@ interface GymGroup {
   emails: EmailLogItem[]
 }
 
-const estadoColor = (estado: string) =>
+const estadoColor = (estado: string): ChipProps["color"] =>
   estado === "enviado" ? "success" : estado === "error" ? "error" : "warning"
 
 function formatDate(iso: string | null) {
@@ -63,35 +64,32 @@ interface EmailLogsProps {
   hideHeader?: boolean
 }
 
+async function fetchEmailLogs(): Promise<GymGroup[]> {
+  const token = Cookies.get("token")
+  const res = await fetch(
+    `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/emails/logs`,
+    { headers: token ? { Authorization: `Bearer ${token}` } : undefined }
+  )
+  const json = await res.json()
+  if (!res.ok) throw new Error(json.error || "Error al cargar logs")
+  return json.data || []
+}
+
 export function EmailLogs({ gymId, hideHeader = false }: EmailLogsProps = {}) {
-  const [data, setData] = useState<GymGroup[]>([])
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
+  // El endpoint devuelve todos los gimnasios; el filtro por gymId se aplica en
+  // `select` para no refetchear cuando solo cambia el gimnasio mirado.
+  const {
+    data = [],
+    isPending: loading,
+    error,
+    refetch,
+  } = useQuery({
+    queryKey: ["owner", "emails", "logs"],
+    queryFn: fetchEmailLogs,
+    select: (all) => (gymId ? all.filter((g) => g.gym_id === gymId) : all),
+  })
 
-  async function fetchLogs() {
-    setLoading(true)
-    setError(null)
-    try {
-      const token = Cookies.get("token")
-      const res = await fetch(
-        `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/emails/logs`,
-        { headers: token ? { Authorization: `Bearer ${token}` } : undefined }
-      )
-      const json = await res.json()
-      if (!res.ok) throw new Error(json.error || "Error al cargar logs")
-      const all: GymGroup[] = json.data || []
-      setData(gymId ? all.filter((g) => g.gym_id === gymId) : all)
-    } catch (e: any) {
-      setError(e.message)
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  useEffect(() => {
-    fetchLogs()
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [gymId])
+  const fetchLogs = () => { refetch() }
 
   if (loading) {
     return (
@@ -104,7 +102,7 @@ export function EmailLogs({ gymId, hideHeader = false }: EmailLogsProps = {}) {
   if (error) {
     return (
       <Box py={3}>
-        <Typography color="error">{error}</Typography>
+        <Typography color="error">{error.message}</Typography>
         <Button onClick={fetchLogs} sx={{ mt: 2 }} startIcon={<RefreshIcon />}>
           Reintentar
         </Button>
@@ -162,7 +160,7 @@ export function EmailLogs({ gymId, hideHeader = false }: EmailLogsProps = {}) {
                     <Stack direction="row" alignItems="center" spacing={1} flexWrap="wrap">
                       <Chip
                         label={m.estado}
-                        color={estadoColor(m.estado) as any}
+                        color={estadoColor(m.estado)}
                         size="small"
                       />
                       <Typography variant="body2" fontWeight={600}>

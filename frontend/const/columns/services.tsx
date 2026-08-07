@@ -1,4 +1,5 @@
-import { Box, Chip, IconButton } from '@mui/material'
+import { Service } from '@/models/Services/Service'
+import { Box, IconButton } from '@mui/material'
 import { GridColDef } from '@mui/x-data-grid'
 import EditIcon from '@mui/icons-material/Edit'
 import DeleteIcon from '@mui/icons-material/Delete'
@@ -12,7 +13,7 @@ const ARS = new Intl.NumberFormat('es-AR', {
 const center = { align: 'center' as const, headerAlign: 'center' as const }
 
 export const columnsServices = (
-  handleEdit: (service: any) => void,
+  handleEdit: (service: Service) => void,
   handleDelete: (id: string) => void
 ): GridColDef[] => [
     {

@@ -1,6 +1,7 @@
 'use client';
 
 import { useQuery } from '@tanstack/react-query';
+import { Demografia } from '@/models/Stats/Demografia';
 
 export function useDemografia(year: number = new Date().getFullYear()) {
   return useQuery({
@@ -29,7 +30,7 @@ export function useDemografia(year: number = new Date().getFullYear()) {
         throw new Error(`Error en la API Demografía: ${res.status}`);
       }
 
-      return res.json();
+      return res.json() as Promise<Demografia>;
     },
     staleTime: 1000 * 60 * 2,
     gcTime: 1000 * 60 * 5,

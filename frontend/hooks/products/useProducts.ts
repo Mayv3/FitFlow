@@ -1,3 +1,4 @@
+import { Product, ProductPayload } from '@/models/Product/Product';
 import { useQuery, useMutation, useQueryClient, keepPreviousData } from '@tanstack/react-query';
 import axios from 'axios';
 import Cookies from 'js-cookie';
@@ -11,17 +12,6 @@ axiosInstance.interceptors.request.use((config) => {
   if (token) config.headers.Authorization = `Bearer ${token}`;
   return config;
 });
-
-type Product = {
-  id: string;
-  nombre: string;
-  descripcion?: string;
-  precio: number;
-  stock?: number;
-  categoria?: string;
-  activo?: boolean;
-  gym_id: string;
-};
 
 type GetProductsResponse<T = Product> = {
   items: T[];
@@ -49,7 +39,7 @@ export function useProducts(gymId: string, page = 1, limit = 20, q = '', categor
 export function useAddProduct(gymId: string) {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async (values: Partial<Product>) => {
+    mutationFn: async (values: ProductPayload & { gym_id: string }) => {
       const { data } = await axiosInstance.post('/api/productos', values);
       return data as Product;
     },

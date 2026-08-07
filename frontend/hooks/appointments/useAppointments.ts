@@ -3,7 +3,7 @@
 import { useQuery, useMutation, useQueryClient, keepPreviousData } from '@tanstack/react-query'
 import axios from 'axios'
 import Cookies from 'js-cookie'
-import { Turno } from '@/models/appointments/Appointment'
+import { Turno, TurnoEvent, TurnoFormValues, TurnoRow } from '@/models/appointments/Appointment'
 
 const axiosInstance = axios.create({
   baseURL: process.env.NEXT_PUBLIC_BACKEND_URL,
@@ -21,7 +21,7 @@ const appointmentsKey = (gymId: string, page?: number, pageSize?: number, q?: st
 
 type EditArgs = {
   id: string
-  values: any
+  values: Partial<TurnoFormValues>
   skipInvalidate?: boolean
 }
 
@@ -31,14 +31,14 @@ export const useAppointments = (gymId?: string, page = 1, pageSize = 20, q = '')
     enabled: !!gymId,
     staleTime: 1000 * 60 * 5,
     placeholderData: keepPreviousData,
-    queryFn: async (): Promise<{ items: any[]; total: number }> => {
+    queryFn: async (): Promise<{ items: TurnoRow[]; total: number }> => {
       const { data } = await axiosInstance.get('/api/turnos', {
         params: { gymId, page, pageSize, q },
       })
       return data
     },
     select: (res) => {
-      const rows = (res.items ?? []).map((t: any) => ({
+      const rows: TurnoEvent[] = (res.items ?? []).map((t) => ({
         id: String(t.id),
         title: t.titulo ?? 'Sin título',
         start: t.inicio_at,
@@ -53,7 +53,7 @@ export const useAppointments = (gymId?: string, page = 1, pageSize = 20, q = '')
           precio: t.precio ?? 0,
         },
       }))
-      const byId = rows.reduce<Record<string, any>>((acc, t) => {
+      const byId = rows.reduce<Record<string, TurnoEvent>>((acc, t) => {
         acc[t.id] = t
         return acc
       }, {})
@@ -66,7 +66,7 @@ export const useAddAppointment = (gymId: string) => {
   const qc = useQueryClient()
 
   return useMutation({
-    mutationFn: async (values: any) => {
+    mutationFn: async (values: TurnoFormValues) => {
       const { data } = await axiosInstance.post('/api/turnos', { ...values, gym_id: gymId })
       return data as Turno
     },

@@ -1,39 +1,25 @@
 import { useState } from 'react';
-import { Box, Card, CardContent, Stack, Typography, IconButton, CircularProgress, Divider, useTheme } from '@mui/material';
-import { DataGrid, GridColDef, GridPaginationModel } from '@mui/x-data-grid';
+import { Box, Card, CardContent, Stack, Typography, CircularProgress, Divider, useTheme } from '@mui/material';
+import { DataGrid, GridColDef, GridPaginationModel, GridRenderCellParams } from '@mui/x-data-grid';
 import ChevronLeftIcon from '@mui/icons-material/ChevronLeft';
 import ChevronRightIcon from '@mui/icons-material/ChevronRight';
 import { esES } from '@mui/x-data-grid/locales';
 
-const localeTextES = {
-  noRowsLabel: 'Sin registros',
-  noResultsOverlayLabel: 'Sin resultados encontrados.',
-  errorOverlayDefaultLabel: 'Ocurrió un error.',
-  toolbarDensity: 'Densidad',
-  toolbarDensityLabel: 'Densidad',
-  toolbarDensityCompact: 'Compacta',
-  toolbarDensityStandard: 'Estándar',
-  toolbarDensityComfortable: 'Cómoda',
-  toolbarColumns: 'Columnas',
-  toolbarColumnsLabel: 'Seleccionar columnas',
-  toolbarFilters: 'Filtros',
-  toolbarFiltersLabel: 'Ver filtros',
-  toolbarFiltersTooltipHide: 'Ocultar filtros',
-  toolbarFiltersTooltipShow: 'Mostrar filtros',
-  toolbarQuickFilterPlaceholder: 'Buscar…',
-  toolbarQuickFilterLabel: 'Buscar',
-  toolbarQuickFilterDeleteIconLabel: 'Limpiar',
-  footerRowSelected: (count: number) =>
-    count !== 1 ? `${count.toLocaleString()} filas seleccionadas` : `${count} fila seleccionada`,
-  footerTotalRows: 'Filas Totales:',
-  footerTotalVisibleRows: (visibleCount: number, totalCount: number) =>
-    `${visibleCount.toLocaleString()} de ${totalCount.toLocaleString()}`,
-  MuiTablePagination: {
-    labelRowsPerPage: 'Filas por página:',
-    labelDisplayedRows: ({ from, to, count }: any) =>
-      `${from === 0 ? 0 : from}–${to} de ${count !== -1 ? count : `más de ${to}`}`,
-  },
-};
+// Las traducciones vienen de `esES` (@mui/x-data-grid/locales); el objeto
+// localeTextES que vivia aca quedo sin usar.
+
+/**
+ * La vista mobile no pasa por el DataGrid, asi que llama a `renderCell` con los
+ * params armados a mano. Las columnas del proyecto solo leen `row`, `value` y
+ * `field`; el resto de GridRenderCellParams (api, colDef, rowNode…) solo existe
+ * dentro de la grilla, de ahi el cast.
+ */
+const mobileCellParams = (
+  row: unknown,
+  field: string,
+  value: unknown
+): GridRenderCellParams =>
+  ({ row, value, field } as unknown as GridRenderCellParams);
 
 type GenericDataGridProps<T extends { id: string | number }> = {
   title?: string;
@@ -44,7 +30,6 @@ type GenericDataGridProps<T extends { id: string | number }> = {
   page?: number;
   pageSize?: number;
   loading?: boolean;
-  height?: number;
   onPaginationModelChange?: (model: GridPaginationModel) => void;
 };
 
@@ -57,7 +42,6 @@ export function GenericDataGrid<T extends { id: string | number }>({
   pageSize = 10,
   onPaginationModelChange,
   loading = false,
-  height = 600,
 }: GenericDataGridProps<T>) {
   const theme = useTheme();
   const [mobilePage, setMobilePage] = useState(0);
@@ -136,7 +120,7 @@ export function GenericDataGrid<T extends { id: string | number }>({
           </Box>
         ) : (
           <Stack spacing={2}>
-            {paginatedRows.map((row: any) => (
+            {paginatedRows.map((row) => (
               <Card key={row.id} variant="outlined" sx={{ borderRadius: 2 }}>
                 <CardContent>
                   <Box sx={{
@@ -150,10 +134,10 @@ export function GenericDataGrid<T extends { id: string | number }>({
                     {columns
                       .filter(col => col.field !== 'acciones' && col.field !== 'id')
                       .map((col) => {
-                        const value = row[col.field];
+                        const value = (row as Record<string, unknown>)[col.field];
                         const cellContent = col.renderCell
-                          ? col.renderCell({ row, value, field: col.field } as any)
-                          : value;
+                          ? col.renderCell(mobileCellParams(row, col.field, value))
+                          : (value as React.ReactNode);
 
                         return (
                           <Box key={col.field} sx={{ textAlign: 'left' }}>
@@ -232,7 +216,7 @@ export function GenericDataGrid<T extends { id: string | number }>({
                           }
                         }
                       }}>
-                        {columns.find(col => col.field === 'acciones')?.renderCell?.({ row, value: null, field: 'acciones' } as any)}
+                        {columns.find(col => col.field === 'acciones')?.renderCell?.(mobileCellParams(row, 'acciones', null))}
                       </Box>
                     </>
                   )}

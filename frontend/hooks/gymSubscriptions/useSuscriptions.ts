@@ -1,4 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { getApiErrorMessage } from '@/utils/errors/apiError'
 import { api } from '@/lib/api'
 import { notify } from '@/lib/toast'
 
@@ -94,8 +95,8 @@ export const useCreateSuscription = () => {
       queryClient.invalidateQueries({ queryKey: ['suscriptions', 'gym', data.gym_id] })
       notify.success('Suscripción creada exitosamente')
     },
-    onError: (error: any) => {
-      notify.error(error.response?.data?.error || 'Error al crear la suscripción')
+    onError: (error: unknown) => {
+      notify.error(getApiErrorMessage(error) || 'Error al crear la suscripción')
     },
   })
 }
@@ -114,8 +115,8 @@ export const useUpdateSuscription = () => {
       queryClient.invalidateQueries({ queryKey: ['suscriptions', 'gym', data.gym_id] })
       notify.success('Suscripción actualizada exitosamente')
     },
-    onError: (error: any) => {
-      notify.error(error.response?.data?.error || 'Error al actualizar la suscripción')
+    onError: (error: unknown) => {
+      notify.error(getApiErrorMessage(error) || 'Error al actualizar la suscripción')
     },
   })
 }
@@ -134,8 +135,8 @@ export const useDeleteSuscription = () => {
       queryClient.invalidateQueries({ queryKey: ['suscriptions', 'gym', variables.gymId] })
       notify.success('Suscripción eliminada exitosamente')
     },
-    onError: (error: any) => {
-      notify.error(error.response?.data?.error || 'Error al eliminar la suscripción')
+    onError: (error: unknown) => {
+      notify.error(getApiErrorMessage(error) || 'Error al eliminar la suscripción')
     },
   })
 }

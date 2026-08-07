@@ -34,7 +34,7 @@ export function useAlumnosPorOrigen({ year, month }: Params) {
 
       const json = await res.json();
 
-      return (json.items ?? []).map((row: any) => ({
+      return (json.items ?? []).map((row: { origen: string; total: number }) => ({
         origen: row.origen,
         cantidad: row.total,
       }));

@@ -138,7 +138,6 @@ export const MemberStats = ({ gymId }: { gymId?: string }) => {
       <RenovacionesModal
         open={openRenovaciones}
         onClose={handleCloseRenovaciones}
-        gymId={gymId}
       />
     </Box>
 

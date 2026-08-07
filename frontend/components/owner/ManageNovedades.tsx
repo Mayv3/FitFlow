@@ -10,7 +10,6 @@ import {
   CardContent,
   Chip,
   Stack,
-  Divider,
   CircularProgress,
   alpha,
   useTheme,
@@ -28,15 +27,13 @@ import LocalOfferIcon from '@mui/icons-material/LocalOffer';
 import EventIcon from '@mui/icons-material/Event';
 import BugReportIcon from '@mui/icons-material/BugReport';
 import BuildIcon from '@mui/icons-material/Build';
-import { FormModal } from '@/components/ui/modals/FormModal';
 import { GenericModal } from '@/components/ui/modals/GenericModal';
+import { FlushDialogActions } from '@/components/ui/modals/FlushDialogActions';
 import { notify } from '@/lib/toast';
-import { Field } from '@/models/Fields/Field';
 import {
   Dialog,
   DialogTitle,
   DialogContent,
-  DialogActions,
   TextField,
   FormControl,
   InputLabel,
@@ -51,17 +48,8 @@ import {
   useToggleActivoNovedad
 } from '@/hooks/novedades/useNovedadesApi';
 
-type Novedad = {
-  id: number;
-  titulo: string;
-  descripcion?: string;
-  tipo: 'novedad' | 'feature' | 'promocion' | 'evento' | 'error' | 'fix';
-  activo: boolean;
-  fecha_publicacion: string;
-  imagen_url?: string;
-  created_at: string;
-  updated_at: string;
-};
+import type { Novedad, NovedadFormValues } from '@/models/Novedad';
+import { getErrorMessage } from '@/utils/errors/apiError';
 
 
 const getTipoColor = (tipo: string) => {
@@ -103,74 +91,10 @@ const getTipoIcon = (tipo: string) => {
   return icons[tipo as keyof typeof icons] || <AnnouncementIcon fontSize="small" />;
 };
 
-const novedadesFields: Field[] = [
-  {
-    name: 'titulo',
-    label: 'Título',
-    type: 'string',
-    required: true,
-    placeholder: 'Ingresa el título de la novedad',
-  },
-  {
-    name: 'descripcion',
-    label: 'Descripción',
-    type: 'string',
-    placeholder: 'Describe detalladamente la novedad',
-  },
-  {
-    name: 'tipo',
-    label: 'Tipo de novedad',
-    type: 'select',
-    required: true,
-    options: [
-      { value: 'novedad', label: 'Novedad' },
-      { value: 'feature', label: 'Feature' },
-      { value: 'promocion', label: 'Promoción' },
-      { value: 'evento', label: 'Evento' },
-      { value: 'error', label: 'Error' },
-      { value: 'fix', label: 'Fix' },
-    ],
-  },
-  {
-    name: 'activo',
-    label: 'Estado',
-    type: 'select',
-    required: true,
-    defaultValue: 'true',
-    options: [
-      { value: 'true', label: 'Activo' },
-      { value: 'false', label: 'Inactivo' },
-    ],
-  },
-  {
-    name: 'fecha_inicio',
-    label: 'Fecha de inicio',
-    type: 'date',
-  },
-  {
-    name: 'fecha_fin',
-    label: 'Fecha de fin (opcional)',
-    type: 'date',
-  },
-  {
-    name: 'orden',
-    label: 'Orden de visualización',
-    type: 'number',
-    defaultValue: 0,
-    placeholder: '0',
-  },
-];
-
-const novedadesLayout = {
-  titulo: { row: 0, col: 0, colSpan: 12 },
-  descripcion: { row: 1, col: 0, colSpan: 12 },
-  tipo: { row: 2, col: 0, colSpan: 6 },
-  activo: { row: 2, col: 6, colSpan: 6 },
-  fecha_inicio: { row: 3, col: 0, colSpan: 6 },
-  fecha_fin: { row: 3, col: 6, colSpan: 6 },
-  orden: { row: 4, col: 0, colSpan: 12 },
-};
-
+// Los formularios de alta/edicion se arman inline mas abajo con Dialog + TextField;
+// las definiciones novedadesFields / novedadesLayout que vivian aca eran de la
+// version con FormModal y quedaron sin usar (ademas referenciaban fecha_inicio,
+// que no existe en la tabla de novedades).
 
 async function uploadNovedadImageApi(file: File) {
   const formData = new FormData();
@@ -202,7 +126,7 @@ export function ManageNovedades() {
   const [openEdit, setOpenEdit] = useState(false);
   const [openDelete, setOpenDelete] = useState(false);
   const [selectedNovedad, setSelectedNovedad] = useState<Novedad | null>(null);
-  const [formValues, setFormValues] = useState<any>({});
+  const [formValues, setFormValues] = useState<NovedadFormValues>({});
 
   const { data: novedadesData, isLoading, error } = useNovedades();
   const createMutation = useCreateNovedad();
@@ -212,7 +136,7 @@ export function ManageNovedades() {
 
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
-  const [uploadingImage, setUploadingImage] = useState(false);
+  const [, setUploadingImage] = useState(false);
 
   const novedades = useMemo(() => {
     if (!novedadesData) return [];
@@ -232,7 +156,7 @@ export function ManageNovedades() {
     };
   }, [novedades]);
 
-  const handleAdd = async (values: any) => {
+  const handleAdd = async (values: NovedadFormValues) => {
     try {
       setUploadingImage(true);
 
@@ -246,6 +170,8 @@ export function ManageNovedades() {
       // 👇 2. CREAR PAYLOAD CON imagen_url
       const payload = {
         ...values,
+        // el Select arranca en '', que no es un NovedadTipo valido para la API
+        tipo: values.tipo || undefined,
         activo: values.activo === 'true' || values.activo === true,
         fecha_publicacion: values.fecha_publicacion || new Date().toISOString(),
         imagen_url, // 👈 ACÁ ESTABA EL FALLO
@@ -260,20 +186,22 @@ export function ManageNovedades() {
       setImagePreview(null);
 
       notify.success('Novedad creada correctamente');
-    } catch (error: any) {
-      notify.error(error?.message || 'Error al crear novedad');
+    } catch (error: unknown) {
+      notify.error(getErrorMessage(error) || 'Error al crear novedad');
     } finally {
       setUploadingImage(false);
     }
   };
 
 
-  const handleEdit = async (values: any) => {
+  const handleEdit = async (values: NovedadFormValues) => {
     if (!selectedNovedad) return;
 
     try {
       const payload = {
         ...values,
+        // el Select arranca en '', que no es un NovedadTipo valido para la API
+        tipo: values.tipo || undefined,
         activo: values.activo === 'true' || values.activo === true,
         fecha_publicacion: values.fecha_publicacion || new Date().toISOString(),
       };
@@ -284,8 +212,8 @@ export function ManageNovedades() {
       setOpenEdit(false);
       setSelectedNovedad(null);
       notify.success('Novedad actualizada correctamente');
-    } catch (error: any) {
-      notify.error(error?.message || 'Error al actualizar novedad');
+    } catch (error: unknown) {
+      notify.error(getErrorMessage(error) || 'Error al actualizar novedad');
     }
   };
 
@@ -297,8 +225,8 @@ export function ManageNovedades() {
       setOpenDelete(false);
       setSelectedNovedad(null);
       notify.success('Novedad eliminada correctamente');
-    } catch (error: any) {
-      notify.error(error?.message || 'Error al eliminar novedad');
+    } catch (error: unknown) {
+      notify.error(getErrorMessage(error) || 'Error al eliminar novedad');
     }
   };
 
@@ -309,8 +237,8 @@ export function ManageNovedades() {
         activo: !novedad.activo
       });
       notify.success(`Novedad ${!novedad.activo ? 'activada' : 'desactivada'}`);
-    } catch (error: any) {
-      notify.error(error?.message || 'Error al cambiar estado');
+    } catch (error: unknown) {
+      notify.error(getErrorMessage(error) || 'Error al cambiar estado');
     }
   };
 
@@ -673,7 +601,13 @@ export function ManageNovedades() {
       </Card>
 
       {/* Modal Agregar */}
-      <Dialog open={openAdd} onClose={() => setOpenAdd(false)} maxWidth="sm" fullWidth>
+      <Dialog
+        open={openAdd}
+        onClose={() => setOpenAdd(false)}
+        maxWidth="sm"
+        fullWidth
+        PaperProps={{ sx: { overflow: 'hidden' } }}
+      >
         <DialogTitle sx={{ fontWeight: 600, fontSize: '1.25rem' }}>
           Agregar Nueva Novedad
         </DialogTitle>
@@ -700,6 +634,7 @@ export function ManageNovedades() {
               {/* PREVIEW */}
               {imagePreview && (
                 <Box mt={2}>
+                  {/* eslint-disable-next-line @next/next/no-img-element -- next/image no aporta nada aca: next.config.mjs usa images.unoptimized; ademas es un blob/data URI de preview local. */}
                   <img
                     src={imagePreview}
                     alt="Preview"
@@ -765,23 +700,27 @@ export function ManageNovedades() {
             />
           </Box>
         </DialogContent>
-        <DialogActions sx={{ p: 2, gap: 1 }}>
-          <Button onClick={() => setOpenAdd(false)} variant="outlined">
-            Cancelar
-          </Button>
-          <Button
-            onClick={() => handleAdd(formValues)}
-            variant="contained"
-            color="primary"
-            disabled={!formValues.titulo || !formValues.tipo}
-          >
-            Crear Novedad
-          </Button>
-        </DialogActions>
+        <FlushDialogActions
+          actions={[
+            { label: 'Cancelar', onClick: () => setOpenAdd(false), tone: 'neutral' },
+            {
+              label: 'Crear Novedad',
+              onClick: () => handleAdd(formValues),
+              tone: 'confirm',
+              disabled: !formValues.titulo || !formValues.tipo,
+            },
+          ]}
+        />
       </Dialog>
 
       {/* Modal Editar */}
-      <Dialog open={openEdit} onClose={() => setOpenEdit(false)} maxWidth="sm" fullWidth>
+      <Dialog
+        open={openEdit}
+        onClose={() => setOpenEdit(false)}
+        maxWidth="sm"
+        fullWidth
+        PaperProps={{ sx: { overflow: 'hidden' } }}
+      >
         <DialogTitle sx={{ fontWeight: 600, fontSize: '1.25rem' }}>
           Editar Novedad
         </DialogTitle>
@@ -839,26 +778,25 @@ export function ManageNovedades() {
             />
           </Box>
         </DialogContent>
-        <DialogActions sx={{ p: 2, gap: 1 }}>
-          <Button
-            onClick={() => {
-              setOpenEdit(false);
-              setSelectedNovedad(null);
-              setFormValues({});
-            }}
-            variant="outlined"
-          >
-            Cancelar
-          </Button>
-          <Button
-            onClick={() => handleEdit(formValues)}
-            variant="contained"
-            color="primary"
-            disabled={!formValues.titulo || !formValues.tipo}
-          >
-            Guardar Cambios
-          </Button>
-        </DialogActions>
+        <FlushDialogActions
+          actions={[
+            {
+              label: 'Cancelar',
+              onClick: () => {
+                setOpenEdit(false);
+                setSelectedNovedad(null);
+                setFormValues({});
+              },
+              tone: 'neutral',
+            },
+            {
+              label: 'Guardar Cambios',
+              onClick: () => handleEdit(formValues),
+              tone: 'confirm',
+              disabled: !formValues.titulo || !formValues.tipo,
+            },
+          ]}
+        />
       </Dialog>
 
       {/* Modal Confirmar Eliminación */}
@@ -867,7 +805,7 @@ export function ManageNovedades() {
         title="Confirmar eliminación"
         content={
           <Typography>
-            ¿Estás seguro de que deseas eliminar la novedad "{selectedNovedad?.titulo}"?
+            ¿Estás seguro de que deseas eliminar la novedad &quot;{selectedNovedad?.titulo}&quot;?
           </Typography>
         }
         onClose={() => {

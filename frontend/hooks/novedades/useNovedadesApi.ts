@@ -1,21 +1,8 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import Cookies from 'js-cookie';
+import type { Novedad } from '@/models/Novedad';
 
 const API_BASE = `${process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:3001'}/api`;
-
-type Novedad = {
-  id: number;
-  titulo: string;
-  descripcion?: string;
-  tipo: 'novedad' | 'feature' | 'promocion' | 'evento' | 'error' | 'fix';
-  activo: boolean;
-  fecha_inicio?: string;
-  fecha_fin?: string;
-  imagen_url?: string;
-  orden: number;
-  created_at: string;
-  updated_at: string;
-};
 
 const getHeaders = () => ({
   'Content-Type': 'application/json',

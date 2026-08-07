@@ -10,7 +10,6 @@ import {
   Dialog,
   DialogTitle,
   DialogContent,
-  DialogActions,
   IconButton,
   Stack,
   Chip,
@@ -27,7 +26,9 @@ import {
   useCreateGymPlan,
   useUpdateGymPlan,
   useDeleteGymPlan,
+  GymPlan,
 } from "@/hooks/gymPlans/useGymPlans"
+import { FlushDialogActions } from "@/components/ui/modals/FlushDialogActions"
 
 interface PlanFormData {
   name: string
@@ -64,7 +65,7 @@ export function ManageGymPlans() {
   const [formData, setFormData] = useState<PlanFormData>(initialFormData)
   const [deleteConfirmId, setDeleteConfirmId] = useState<number | null>(null)
 
-  const handleOpenDialog = (plan?: any) => {
+  const handleOpenDialog = (plan?: GymPlan) => {
     if (plan) {
       setEditingId(plan.id)
       setFormData({
@@ -118,7 +119,7 @@ export function ManageGymPlans() {
     setDeleteConfirmId(null)
   }
 
-  const getFeatureChips = (plan: any) => {
+  const getFeatureChips = (plan: GymPlan) => {
     const features = []
     if (plan.stats) features.push("Estadísticas")
     if (plan.classes) features.push("Clases")
@@ -161,7 +162,7 @@ export function ManageGymPlans() {
         </Box>
       ) : (
         <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: 'repeat(2, 1fr)', md: 'repeat(3, 1fr)' }, gap: 3 }}>
-          {planes.map((plan: any) => (
+          {planes.map((plan) => (
             <Box key={plan.id}>
               <Paper
                 elevation={3}
@@ -246,7 +247,13 @@ export function ManageGymPlans() {
       )}
 
       {/* Dialog Crear/Editar */}
-      <Dialog open={dialogOpen} onClose={handleCloseDialog} maxWidth="sm" fullWidth>
+      <Dialog
+        open={dialogOpen}
+        onClose={handleCloseDialog}
+        maxWidth="sm"
+        fullWidth
+        PaperProps={{ sx: { overflow: "hidden" } }}
+      >
         <DialogTitle>
           {editingId ? "Editar Plan de Suscripción" : "Crear Nuevo Plan de Suscripción"}
         </DialogTitle>
@@ -342,27 +349,19 @@ export function ManageGymPlans() {
             </Box>
           </Stack>
         </DialogContent>
-        <DialogActions>
-          <Button onClick={handleCloseDialog}>Cancelar</Button>
-          <Button
-            variant="contained"
-            onClick={handleSubmit}
-            disabled={
-              !formData.name.trim() ||
-              !formData.max_alumnos ||
-              createMutation.isPending ||
-              updateMutation.isPending
-            }
-          >
-            {createMutation.isPending || updateMutation.isPending ? (
-              <CircularProgress size={24} />
-            ) : editingId ? (
-              "Actualizar"
-            ) : (
-              "Crear"
-            )}
-          </Button>
-        </DialogActions>
+        <FlushDialogActions
+          actions={[
+            { label: "Cancelar", onClick: handleCloseDialog, tone: "neutral" },
+            {
+              label: editingId ? "Actualizar" : "Crear",
+              onClick: handleSubmit,
+              tone: "confirm",
+              disabled:
+                !formData.name.trim() || !formData.max_alumnos || createMutation.isPending || updateMutation.isPending,
+              loading: createMutation.isPending || updateMutation.isPending,
+            },
+          ]}
+        />
       </Dialog>
 
       {/* Dialog Confirmar Eliminación */}
@@ -371,6 +370,7 @@ export function ManageGymPlans() {
         onClose={() => setDeleteConfirmId(null)}
         maxWidth="xs"
         fullWidth
+        PaperProps={{ sx: { overflow: "hidden" } }}
       >
         <DialogTitle>¿Eliminar Plan?</DialogTitle>
         <DialogContent>
@@ -378,17 +378,18 @@ export function ManageGymPlans() {
             Esta acción no se puede deshacer. ¿Estás seguro de que deseas eliminar este plan de suscripción?
           </Typography>
         </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setDeleteConfirmId(null)}>Cancelar</Button>
-          <Button
-            variant="contained"
-            color="error"
-            onClick={() => handleDelete(deleteConfirmId!)}
-            disabled={deleteMutation.isPending}
-          >
-            {deleteMutation.isPending ? <CircularProgress size={24} /> : "Eliminar"}
-          </Button>
-        </DialogActions>
+        <FlushDialogActions
+          actions={[
+            { label: "Cancelar", onClick: () => setDeleteConfirmId(null), tone: "neutral" },
+            {
+              label: "Eliminar",
+              onClick: () => handleDelete(deleteConfirmId!),
+              tone: "danger",
+              disabled: deleteMutation.isPending,
+              loading: deleteMutation.isPending,
+            },
+          ]}
+        />
       </Dialog>
     </Box>
   )

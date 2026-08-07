@@ -1,6 +1,7 @@
 "use client"
 
-import { useEffect, useMemo, useState } from "react"
+import { useMemo, useState } from "react"
+import { useQuery } from "@tanstack/react-query"
 import {
     Box,
     Typography,
@@ -45,6 +46,20 @@ interface CommRow {
     mensaje?: string | null
 }
 
+/** Fila cruda de /api/whatsapp/owner/mensajes. */
+interface WaMensajeRow {
+    id: string | number
+    enviado_at: string
+    gym_id: string
+    gym_nombre: string
+    gym_logo: string | null
+    estado: string | null
+    nombre: string | null
+    telefono: string | null
+    plan: string | null
+    mensaje: string | null
+}
+
 interface GymGroup {
     gym_id: string
     gym_nombre: string
@@ -57,6 +72,47 @@ function dayKeyOf(iso: string) {
     const d = new Date(iso)
     return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`
 }
+async function fetchEmailRows(): Promise<CommRow[]> {
+    const { data: payload } = await api.get("/api/emails/logs", { params: { limit: 2000 } })
+    const groups = payload.data || []
+    const rows: CommRow[] = []
+    for (const g of groups) {
+        for (const e of g.emails || []) {
+            rows.push({
+                id: e.id,
+                date: e.created_at,
+                gym_id: g.gym_id,
+                gym_nombre: g.gym_nombre,
+                gym_logo: g.gym_logo,
+                estado: e.estado,
+                asunto: e.asunto,
+                email_destino: e.email_destino,
+                plan_nombre: e.plan_nombre,
+                error_msg: e.error_msg,
+            })
+        }
+    }
+    return rows
+}
+
+async function fetchWaRows(): Promise<CommRow[]> {
+    const { data: payload } = await api.get("/api/whatsapp/owner/mensajes", {
+        params: { limit: 10000 },
+    })
+    return (payload.data || []).map((r: WaMensajeRow) => ({
+        id: r.id,
+        date: r.enviado_at,
+        gym_id: r.gym_id,
+        gym_nombre: r.gym_nombre,
+        gym_logo: r.gym_logo,
+        estado: r.estado,
+        nombre: r.nombre,
+        telefono: r.telefono,
+        plan: r.plan,
+        mensaje: r.mensaje,
+    }))
+}
+
 export function CommsHistory({ channel }: { channel: Mode }) {
     const today = new Date()
     const mode = channel
@@ -65,71 +121,17 @@ export function CommsHistory({ channel }: { channel: Mode }) {
     const [selectedDay, setSelectedDay] = useState<DayRef | null>(null)
     const [detailGym, setDetailGym] = useState<GymGroup | null>(null)
 
-    const [emailRows, setEmailRows] = useState<CommRow[] | null>(null)
-    const [waRows, setWaRows] = useState<CommRow[]>([])
-    const [loading, setLoading] = useState(false)
-    const [error, setError] = useState<string | null>(null)
+    // Un solo useQuery cacheado por canal, en vez de dos estados + efecto de carga.
+    const {
+        data: rows = [],
+        isFetching: loading,
+        error,
+        refetch,
+    } = useQuery({
+        queryKey: ["owner", "comms", mode],
+        queryFn: () => (mode === "email" ? fetchEmailRows() : fetchWaRows()),
+    })
 
-    async function fetchEmails() {
-        setLoading(true); setError(null)
-        try {
-            const { data: payload } = await api.get("/api/emails/logs", { params: { limit: 2000 } })
-            const groups = payload.data || []
-            const rows: CommRow[] = []
-            for (const g of groups) {
-                for (const e of g.emails || []) {
-                    rows.push({
-                        id: e.id,
-                        date: e.created_at,
-                        gym_id: g.gym_id,
-                        gym_nombre: g.gym_nombre,
-                        gym_logo: g.gym_logo,
-                        estado: e.estado,
-                        asunto: e.asunto,
-                        email_destino: e.email_destino,
-                        plan_nombre: e.plan_nombre,
-                        error_msg: e.error_msg,
-                    })
-                }
-            }
-            setEmailRows(rows)
-        } catch (e: any) {
-            setError(e?.response?.data?.error || e.message)
-        } finally { setLoading(false) }
-    }
-
-    async function fetchWa() {
-        setLoading(true); setError(null)
-        try {
-            const { data: payload } = await api.get("/api/whatsapp/owner/mensajes", {
-                params: { limit: 10000 },
-            })
-            const rows: CommRow[] = (payload.data || []).map((r: any) => ({
-                id: r.id,
-                date: r.enviado_at,
-                gym_id: r.gym_id,
-                gym_nombre: r.gym_nombre,
-                gym_logo: r.gym_logo,
-                estado: r.estado,
-                nombre: r.nombre,
-                telefono: r.telefono,
-                plan: r.plan,
-                mensaje: r.mensaje,
-            }))
-            setWaRows(rows)
-        } catch (e: any) {
-            setError(e?.response?.data?.error || e.message)
-        } finally { setLoading(false) }
-    }
-
-    // Carga todo el historial del canal una vez (canal fijo por sección)
-    useEffect(() => {
-        if (mode === "email") fetchEmails()
-        else fetchWa()
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [])
-
-    const rows = mode === "email" ? (emailRows || []) : waRows
     const total = rows.length
 
     const byDay = useMemo(() => {
@@ -175,8 +177,7 @@ export function CommsHistory({ channel }: { channel: Mode }) {
     }
     function refresh() {
         setSelectedDay(null)
-        if (mode === "email") { setEmailRows(null); fetchEmails() }
-        else { setWaRows([]); fetchWa() }
+        refetch()
     }
 
     const unit = mode === "email"
@@ -196,7 +197,7 @@ export function CommsHistory({ channel }: { channel: Mode }) {
                 </Button>
             </Box>
 
-            {error && <Typography color="error" sx={{ mb: 2 }}>{error}</Typography>}
+            {error && <Typography color="error" sx={{ mb: 2 }}>{error.message}</Typography>}
 
             <CommsCalendar
                 accent={accent.main}

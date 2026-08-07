@@ -3,7 +3,6 @@ import {
     Dialog,
     DialogTitle,
     DialogContent,
-    DialogActions,
     Button,
     Box,
     Typography,
@@ -19,16 +18,18 @@ import {
     ListItem,
     ListItemText,
     Divider,
-    CircularProgress,
 } from '@mui/material'
+import { FlushDialogActions } from '@/components/ui/modals/FlushDialogActions'
 import AddIcon from '@mui/icons-material/Add'
 import DeleteIcon from '@mui/icons-material/Delete'
 import EditIcon from '@mui/icons-material/Edit'
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import { getDiaNombre } from '@/const/inputs/sesiones'
 import { api } from '@/lib/api'
 import { notify } from '@/lib/toast'
 import { ColorPickerPopover } from '@/components/ui/colorSelector/colorSelector'
+import { ClaseConSesiones, ClasePayload, SesionDraft } from '@/models/Clase/Clase'
+import { getApiErrorMessage } from '@/utils/errors/apiError'
 
 const DIAS_SEMANA = [
     { value: 1, label: 'Lunes' },
@@ -51,8 +52,8 @@ const formatHora = (hora: string): string => {
 interface ClaseFormModalProps {
     open: boolean
     onClose: () => void
-    onSubmit: (values: any) => void | Promise<void>
-    initialValues?: any
+    onSubmit: (values: ClasePayload) => void | Promise<void>
+    initialValues?: ClaseConSesiones | null
     mode: 'create' | 'edit'
     title: string
 }
@@ -69,10 +70,10 @@ export function ClaseFormModal({
     const [descripcion, setDescripcion] = useState('')
     const [capacidadDefault, setCapacidadDefault] = useState(20)
     const [color, setColor] = useState('#1976d2')
-    const [sesiones, setSesiones] = useState<any[]>([])
+    const [sesiones, setSesiones] = useState<SesionDraft[]>([])
     const [confirmDelete, setConfirmDelete] = useState(false)
     const [sesionToDelete, setSesionToDelete] = useState<number | null>(null)
-    const [editingSesion, setEditingSesion] = useState<any | null>(null)
+    const [editingSesion, setEditingSesion] = useState<SesionDraft | null>(null)
     const [submitting, setSubmitting] = useState(false)
 
     // Formulario de nueva sesión
@@ -80,8 +81,12 @@ export function ClaseFormModal({
     const [horaInicio, setHoraInicio] = useState('09:00')
     const [capacidad, setCapacidad] = useState(20)
 
-    // Actualizar estado cuando cambian los initialValues
-    useEffect(() => {
+    // Actualizar estado cuando cambian los initialValues, ajustando durante el
+    // render: con useEffect el modal mostraba un frame con la clase anterior.
+    const claseKey = `${open}:${initialValues?.id ?? 'nueva'}`
+    const [claseKeyPrevia, setClaseKeyPrevia] = useState(claseKey)
+    if (claseKey !== claseKeyPrevia) {
+        setClaseKeyPrevia(claseKey)
         if (initialValues) {
             setNombre(initialValues.nombre || '')
             setDescripcion(initialValues.descripcion || '')
@@ -98,7 +103,7 @@ export function ClaseFormModal({
             setSesiones([])
             setCapacidad(20)
         }
-    }, [initialValues, open])
+    }
 
     const handleAddSesion = () => {
         if (!horaInicio) return
@@ -150,7 +155,7 @@ export function ClaseFormModal({
         setCapacidad(capacidadDefault)
     }
 
-    const handleEditSesion = (sesion: any) => {
+    const handleEditSesion = (sesion: SesionDraft) => {
         setEditingSesion(sesion)
         setDiaSemana(sesion.dia_semana)
         setHoraInicio(sesion.hora_inicio)
@@ -188,9 +193,9 @@ export function ClaseFormModal({
             setSesiones(sesiones.filter(s => s.id !== sesionToDelete))
             
             notify.success('Sesión eliminada correctamente')
-        } catch (error: any) {
+        } catch (error) {
             console.error('Error eliminando sesión:', error)
-            notify.error(error.response?.data?.error || 'Error al eliminar la sesión')
+            notify.error(getApiErrorMessage(error) || 'Error al eliminar la sesión')
         } finally {
             setConfirmDelete(false)
             setSesionToDelete(null)
@@ -233,15 +238,16 @@ export function ClaseFormModal({
     const isValid = nombre.trim().length >= 3 && capacidadDefault > 0
 
     return (
-        <Dialog 
-            open={open} 
-            onClose={onClose} 
-            maxWidth="sm" 
+        <Dialog
+            open={open}
+            onClose={onClose}
+            maxWidth="sm"
             fullWidth
             sx={{
                 '& .MuiDialog-paper': {
                     m: { xs: 1, sm: 2 },
                     maxHeight: { xs: '95vh', sm: '90vh' },
+                    overflow: 'hidden',
                 },
             }}
         >
@@ -436,16 +442,18 @@ export function ClaseFormModal({
                     </Box>
                 </Stack>
             </DialogContent>
-            <DialogActions>
-                <Button onClick={onClose} disabled={submitting}>Cancelar</Button>
-                <Button
-                    onClick={handleSubmit}
-                    variant="contained"
-                    disabled={!isValid || submitting}
-                >
-                    {submitting ? <CircularProgress size={22} color="inherit" /> : (mode === 'create' ? 'Crear clase' : 'Guardar cambios')}
-                </Button>
-            </DialogActions>
+            <FlushDialogActions
+                actions={[
+                    { label: 'Cancelar', onClick: onClose, disabled: submitting, tone: 'neutral' },
+                    {
+                        label: mode === 'create' ? 'Crear clase' : 'Guardar cambios',
+                        onClick: handleSubmit,
+                        tone: 'confirm',
+                        disabled: !isValid || submitting,
+                        loading: submitting,
+                    },
+                ]}
+            />
 
             {/* Modal de confirmación de eliminación */}
             <Dialog
@@ -453,6 +461,7 @@ export function ClaseFormModal({
                 onClose={handleCancelDelete}
                 maxWidth="xs"
                 fullWidth
+                PaperProps={{ sx: { overflow: 'hidden' } }}
             >
                 <DialogTitle>¿Eliminar sesión?</DialogTitle>
                 <DialogContent>
@@ -460,12 +469,12 @@ export function ClaseFormModal({
                         ¿Estás seguro de eliminar esta sesión? Se eliminarán también todas las inscripciones.
                     </Typography>
                 </DialogContent>
-                <DialogActions>
-                    <Button onClick={handleCancelDelete}>Cancelar</Button>
-                    <Button onClick={handleConfirmDelete} color="error" variant="contained">
-                        Eliminar
-                    </Button>
-                </DialogActions>
+                <FlushDialogActions
+                    actions={[
+                        { label: 'Cancelar', onClick: handleCancelDelete, tone: 'neutral' },
+                        { label: 'Eliminar', onClick: handleConfirmDelete, tone: 'danger' },
+                    ]}
+                />
             </Dialog>
         </Dialog>
     )

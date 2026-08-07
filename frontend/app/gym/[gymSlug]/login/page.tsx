@@ -15,6 +15,9 @@ import {
 import { slugify } from '@/utils/slugify'
 import { api } from '@/lib/api'
 import { notify } from '@/lib/toast'
+import { Gym } from '@/models/Gym/Gym'
+import { PortalAlumnoSession } from '@/models/Portal/PortalAlumno'
+import { getApiErrorMessage } from '@/utils/errors/apiError'
 
 export default function GymLoginPage() {
     const params = useParams()
@@ -24,7 +27,7 @@ export default function GymLoginPage() {
     const [dni, setDni] = useState('')
     const [loading, setLoading] = useState(false)
     const [gymLoading, setGymLoading] = useState(true)
-    const [gymInfo, setGymInfo] = useState<any>(null)
+    const [gymInfo, setGymInfo] = useState<Gym | null>(null)
     const [error, setError] = useState('')
 
     // Cargar información del gimnasio
@@ -33,10 +36,10 @@ export default function GymLoginPage() {
             try {
                 setGymLoading(true)
                 // Buscar gym por nombre (el slug es el nombre)
-                const response = await api.get(`/api/gyms`)
+                const response = await api.get<Gym[]>(`/api/gyms`)
 
                 // Buscar el gym cuyo nombre coincida con el slug
-                const gym = response.data.find((g: any) => 
+                const gym = response.data.find((g) =>
                     slugify(g.name) === gymSlug
                 )
 
@@ -85,7 +88,7 @@ export default function GymLoginPage() {
             setLoading(true)
             
             // Buscar alumno por DNI y gym_id
-            const response = await api.post(
+            const response = await api.post<PortalAlumnoSession>(
                 `/api/auth/gym-login`,
                 {
                     dni: dni.trim(),
@@ -105,10 +108,9 @@ export default function GymLoginPage() {
             // Redirigir al panel del alumno
             router.push(`/gym/${gymSlug}/panel`)
             
-        } catch (err: any) {
+        } catch (err) {
             console.error('Error en login:', err)
-            const errorMsg = err.response?.data?.error || 'DNI no encontrado en este gimnasio'
-            notify.error(errorMsg)
+            notify.error(getApiErrorMessage(err) || 'DNI no encontrado en este gimnasio')
         } finally {
             setLoading(false)
         }

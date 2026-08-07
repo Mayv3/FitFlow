@@ -1,3 +1,4 @@
+import { Gym, GymSettings } from '@/models/Gym/Gym'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import Cookies from 'js-cookie'
 
@@ -35,12 +36,8 @@ export const useSoftDeleteGym = () => {
   })
 }
 
-export interface Gym {
-  id: string
-  name: string
-  logo_url?: string | null
-  settings?: any
-}
+/** Re-export para no romper los callsites que ya importaban `Gym` desde este hook. */
+export type { Gym }
 
 export const useGyms = () =>
   useQuery({
@@ -69,7 +66,7 @@ export const useGym = (id?: string, includeSettings = true) =>
 export const useCreateGym = () => {
   const qc = useQueryClient()
   return useMutation({
-    mutationFn: async (payload: { name: string; logo_url?: string | null; settings?: any }) => {
+    mutationFn: async (payload: { name: string; logo_url?: string | null; settings?: GymSettings }) => {
       const res = await fetch(`${API_BASE}/gyms`, {
         method: 'POST',
         headers: getHeaders(),
@@ -88,7 +85,7 @@ export const useCreateGym = () => {
 export const useUpdateGym = () => {
   const qc = useQueryClient()
   return useMutation({
-    mutationFn: async ({ id, ...updates }: { id: string; name?: string; logo_url?: string | null; settings?: any }) => {
+    mutationFn: async ({ id, ...updates }: { id: string; name?: string; logo_url?: string | null; settings?: GymSettings }) => {
       const res = await fetch(`${API_BASE}/gyms/${id}`, {
         method: 'PUT',
         headers: getHeaders(),

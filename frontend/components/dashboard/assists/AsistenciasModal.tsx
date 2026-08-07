@@ -35,8 +35,8 @@ export function AsistenciasHoyModal({
     };
 
     const alumnosDia =
-        (data?.porHora?.flatMap((h: any) => h.alumnos ?? []) ?? [])
-            .sort((a: any, b: any) => toMinutes(b.hora) - toMinutes(a.hora));
+        (data?.porHora?.flatMap((h) => h.alumnos ?? []) ?? [])
+            .sort((a, b) => toMinutes(b.hora) - toMinutes(a.hora));
 
     const total = alumnosDia.length;
 
@@ -102,7 +102,7 @@ export function AsistenciasHoyModal({
                     </Typography>
                 ) : (
                     <Box display="grid" gap={1.5} sx={{cursor:'pointer'}}>
-                        {alumnosDia.map((a: any) => (
+                        {alumnosDia.map((a) => (
                             <Box key={a.alumno_id} sx={itemSx}>
                                 <Box display="flex" justifyContent="space-between">
                                     <Typography fontWeight={500} noWrap>

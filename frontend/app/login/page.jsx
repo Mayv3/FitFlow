@@ -31,7 +31,7 @@ const LoginPage = () => {
     else if (roleId === SOCIO) router.replace("/dashboard/member")
     else if (roleId === OWNER || roleId === 1) router.replace("/dashboard/owner")
     else router.replace("/")
-  }, [])
+  }, [router])
 
   const handleLogin = async (e) => {
     e.preventDefault()
@@ -177,7 +177,14 @@ const LoginPage = () => {
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   onKeyUp={(e) => setCapsLock(e.getModifierState("CapsLock"))}
-                  onFocus={(e) => setCapsLock(e.nativeEvent.getModifierState("CapsLock"))}
+                  // Solo KeyboardEvent y MouseEvent implementan getModifierState:
+                  // si el foco vino por Tab el nativo es un FocusEvent y no lo tiene.
+                  onFocus={(e) => {
+                    const native = e.nativeEvent
+                    if (typeof native.getModifierState === "function") {
+                      setCapsLock(native.getModifierState("CapsLock"))
+                    }
+                  }}
                   onBlur={() => setCapsLock(false)}
                   autoComplete="current-password"
                   className={`w-full bg-white/[0.04] border rounded-[10px] text-[#E8F0FF] text-[0.95rem] font-medium px-4 py-3 outline-none transition-all placeholder-[#3E5470] focus:ring-2 ${capsLock ? "border-yellow-500/70 focus:border-yellow-500/70 focus:ring-yellow-500/10" : "border-white/10 focus:border-green-500/55 focus:ring-green-500/10"} ${capsLock ? "pr-20" : "pr-12"}`}

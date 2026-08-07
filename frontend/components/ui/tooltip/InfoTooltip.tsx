@@ -2,17 +2,25 @@
 
 import { Tooltip, IconButton, Box, Typography } from '@mui/material';
 import InfoOutlined from '@mui/icons-material/InfoOutlined';
+import type { ChartTooltipEntry, ChartTooltipProps } from '@/models/Charts/ChartTooltip';
 
 type InfoTooltipProps = {
   title: string;
   placement?: 'top' | 'bottom' | 'left' | 'right';
 };
 
-type RoundedTooltipProps = {
-  active?: boolean;
-  payload?: any[];
-  label?: string | number;
-  formatter?: (entry: any) => React.ReactNode;
+// `formatter` va aparte del de recharts: acá recibe la entrada entera, no
+// (value, name, item, …), así que se reemplaza en vez de intersectarse.
+type RoundedTooltipProps = Omit<ChartTooltipProps, 'formatter'> & {
+  formatter?: (entry: ChartTooltipEntry) => React.ReactNode;
+};
+
+/** Datum que arma FacturacionSection para cada barra del grafico. */
+type FacturacionDatum = {
+  plan_nombre?: string;
+  actual?: number;
+  anterior?: number;
+  variacion?: number;
 };
 
 export function InfoTooltip({ title, placement = 'top' }: InfoTooltipProps) {
@@ -27,8 +35,6 @@ export function InfoTooltip({ title, placement = 'top' }: InfoTooltipProps) {
 
 export const RoundedTooltip = ({ active, payload, label, formatter }: RoundedTooltipProps) => {
   if (!active || !payload || payload.length === 0) return null;
-
-  const d = payload[0].payload;
 
   return (
     <Box
@@ -51,7 +57,7 @@ export const RoundedTooltip = ({ active, payload, label, formatter }: RoundedToo
         <Typography
           key={i}
           variant="body2"
-          color={entry.value >= 0 ? 'text.primary' : 'error.main'}
+          color={Number(entry.value) >= 0 ? 'text.primary' : 'error.main'}
         >
           {formatter ? formatter(entry) : `${entry.name}: ${entry.value}`}
         </Typography>
@@ -61,10 +67,10 @@ export const RoundedTooltip = ({ active, payload, label, formatter }: RoundedToo
 };
 
 
-export const FacturacionTooltip = ({ active, payload }: any) => {
+export const FacturacionTooltip = ({ active, payload }: ChartTooltipProps) => {
   if (!active || !payload || !payload.length) return null;
 
-  const d = payload[0].payload;
+  const d = payload[0].payload as FacturacionDatum;
 
   return (
     <Box
@@ -88,7 +94,7 @@ export const FacturacionTooltip = ({ active, payload }: any) => {
       </Typography>
       <Typography
         variant="body2"
-        color={d.variacion >= 0 ? "success.main" : "error.main"}
+        color={(d.variacion ?? 0) >= 0 ? "success.main" : "error.main"}
       >
         Variación:{" "}
         {d.variacion

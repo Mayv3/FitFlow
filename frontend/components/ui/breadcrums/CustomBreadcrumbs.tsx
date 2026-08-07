@@ -5,19 +5,21 @@ import NavigateNextIcon from '@mui/icons-material/NavigateNext';
 import { useRouter } from 'next/navigation';
 import { CustomBreadcrumbsProps } from '@/models/Breadcrums/Breadcrums';
 import { ADMINISTRADOR } from '@/const/roles/roles';
-import { useEffect, useState } from 'react';
+import { useClientSnapshot } from '@/hooks/useClientSnapshot';
+
+function leerRolDeCookie(): number | null {
+  const rolCookie = document.cookie
+    .split('; ')
+    .find((row) => row.startsWith('rol='))
+    ?.split('=')[1];
+  return rolCookie ? Number(rolCookie) : null;
+}
+
+const sinRol = () => null;
 
 export function CustomBreadcrumbs({ items }: CustomBreadcrumbsProps) {
   const router = useRouter();
-  const [rol, setRol] = useState<number | null>(null);
-
-  useEffect(() => {
-    const rolCookie = document.cookie
-      .split('; ')
-      .find((row) => row.startsWith('rol='))
-      ?.split('=')[1];
-    setRol(rolCookie ? Number(rolCookie) : null);
-  }, []);
+  const rol = useClientSnapshot(leerRolDeCookie, sinRol);
 
   return (
     <Breadcrumbs

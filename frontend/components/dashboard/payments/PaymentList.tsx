@@ -1,7 +1,7 @@
 'use client';
-import { Box, Button, Stack, CircularProgress, Typography } from '@mui/material';
+import { Box, Button, Stack, Typography } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import { debounce } from '@/utils/debounce/debounce';
 import { CustomBreadcrumbs } from '@/components/ui/breadcrums/CustomBreadcrumbs';
 import { SearchBar } from '@/components/ui/search/SearchBar';
@@ -28,15 +28,17 @@ import {
 import { GenericModal } from '@/components/ui/modals/GenericModal';
 import { notify } from '@/lib/toast';
 import { PaymentStats } from './stats/PaymentStats';
-import { fechaHoyArgentinaSinFormato, horaActualArgentina, horaActualArgentinaFunction } from '@/utils/date/dateUtils';
+import { fechaHoyArgentinaSinFormato, horaActualArgentinaFunction } from '@/utils/date/dateUtils';
 import moment from 'moment';
 import { usePaymentsStats } from '@/hooks/stats/usePaymentsStats';
 import tableSize from '@/const/tables/tableSize';
+import { Payment, PaymentFormState, PaymentFormValues, PaymentPayload } from '@/models/Payment/Payment';
+import { getApiErrorMessage, getApiErrorStatus } from '@/utils/errors/apiError';
 
 export default function PaymentList() {
     
     const queryClient = useQueryClient();
-    const { user, loading: userLoading } = useUser();
+    const { user } = useUser();
     const gymId = user?.gym_id ?? '';
     const { data: alumnosRes } = useAlumnosSimpleByGym(gymId);
     const { data: services } = useServicesByGym(gymId);
@@ -46,12 +48,12 @@ export default function PaymentList() {
         [alumnosRes]
     );
 
-    const { options: planOptions, byId: plansById } = usePlanesPrecios(gymId);
+    const { options: planOptions } = usePlanesPrecios(gymId);
 
     const [openAdd, setOpenAdd] = useState(false);
     const [openEdit, setOpenEdit] = useState(false);
-    const [selectedProductId, setSelectedProductId] = useState<any>(null);
-    const [editingPago, setEditingPago] = useState<any | null>(null);
+    const [selectedProductId, setSelectedProductId] = useState<string | number | null>(null);
+    const [editingPago, setEditingPago] = useState<PaymentFormState | null>(null);
     const [openDelete, setOpenDelete] = useState(false);
     const [deletingId, setDeletingId] = useState<number | null>(null);
 
@@ -66,7 +68,7 @@ export default function PaymentList() {
     const fromDateISO = dateRange[0]?.format('YYYY-MM-DD') ?? null;
     const toDateISO = dateRange[1]?.format('YYYY-MM-DD') ?? null;
 
-    const { data, isLoading, isError, error, isFetching } = usePagosByGym(gymId, page, tableSize, q, { fromDate: fromDateISO, toDate: toDateISO });
+    const { data, isError, error, isFetching } = usePagosByGym(gymId, page, tableSize, q, { fromDate: fromDateISO, toDate: toDateISO });
     const { data: stats, isLoading: statsLoading } = usePaymentsStats(gymId, { fromDate: fromDateISO, toDate: toDateISO, })
 
     const addPago = useAddPago(gymId);
@@ -84,7 +86,7 @@ export default function PaymentList() {
 
     const serviceOptions = useMemo(() => {
         if (!services?.items) return [];
-        return services.items.map((s: any) => {
+        return services.items.map((s) => {
             const duracion = s.duracion_minutos ? `${s.duracion_minutos} min` : '';
             const precio = s.precio ? `($${s.precio.toLocaleString('es-AR')})` : '';
             const label = `${s.nombre}${duracion ? ` — ${duracion}` : ''} ${precio}`.trim();
@@ -94,28 +96,32 @@ export default function PaymentList() {
 
     const productOptions = useMemo(() => {
         if (!productsData?.items) return [];
-        return productsData.items.map((p: any) => {
+        return productsData.items.map((p) => {
             const precio = p.precio ? `($${p.precio.toLocaleString('es-AR')})` : '';
-            const stock = p.stock !== undefined ? `[Stock: ${p.stock}]` : '';
-            const sinStock = p.stock <= 0 ? ' - SIN STOCK' : '';
-            const label = `${p.nombre} ${precio} ${stock}${sinStock}`.trim();
+            const stockLabel = p.stock !== undefined ? `[Stock: ${p.stock}]` : '';
+            // stock undefined = producto sin control de stock, no se bloquea.
+            const agotado = p.stock !== undefined && p.stock <= 0;
+            const label = `${p.nombre} ${precio} ${stockLabel}${agotado ? ' - SIN STOCK' : ''}`.trim();
             return {
                 label,
                 value: p.id,
                 stock: p.stock,
-                disabled: p.stock <= 0
+                disabled: agotado,
             };
         });
     }, [productsData]);
 
     const cantidadOptions = useMemo(() => {
         if (!selectedProductId) return [{ label: '1', value: 1 }];
-        const product = productsData?.items?.find((p: any) => p.id === selectedProductId);
-        if (!product || product.stock <= 0) return [{ label: '1', value: 1 }];
-        return Array.from({ length: product.stock }, (_, i) => ({ label: String(i + 1), value: i + 1 }));
+        const product = productsData?.items?.find((p) => p.id === selectedProductId);
+        // `stock` es opcional en Product: sin este default, Array.from recibia
+        // `number | undefined` y devolvia unknown[].
+        const stock = product?.stock ?? 0;
+        if (stock <= 0) return [{ label: '1', value: 1 }];
+        return Array.from({ length: stock }, (_, i) => ({ label: String(i + 1), value: i + 1 }));
     }, [selectedProductId, productsData]);
 
-    const handleValuesChange = useCallback((values: any) => {
+    const handleValuesChange = useCallback((values: PaymentFormValues) => {
         setSelectedProductId(values.producto_id ?? null);
     }, []);
 
@@ -140,7 +146,7 @@ export default function PaymentList() {
 
     const total = data?.total ?? 0;
 
-    const handleAddPayment = async (values: any) => {
+    const handleAddPayment = async (values: PaymentFormValues) => {
         try {
             // 1. Validar método de pago
             const metodoPago = Number(values.metodo_pago);
@@ -204,7 +210,7 @@ export default function PaymentList() {
             const isProducto = values.origen_pago === "producto";
 
             // 5. Construir payload limpio
-            const payload: any = {
+            const payload: PaymentPayload = {
                 alumno_id: values.alumno_id,
                 tipo: values.tipo,
                 fecha_de_pago: values.fecha_de_pago,
@@ -231,17 +237,24 @@ export default function PaymentList() {
 
                 // Verificar stock del producto
                 const selectedProduct = productOptions.find(p => p.value === values.producto_id);
-                if (!selectedProduct || selectedProduct.stock <= 0) {
+                if (!selectedProduct) {
                     notify.error('El producto seleccionado no tiene stock disponible');
                     return;
                 }
-                if (cantidad_producto > selectedProduct.stock) {
-                    notify.error(`Stock insuficiente. Disponible: ${selectedProduct.stock}`);
-                    return;
+                // stock undefined = producto sin control de stock: no se valida.
+                const stockDisponible = selectedProduct.stock;
+                if (stockDisponible !== undefined) {
+                    if (stockDisponible <= 0) {
+                        notify.error('El producto seleccionado no tiene stock disponible');
+                        return;
+                    }
+                    if (cantidad_producto > stockDisponible) {
+                        notify.error(`Stock insuficiente. Disponible: ${stockDisponible}`);
+                        return;
+                    }
                 }
             }
 
-            console.log('[handleAddPayment] Payload final:', JSON.stringify(payload, null, 2));
 
             await addPago.mutateAsync(payload);
             setOpenAdd(false);
@@ -253,9 +266,9 @@ export default function PaymentList() {
             } else {
                 notify.success("Pago añadido correctamente");
             }
-        } catch (error: any) {
+        } catch (error: unknown) {
             console.error("Error al añadir pago:", error);
-            if (error?.response?.data?.error?.includes('sin stock')) {
+            if (getApiErrorMessage(error)?.includes('sin stock')) {
                 notify.error('El producto seleccionado no tiene stock disponible');
             } else {
                 notify.error("Error al añadir el pago");
@@ -265,10 +278,10 @@ export default function PaymentList() {
 
 
 
-    const handleOpenEdit = (payment: any) => {
-        const efectivo = payment.items?.find((i: any) => i.metodo_de_pago_id === 1)?.monto ?? '';
-        const tarjeta = payment.items?.find((i: any) => i.metodo_de_pago_id === 2)?.monto ?? '';
-        const mp = payment.items?.find((i: any) => i.metodo_de_pago_id === 3)?.monto ?? '';
+    const handleOpenEdit = useCallback((payment: Payment) => {
+        const efectivo = payment.items?.find((i) => i.metodo_de_pago_id === 1)?.monto ?? '';
+        const tarjeta = payment.items?.find((i) => i.metodo_de_pago_id === 2)?.monto ?? '';
+        const mp = payment.items?.find((i) => i.metodo_de_pago_id === 3)?.monto ?? '';
 
         let metodo_pago = 'Mixto';
         if (efectivo && !mp && !tarjeta) metodo_pago = 'Efectivo';
@@ -289,7 +302,7 @@ export default function PaymentList() {
 
         setEditingPago(sanitized);
         setOpenEdit(true);
-    };
+    }, []);
 
 
     const handleCloseEdit = () => {
@@ -297,7 +310,7 @@ export default function PaymentList() {
         setEditingPago(null);
     };
 
-    const handleEditPayment = async (values: any) => {
+    const handleEditPayment = async (values: PaymentFormValues) => {
         try {
             const id = editingPago?.id;
             if (!id) throw new Error("No hay id para editar el pago");
@@ -328,7 +341,6 @@ export default function PaymentList() {
                 monto_total: monto_total > 0 ? monto_total : editingPago.monto_total,
             };
 
-            console.log("🟢 Enviando payload final al backend:", payload);
 
             await editPago.mutateAsync({ id, values: payload });
 
@@ -362,7 +374,7 @@ export default function PaymentList() {
 
 
     if (isError) {
-        const is403 = (error as any)?.response?.status === 403
+        const is403 = getApiErrorStatus(error) === 403
         return (
             <Box sx={{ textAlign: 'center', mt: 4, color: 'error.main' }}>
                 {is403

@@ -1,10 +1,10 @@
 'use client';
 import { GenericDataGrid } from '@/components/ui/tables/DataGrid';
 import {
-  Box, Typography, CircularProgress, Button, Stack,
+  Box, Typography, Button, Stack,
   Badge, Dialog, DialogContent,
   IconButton, Tooltip, Checkbox,
-  Table, TableBody, TableCell, TableHead, TableRow,
+  Table, TableBody, TableCell, TableRow,
 } from '@mui/material';
 import { useUser } from '@/context/UserContext';
 import { useEffect, useMemo, useState } from 'react';
@@ -12,6 +12,7 @@ import { useRouter } from 'next/navigation';
 import { GenericModal } from '@/components/ui/modals/GenericModal';
 import { FormModal } from '@/components/ui/modals/FormModal';
 import { Member } from '@/models/Member/Member';
+import { getApiErrorStatus } from '@/utils/errors/apiError';
 import { getInputFieldsAlumnos, layoutAlumnos } from '@/const/inputs/alumnos';
 import { columnsMember, normalizeArPhone } from '@/const/columns/members';
 import { estadoVencimiento } from '@/utils/date/dateUtils';
@@ -76,10 +77,14 @@ export default function MembersList() {
   const gymId = user?.gym_id ?? '';
   const { primaryColor } = useGymThemeSettings();
 
+  // localStorage solo existe en el cliente y gymId recien se conoce cuando carga
+  // la sesion, asi que la lectura va en un efecto a proposito. Devuelve un Set,
+  // que no sirve para useClientSnapshot (identidad nueva en cada render).
   useEffect(() => {
     if (!gymId) return;
     try {
       const stored = localStorage.getItem(`fitflow_waSent_${gymId}`);
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       if (stored) setWaSent(new Set(JSON.parse(stored)));
     } catch {}
   }, [gymId]);
@@ -99,10 +104,10 @@ export default function MembersList() {
   // - vencidos "reales": venció hace <= 2 meses
   // - inactivos: venció hace > 2 meses (dejaron de venir) → no cuentan como vencidos
   const { vencidosMembers, inactivosMembers } = useMemo(() => {
-    const v: any[] = [];
-    const i: any[] = [];
+    const v: Member[] = [];
+    const i: Member[] = [];
     for (const m of expiredData?.items ?? []) {
-      const inactivo = estadoVencimiento((m as any).fecha_de_vencimiento).code === 'inactive';
+      const inactivo = estadoVencimiento(m.fecha_de_vencimiento).code === 'inactive';
       (inactivo ? i : v).push(m);
     }
     return { vencidosMembers: v, inactivosMembers: i };
@@ -129,48 +134,11 @@ export default function MembersList() {
         planField.placeholder = 'Cargando planes...';
       }
 
-      const clasesField = base.find(f => f.name === 'clases_pagadas');
-
-      if (clasesField) {
-        planField.onChange = (newPlanId: string | number | null, next) => {
-          if (!newPlanId) {
-            return {
-              ...next,
-              plan_id: null,
-              clases_pagadas: null,
-              clases_realizadas: 0,
-            };
-          }
-
-          const plan = byId[String(newPlanId)];
-
-          return {
-            ...next,
-            plan_id: newPlanId,
-            clases_pagadas: plan?.numero_clases ?? null,
-            clases_realizadas: 0,
-          };
-        };
-      }
     }
 
     return base;
-  }, [planOptions, byId, plansLoading]);
+  }, [planOptions, plansLoading]);
 
-
-  const toNumOrNull = (v: any) =>
-    v === '' || v === undefined || v === null ? null : Number(v);
-
-  const normalizeMemberValues = (values: Partial<Member>) => ({
-    ...values,
-    plan_id: values.plan_id === '' || values.plan_id == null ? null : Number(values.plan_id),
-    clases_pagadas: toNumOrNull(values.clases_pagadas),
-    clases_realizadas: toNumOrNull(values.clases_realizadas),
-    origen: values.origen ?? null, 
-    fecha_vencimiento: (values as any).fecha_vencimiento || null,
-    fecha_nacimiento: values.fecha_nacimiento || null,
-    fecha_inicio: values.fecha_inicio || null,
-  });
 
   useEffect(() => {
     if (!user && !userLoading) {
@@ -179,7 +147,7 @@ export default function MembersList() {
   }, [user, userLoading, router]);
 
   if (isError) {
-    const is403 = (error as any)?.response?.status === 403
+    const is403 = getApiErrorStatus(error) === 403
     return (
       <Typography color="error" sx={{ textAlign: 'center', mt: 4 }}>
         {is403
@@ -190,7 +158,12 @@ export default function MembersList() {
   }
 
   const handleAddMember = async (values: Partial<Member>) => {
-    console.log('Adding member with values:', values);
+    // Sin sesion no hay gym_id: cortar antes de mutar en vez de mandar undefined.
+    if (!user?.gym_id) {
+      notify.error('Tu sesión expiró. Volvé a iniciar sesión.');
+      return;
+    }
+
     const v = {
       ...values,
       plan_id:
@@ -279,7 +252,6 @@ export default function MembersList() {
   };
 
   const triggerEdit = (member: Member) => {
-    console.log(member)
     setEditingMember(member);
     setOpenEdit(true);
   };
@@ -292,7 +264,7 @@ export default function MembersList() {
   const gymName = Cookies.get('gym_name') ?? '';
   const columns = columnsMember(triggerEdit, triggerDelete, gymName, byId, toggleWaSent, waSent);
 
-  const renderExpiredRow = (m: any) => {
+  const renderExpiredRow = (m: Member) => {
     const dniKey = `${m.dni}_${m.fecha_de_vencimiento ?? 'sin-fecha'}`;
     const sent = waSent.has(dniKey);
     const phone = normalizeArPhone(m.telefono);

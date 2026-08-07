@@ -1,6 +1,6 @@
 'use client'
 
-import { Box, Button, Stack, CircularProgress, Typography } from '@mui/material'
+import { Box, Button, Stack, Typography } from '@mui/material'
 import AddIcon from '@mui/icons-material/Add'
 import { useCallback, useMemo, useState } from 'react'
 import { debounce } from '@/utils/debounce/debounce'
@@ -19,14 +19,15 @@ import {
 } from '@/hooks/services/useServices'
 import { GenericModal } from '@/components/ui/modals/GenericModal'
 import { notify } from '@/lib/toast'
+import { Service, ServicePayload } from '@/models/Services/Service'
 
 export default function ServicesList() {
-  const { user, loading: userLoading } = useUser()
+  const { user } = useUser()
   const gymId = user?.gym_id ?? ''
 
   const [openAdd, setOpenAdd] = useState(false)
   const [openEdit, setOpenEdit] = useState(false)
-  const [editingService, setEditingService] = useState<any | null>(null)
+  const [editingService, setEditingService] = useState<Service | null>(null)
   const [openDelete, setOpenDelete] = useState(false)
   const [deletingId, setDeletingId] = useState<string | null>(null)
 
@@ -36,7 +37,6 @@ export default function ServicesList() {
 
   const {
     data,
-    isLoading,
     isFetching,
   } = useServices(gymId, page, pageSize, q)
 
@@ -57,7 +57,7 @@ export default function ServicesList() {
     []
   )
 
-  const handleAddService = async (values: any) => {
+  const handleAddService = async (values: ServicePayload) => {
     try {
       await addService.mutateAsync({ ...values, gym_id: gymId })
       setOpenAdd(false)
@@ -68,7 +68,7 @@ export default function ServicesList() {
     }
   }
 
-  const handleOpenEdit = useCallback((service: any) => {
+  const handleOpenEdit = useCallback((service: Service) => {
     setEditingService(service)
     setOpenEdit(true)
   }, [])
@@ -78,7 +78,7 @@ export default function ServicesList() {
     setEditingService(null)
   }, [])
 
-  const handleEditService = async (values: any) => {
+  const handleEditService = async (values: Service) => {
     try {
       const id = editingService?.id
       if (!id) throw new Error('No hay id para editar el servicio')

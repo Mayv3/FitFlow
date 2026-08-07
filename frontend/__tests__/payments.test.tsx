@@ -101,9 +101,11 @@ const createWrapper = () => {
     },
   });
 
-  return ({ children }: { children: ReactNode }) => (
+  const Wrapper = ({ children }: { children: ReactNode }) => (
     <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
   );
+  Wrapper.displayName = 'QueryWrapper';
+  return Wrapper;
 };
 
 describe('Payments CRUD Operations', () => {
@@ -344,7 +346,7 @@ describe('Payments CRUD Operations', () => {
         status: 200,
       });
 
-      const { result, rerender } = renderHook(
+      const { result } = renderHook(
         ({ page }: { page: number }) => usePagosByGym('gym-123', page, 20, ''),
         {
           wrapper: createWrapper(),

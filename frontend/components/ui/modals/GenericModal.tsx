@@ -4,10 +4,9 @@ import {
   Dialog,
   DialogTitle,
   DialogContent,
-  DialogActions,
-  Button,
   Box,
 } from '@mui/material';
+import { FlushDialogActions } from './FlushDialogActions';
 
 interface GenericModalProps {
   open: boolean;
@@ -38,34 +37,30 @@ export const GenericModal: React.FC<GenericModalProps> = ({
         sx: {
           width: '700px',
           borderRadius: 1.5,
-          p: 2,
+          overflow: 'hidden',
           '& .MuiDialogTitle-root': {
             fontSize: '1.6rem',
             fontWeight: 600,
+            p: 3,
           },
           '& .MuiDialogContent-root': {
             fontSize: '1.1rem',
             lineHeight: 1.6,
-            p: 3,
-          },
-          '& .MuiButton-root': {
-            fontSize: '1rem',
             px: 3,
-            py: 1,
           },
         },
       }}
     >
       <DialogTitle>{title}</DialogTitle>
       <DialogContent>
-        <Box sx={{ pt: 1 }}>{content}</Box>
+        <Box sx={{ pt: 1, pb: 2 }}>{content}</Box>
       </DialogContent>
-      <DialogActions sx={{ px: 3, pb: 3 }}>
-        <Button onClick={onClose}>{cancelText}</Button>
-        <Button variant="contained" onClick={onConfirm}>
-          {confirmText}
-        </Button>
-      </DialogActions>
+      <FlushDialogActions
+        actions={[
+          { label: cancelText, onClick: onClose, tone: 'neutral' },
+          { label: confirmText, onClick: onConfirm, tone: 'confirm' },
+        ]}
+      />
     </Dialog>
 
   );

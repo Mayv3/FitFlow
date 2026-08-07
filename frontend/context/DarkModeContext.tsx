@@ -13,11 +13,15 @@ export function DarkModeProvider({ children }: { children: React.ReactNode }) {
   const [isDarkMode, setIsDarkMode] = useState(false)
   const [isMounted, setIsMounted] = useState(false)
 
-  // Leer preferencia almacenada al iniciar
+  // Leer preferencia almacenada al iniciar.
+  // localStorage y matchMedia solo existen en el cliente: el server siempre
+  // renderiza el tema claro y recien al montar se corrige. Hacerlo durante el
+  // render provocaria mismatch de hidratacion en las rutas prerenderizadas.
   useEffect(() => {
     if (typeof window !== 'undefined') {
       const savedMode = localStorage.getItem('darkMode')
       if (savedMode !== null) {
+        // eslint-disable-next-line react-hooks/set-state-in-effect
         setIsDarkMode(JSON.parse(savedMode))
       } else {
         // Usar preferencia del sistema si no hay preferencia guardada

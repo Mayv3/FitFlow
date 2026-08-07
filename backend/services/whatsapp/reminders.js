@@ -2,6 +2,7 @@ import dayjs from 'dayjs'
 import { supabaseAdmin } from '../../config/supabaseClient.js'
 import { whatsappManager } from './WhatsappManager.js'
 import { notifyWaDown } from './notify.js'
+import { waLog, rememberGymName, duracion } from './logger.js'
 
 const DEFAULT_TEMPLATE =
   'Hola {nombre}, tu plan {plan} {estado} el {fecha}. ¡Renoválo para seguir entrenando! 💪'
@@ -10,15 +11,115 @@ function fmt(template, vars) {
   return template.replace(/\{(\w+)\}/g, (_, k) => vars[k] ?? '')
 }
 
-function sleep(ms) {
-  return new Promise((r) => setTimeout(r, ms))
-}
-
 // Delay fijo entre envíos = patrón robótico, señal de riesgo pal antispam de
 // WhatsApp. Random uniforme entre 5s y 13s para que el intervalo no sea
 // siempre idéntico.
 function withJitter() {
   return Math.round(5000 + Math.random() * 8000)
+}
+
+// ── Corridas en curso y cancelación ──────────────────────────────────────────
+// Una corrida de 150 alumnos tarda ~20 minutos por el jitter entre envíos. Si
+// se disparó por error hay que poder frenarla sin reiniciar el server: cada
+// corrida se registra acá y el loop chequea la bandera antes de cada mensaje.
+// Los ya enviados NO se deshacen — cancelar solo evita los que faltan.
+
+/** @type {Map<string, {gymId:string, gymName:string|null, simulate:boolean, startedAt:number, total:number, sent:number, errors:number, skipped:number, cancelada:boolean, cancelPor:string|null, despertar:(()=>void)|null}>} */
+const corridas = new Map()
+
+// Cancelar una corrida "de todos los gyms" tiene que impedir además que arranque
+// el siguiente gimnasio de la lista, no solo frenar el que está enviando.
+let cancelarGlobal = false
+
+function nuevaCorrida(gymId, { gymName, simulate, total }) {
+  const run = {
+    gymId,
+    gymName,
+    simulate,
+    startedAt: Date.now(),
+    total,
+    sent: 0,
+    errors: 0,
+    skipped: 0,
+    cancelada: false,
+    cancelPor: null,
+    despertar: null
+  }
+  corridas.set(gymId, run)
+  return run
+}
+
+// Espera entre envíos, pero cortable: si cancelan mientras duerme, sigue de
+// largo en vez de dejar al usuario esperando hasta 13s a que reaccione el botón.
+function esperar(ms, run) {
+  return new Promise((resolve) => {
+    const t = setTimeout(() => {
+      run.despertar = null
+      resolve()
+    }, ms)
+    run.despertar = () => {
+      clearTimeout(t)
+      run.despertar = null
+      resolve()
+    }
+  })
+}
+
+/**
+ * Marca una corrida para que frene antes del próximo mensaje.
+ * @param {string} gymId
+ * @param {string} [porQuien] email o id del usuario, para el log
+ * @returns {{ok:boolean, sent:number, restantes:number}|null} null si no había nada corriendo
+ */
+export function cancelarEnvio(gymId, porQuien = 'desconocido') {
+  const run = corridas.get(gymId)
+  if (!run || run.cancelada) return null
+  run.cancelada = true
+  run.cancelPor = porQuien
+  run.despertar?.() // cortar la espera entre mensajes, para que frene ya
+  waLog(gymId, 'CANCELACIÓN pedida — freno antes del próximo mensaje', {
+    level: 'warn',
+    detalle: {
+      Pedido: `por ${porQuien}`,
+      'Ya enviados': `${run.sent} (esos no se pueden deshacer)`,
+      'Quedaban sin enviar': Math.max(0, run.total - run.sent - run.errors - run.skipped)
+    }
+  })
+  return {
+    ok: true,
+    sent: run.sent,
+    restantes: Math.max(0, run.total - run.sent - run.errors - run.skipped)
+  }
+}
+
+/** Cancela todas las corridas activas y frena el recorrido por gimnasios. */
+export function cancelarTodo(porQuien = 'desconocido') {
+  cancelarGlobal = true
+  const frenadas = []
+  for (const gymId of corridas.keys()) {
+    const r = cancelarEnvio(gymId, porQuien)
+    if (r) frenadas.push({ gym_id: gymId, ...r })
+  }
+  if (!frenadas.length) {
+    waLog(null, 'Pedido de cancelación pero no había ningún envío en curso', { level: 'warn' })
+  }
+  return frenadas
+}
+
+/** Snapshot de lo que está corriendo ahora, para que el panel muestre progreso. */
+export function estadoCorridas() {
+  return [...corridas.values()].map((r) => ({
+    gym_id: r.gymId,
+    gym_name: r.gymName,
+    simulate: r.simulate,
+    total: r.total,
+    sent: r.sent,
+    errors: r.errors,
+    skipped: r.skipped,
+    restantes: Math.max(0, r.total - r.sent - r.errors - r.skipped),
+    cancelada: r.cancelada,
+    segundos: Math.round((Date.now() - r.startedAt) / 1000)
+  }))
 }
 
 async function getGymConfig(gymId) {
@@ -29,6 +130,7 @@ async function getGymConfig(gymId) {
     .maybeSingle()
   if (error) throw error
   if (!data) throw new Error(`gym ${gymId} not found`)
+  rememberGymName(gymId, data.name) // los logs de acá en más salen con nombre
   const wa = data.settings?.whatsapp || {}
   return {
     gym: data,
@@ -77,7 +179,13 @@ async function fetchAlreadySent(gymId, alumnoIds, vencimientos) {
     .in('alumno_id', alumnoIds)
     .in('vencimiento', uniqueVenc)
   if (error) {
-    console.warn('[wa-dedupe] query error:', error.message)
+    waLog(gymId, 'No pude leer qué alumnos ya fueron avisados', {
+      level: 'warn',
+      detalle: {
+        Error: error.message,
+        'Qué implica': 'Sin dedupe: alumnos que ya recibieron el aviso pueden recibirlo de nuevo.'
+      }
+    })
     return new Set()
   }
   // Key incluye el tipo de aviso: cada alumno puede recibir el previo Y el del día
@@ -87,15 +195,30 @@ async function fetchAlreadySent(gymId, alumnoIds, vencimientos) {
 
 async function logMensaje(row) {
   const { error } = await supabaseAdmin.from('whatsapp_mensajes').insert(row)
-  if (error) console.warn('[wa-log] insert error:', error.message)
+  if (error) {
+    waLog(row.gym_id, `El mensaje salió pero no quedó registrado en la base — ${row.nombre}`, {
+      level: 'warn',
+      detalle: {
+        Error: error.message,
+        'Qué implica': 'No aparece en el historial del panel y el dedupe puede reenviarlo.'
+      }
+    })
+  }
 }
 
 export async function procesarRecordatorios(gymId, { simulate = false } = {}) {
+  const t0 = Date.now()
   const cfg = await getGymConfig(gymId)
   if (!cfg.moduleEnabled) {
+    waLog(gymId, 'Corrida salteada: el módulo de WhatsApp está apagado para este gym', {
+      detalle: { 'Dónde se prende': 'gyms.settings.whatsapp_module_enabled' }
+    })
     return { gym_id: gymId, status: 'module_disabled', sent: 0, errors: 0 }
   }
   if (!cfg.gym.whatsapp_enabled) {
+    waLog(gymId, 'Corrida salteada: los envíos están pausados para este gym', {
+      detalle: { 'Dónde se prende': 'gyms.whatsapp_enabled' }
+    })
     return { gym_id: gymId, status: 'disabled', sent: 0, errors: 0 }
   }
 
@@ -103,6 +226,14 @@ export async function procesarRecordatorios(gymId, { simulate = false } = {}) {
     // El módulo está habilitado pero el socket no está conectado: los recordatorios
     // NO se envían. Antes fallaba mudo (así estuvimos días caídos sin enterarnos).
     const waStatus = whatsappManager.getState(gymId)?.status ?? 'none'
+    waLog(gymId, 'Corrida abortada: WhatsApp no está conectado', {
+      level: 'error',
+      detalle: {
+        Estado: waStatus,
+        Recordatorios: 'NO se envió NINGUNO en esta corrida.',
+        'Qué hacer': 'Ver el último "Conexión cerrada" de este gym más arriba en el log.'
+      }
+    })
     notifyWaDown(gymId, 'not_connected', `status=${waStatus}`).catch(() => {})
     return {
       gym_id: gymId,
@@ -131,74 +262,162 @@ export async function procesarRecordatorios(gymId, { simulate = false } = {}) {
   const results = []
   const today = dayjs().startOf('day')
 
-  for (const a of alumnos) {
-    const venc = dayjs(a.fecha_de_vencimiento).startOf('day')
-    const diffDays = venc.diff(today, 'day')
-    // Aviso del día de vencimiento vs aviso previo (N días antes).
-    const tipo = diffDays <= 0 ? 'recordatorio_vencimiento' : 'recordatorio_previo'
-    const dedupeKey = `${a.id}|${a.fecha_de_vencimiento}|${tipo}`
-    if (sentSet.has(dedupeKey)) {
-      skipped++
-      results.push({ alumno_id: a.id, status: 'already_sent' })
-      continue
+  waLog(gymId, simulate ? 'Simulación de recordatorios' : 'Arranca envío de recordatorios', {
+    level: 'start',
+    detalle: {
+      Candidatos: alumnos.length,
+      'Ya enviados antes': sentSet.size,
+      'Días de aviso previo': cfg.daysBefore,
+      'Tiempo estimado': simulate ? '—' : `~${duracion(alumnos.length * 9000)} (9s promedio entre envíos)`,
+      'Se puede frenar': simulate ? '—' : 'sí, con el botón Cancelar del panel'
     }
+  })
 
-    const planNombre = a.planes_precios?.nombre || ''
-    const fecha = venc.format('D/M/YYYY')
-    const estado = diffDays < 0 ? 'venció' : (diffDays === 0 ? 'vence hoy' : 'vence')
-    const text = fmt(cfg.template, { nombre: a.nombre, plan: planNombre, fecha, estado })
-    const jid = whatsappManager.buildJid(a.telefono, cfg.countryPrefix)
-
-    if (!jid) {
-      errors++
-      results.push({ alumno_id: a.id, status: 'invalid_phone' })
-      continue
-    }
-
-    if (simulate) {
-      pending++
-      results.push({ alumno_id: a.id, jid, text, status: 'simulated' })
-      continue
-    }
-
-    try {
-      await whatsappManager.sendText(gymId, jid, text)
-      sent++
-      await logMensaje({
-        gym_id: gymId,
-        alumno_id: a.id,
-        telefono: a.telefono,
-        nombre: a.nombre,
-        plan: planNombre,
-        vencimiento: a.fecha_de_vencimiento,
-        mensaje: text,
-        tipo,
-        estado: 'enviado',
-        remitente_jid: cfg.adminJid
-      })
-      results.push({ alumno_id: a.id, status: 'sent' })
-    } catch (e) {
-      errors++
-      await logMensaje({
-        gym_id: gymId,
-        alumno_id: a.id,
-        telefono: a.telefono,
-        nombre: a.nombre,
-        plan: planNombre,
-        vencimiento: a.fecha_de_vencimiento,
-        mensaje: text,
-        tipo,
-        estado: 'error',
-        error_msg: e.message,
-        remitente_jid: cfg.adminJid
-      })
-      results.push({ alumno_id: a.id, status: 'error', error: e.message })
-    }
-
-    await sleep(withJitter())
+  // Una sola corrida por gym a la vez. Sin esto, si el cron y el botón del panel
+  // se pisan, la segunda corrida sobrescribe el registro de la primera y el
+  // botón Cancelar deja de tener efecto sobre la que realmente está enviando.
+  if (corridas.has(gymId)) {
+    const enCurso = corridas.get(gymId)
+    waLog(gymId, 'Ya hay un envío en curso para este gym — no arranco otro', {
+      level: 'warn',
+      detalle: { 'Progreso del que corre': `${enCurso.sent}/${enCurso.total}` }
+    })
+    return { gym_id: gymId, status: 'already_running', sent: 0, errors: 0, skipped: 0 }
   }
 
-  return { gym_id: gymId, gym_name: cfg.gym.name ?? null, admin_jid: cfg.adminJid, status: 'ok', sent, errors, skipped, pending, total: alumnos.length, results }
+  // Registrar la corrida para que el botón Cancelar tenga qué frenar. La
+  // simulación no envía nada, pero se registra igual para que el panel sepa
+  // que hay algo en curso.
+  const run = nuevaCorrida(gymId, { gymName: cfg.gym.name ?? null, simulate, total: alumnos.length })
+  let cancelada = false
+
+  try {
+    for (const a of alumnos) {
+      // Corte por cancelación: se chequea ANTES de armar y mandar el mensaje, así
+      // el último enviado es siempre uno completo (nunca queda a medias).
+      if (run.cancelada) {
+        cancelada = true
+        break
+      }
+
+      const venc = dayjs(a.fecha_de_vencimiento).startOf('day')
+      const diffDays = venc.diff(today, 'day')
+      // Aviso del día de vencimiento vs aviso previo (N días antes).
+      const tipo = diffDays <= 0 ? 'recordatorio_vencimiento' : 'recordatorio_previo'
+      const dedupeKey = `${a.id}|${a.fecha_de_vencimiento}|${tipo}`
+      if (sentSet.has(dedupeKey)) {
+        skipped++
+        run.skipped = skipped
+        results.push({ alumno_id: a.id, status: 'already_sent' })
+        continue
+      }
+
+      const planNombre = a.planes_precios?.nombre || ''
+      const fecha = venc.format('D/M/YYYY')
+      const estado = diffDays < 0 ? 'venció' : (diffDays === 0 ? 'vence hoy' : 'vence')
+      const text = fmt(cfg.template, { nombre: a.nombre, plan: planNombre, fecha, estado })
+      const jid = whatsappManager.buildJid(a.telefono, cfg.countryPrefix)
+
+      if (!jid) {
+        errors++
+        run.errors = errors
+        waLog(gymId, `Teléfono inválido — ${a.nombre}`, {
+          level: 'warn',
+          detalle: { 'Guardado en la ficha': a.telefono, 'Qué hago': 'Salteo este alumno.' }
+        })
+        results.push({ alumno_id: a.id, status: 'invalid_phone' })
+        continue
+      }
+
+      if (simulate) {
+        pending++
+        results.push({ alumno_id: a.id, jid, text, status: 'simulated' })
+        continue
+      }
+
+      try {
+        await whatsappManager.sendText(gymId, jid, text)
+        sent++
+        run.sent = sent
+        await logMensaje({
+          gym_id: gymId,
+          alumno_id: a.id,
+          telefono: a.telefono,
+          nombre: a.nombre,
+          plan: planNombre,
+          vencimiento: a.fecha_de_vencimiento,
+          mensaje: text,
+          tipo,
+          estado: 'enviado',
+          remitente_jid: cfg.adminJid
+        })
+        waLog(gymId, `Enviado ${sent}/${alumnos.length - skipped} — ${a.nombre}`, {
+          level: 'ok',
+          detalle: { Teléfono: a.telefono, Aviso: tipo, Vence: fecha }
+        })
+        results.push({ alumno_id: a.id, status: 'sent' })
+      } catch (e) {
+        errors++
+        run.errors = errors
+        waLog(gymId, `Falló el envío a ${a.nombre}`, {
+          level: 'error',
+          detalle: { Teléfono: a.telefono, Motivo: e.message }
+        })
+        await logMensaje({
+          gym_id: gymId,
+          alumno_id: a.id,
+          telefono: a.telefono,
+          nombre: a.nombre,
+          plan: planNombre,
+          vencimiento: a.fecha_de_vencimiento,
+          mensaje: text,
+          tipo,
+          estado: 'error',
+          error_msg: e.message,
+          remitente_jid: cfg.adminJid
+        })
+        results.push({ alumno_id: a.id, status: 'error', error: e.message })
+      }
+
+      await esperar(withJitter(), run)
+    }
+  } finally {
+    // Sacar la corrida del registro pase lo que pase: si queda colgada, el panel
+    // muestra para siempre un envío en curso que no existe.
+    corridas.delete(gymId)
+  }
+
+  const restantes = Math.max(0, alumnos.length - sent - errors - skipped)
+  waLog(
+    gymId,
+    cancelada ? 'ENVÍO CANCELADO a mano' : simulate ? 'Simulación terminada' : 'Envío terminado',
+    {
+      level: cancelada || errors > 0 ? 'warn' : 'end',
+      detalle: {
+        Enviados: sent,
+        Errores: errors,
+        'Salteados (ya avisados)': skipped,
+        'Sin enviar por la cancelación': cancelada ? restantes : undefined,
+        'A enviar (simulación)': simulate ? pending : undefined,
+        Duración: duracion(Date.now() - t0)
+      }
+    }
+  )
+
+  return {
+    gym_id: gymId,
+    gym_name: cfg.gym.name ?? null,
+    admin_jid: cfg.adminJid,
+    status: cancelada ? 'cancelled' : 'ok',
+    cancelled: cancelada,
+    remaining: cancelada ? restantes : 0,
+    sent,
+    errors,
+    skipped,
+    pending,
+    total: alumnos.length,
+    results
+  }
 }
 
 export async function triggerAllGyms({ simulate = false } = {}) {
@@ -211,14 +430,50 @@ export async function triggerAllGyms({ simulate = false } = {}) {
 
   const eligibles = (data || []).filter((g) => !!g.settings?.whatsapp_module_enabled)
 
+  const t0 = Date.now()
+  cancelarGlobal = false // arranca limpio: una cancelación vieja no frena esta corrida
+  waLog(null, `===== ${simulate ? 'SIMULACIÓN' : 'CORRIDA'} de recordatorios: ${eligibles.length} gimnasios =====`, {
+    level: 'start'
+  })
+
   const out = []
+  let cortadaGlobal = false
   for (const g of eligibles) {
+    // Cancelar durante el gym 2 de 5 no debe arrancar el gym 3.
+    if (cancelarGlobal) {
+      cortadaGlobal = true
+      waLog(null, `Corrida cortada: quedaron ${eligibles.length - out.length} gimnasios sin procesar`, {
+        level: 'warn'
+      })
+      break
+    }
     try {
       out.push(await procesarRecordatorios(g.id, { simulate }))
     } catch (e) {
+      waLog(g.id, 'La corrida de este gym se cortó por un error', {
+        level: 'error',
+        detalle: { Error: e.message, 'Qué hago': 'Sigo con el resto de los gimnasios.' }
+      })
       out.push({ gym_id: g.id, status: 'error', error: e.message })
     }
   }
+
+  const totalSent = out.reduce((s, r) => s + (r.sent || 0), 0)
+  const totalErrors = out.reduce((s, r) => s + (r.errors || 0), 0)
+  const caidos = out.filter((r) => r.status === 'not_connected').length
+  const cancelados = out.filter((r) => r.cancelled).length
+  cancelarGlobal = false
+  waLog(
+    null,
+    `===== ${cortadaGlobal || cancelados ? 'CANCELADA' : 'Fin'}: ${totalSent} enviados, ${totalErrors} errores en ${duracion(Date.now() - t0)} =====`,
+    {
+      level: totalErrors > 0 || caidos > 0 || cortadaGlobal ? 'warn' : 'end',
+      detalle: {
+        'Gyms sin WhatsApp conectado': caidos || undefined,
+        'Gyms cancelados a mano': cancelados || undefined
+      }
+    }
+  )
   return out
 }
 
@@ -243,11 +498,21 @@ export async function ensureConnectedGyms() {
         .maybeSingle()
       if (row) {
         whatsappManager.connect(g.id).catch((e) =>
-          console.warn(`[wa boot ${g.id}] connect failed:`, e.message)
+          waLog(g.id, 'Falló la reconexión automática al arrancar el server', {
+            level: 'error',
+            detalle: { Error: e.message }
+          })
         )
+      } else {
+        waLog(g.id, 'Sin credenciales guardadas — no reconecto', {
+          detalle: { 'Qué hacer': 'Escanear el QR desde el panel del gym.' }
+        })
       }
     } catch (e) {
-      console.warn(`[wa boot ${g.id}] probe error:`, e.message)
+      waLog(g.id, 'No pude verificar si hay credenciales guardadas', {
+        level: 'warn',
+        detalle: { Error: e.message }
+      })
     }
   }
 }

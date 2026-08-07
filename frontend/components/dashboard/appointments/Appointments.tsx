@@ -2,10 +2,9 @@
 
 import { useRef, useCallback, useMemo, useState } from 'react'
 import FullCalendar from '@fullcalendar/react'
-import { Box, Button, ButtonGroup, CircularProgress, useMediaQuery } from '@mui/material'
+import { Box, Button, ButtonGroup, useMediaQuery } from '@mui/material'
 import { useTheme } from '@mui/material/styles'
 
-import { FormModal } from '@/components/ui/modals/FormModal'
 import { getInputFieldsTurnos, layoutTurnos } from '@/const/inputs/appointments'
 import { useUser } from '@/context/UserContext'
 import { useServicesByGym } from '@/hooks/services/useServicesOptions'
@@ -22,6 +21,9 @@ import { notify } from '@/lib/toast'
 import { EMPTY_TURNO, generarLinkGoogleCalendar, toLocalInputValue } from '@/utils/appointments/appointmentUtils'
 import { AppointmentCalendar } from './AppointmentCalendar'
 import { AppointmentFormModal } from './AppointmentFormModal'
+import type { EventClickArg, EventDropArg } from '@fullcalendar/core'
+import type { DateClickArg } from '@fullcalendar/interaction'
+import type { TurnoFormValues } from '@/models/appointments/Appointment'
 
 type AlumnoSimple = { id: number; nombre: string; dni?: string }
 
@@ -37,7 +39,7 @@ export default function Appointments() {
   const gymId = user?.gym_id ?? ''
 
   const { data: servicesData } = useServicesByGym(gymId)
-  const serviceOptions = servicesData?.options ?? []
+  const serviceOptions = useMemo(() => servicesData?.options ?? [], [servicesData])
 
   const { data: alumnosRes } = useAlumnosSimpleByGym(gymId)
   const alumnos = useMemo(
@@ -62,14 +64,14 @@ export default function Appointments() {
     [serviceOptions, searchFromCache]
   )
 
-  const { data, isLoading, isFetching } = useAppointments(gymId)
+  const { data } = useAppointments(gymId)
   const addAppointment = useAddAppointment(gymId)
   const editAppointment = useEditAppointment(gymId)
   const deleteAppointment = useDeleteAppointment(gymId)
 
   const [open, setOpen] = useState(false)
   const [mode, setMode] = useState<'create' | 'edit'>('create')
-  const [initialValues, setInitialValues] = useState<any>(null)
+  const [initialValues, setInitialValues] = useState<TurnoFormValues | null>(null)
   const [selectedId, setSelectedId] = useState<string | null>(null)
 
   const initialFormValues = useMemo(() => {
@@ -77,12 +79,13 @@ export default function Appointments() {
     return base.origen_pago ? base : { ...base, origen_pago: 'servicio' }
   }, [initialValues])
 
-  const handleSubmitTurno = async (values: any) => {
+  const handleSubmitTurno = async (values: TurnoFormValues) => {
     const { emails, ...clean } = values
-    clean.fin_at = new Date(new Date(clean.inicio_at).getTime() + 3600000).toISOString()
+    clean.fin_at = new Date(new Date(clean.inicio_at ?? '').getTime() + 3600000).toISOString()
 
     if (mode === 'create') {
-      await addAppointment.mutateAsync({ ...clean, gym_id: gymId })
+      // `gym_id` lo agrega useAddAppointment con el mismo gymId.
+      await addAppointment.mutateAsync(clean)
     } else {
       if (!selectedId) return
       await editAppointment.mutateAsync({ id: selectedId, values: clean })
@@ -95,7 +98,7 @@ export default function Appointments() {
     }
   }
 
-  const handleEventClick = (clickInfo: any) => {
+  const handleEventClick = (clickInfo: EventClickArg) => {
     const ev = clickInfo.event
     setSelectedId(ev.id)
     setMode('edit')
@@ -110,14 +113,14 @@ export default function Appointments() {
     setOpen(true)
   }
 
-  const handleDateClick = (info: any) => {
+  const handleDateClick = (info: DateClickArg) => {
     setMode('create')
     setInitialValues({ ...EMPTY_TURNO, inicio_at: info.dateStr + 'T10:00' })
     setSelectedId(null)
     setOpen(true)
   }
 
-  const handleEventDrop = useCallback(async (info: any) => {
+  const handleEventDrop = useCallback(async (info: EventDropArg) => {
     const inicio = info.event.start
     if (!inicio) return
     try {

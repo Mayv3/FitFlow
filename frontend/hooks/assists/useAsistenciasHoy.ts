@@ -1,4 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
+import { AsistenciaPorHora, AsistenciasResumen } from '@/models/Stats/Asistencias';
 
 function getTokenFromCookie(): string | null {
   if (typeof window === 'undefined') return null;
@@ -8,7 +9,7 @@ function getTokenFromCookie(): string | null {
     .find((row) => row.startsWith('token='))?.split('=')[1] ?? null;
 }
 
-async function fetchWithAuth(url: string) {
+async function fetchWithAuth<T>(url: string): Promise<T> {
   const token = getTokenFromCookie();
   if (!token) throw new Error('No auth token');
 
@@ -23,7 +24,7 @@ async function fetchWithAuth(url: string) {
     throw new Error(`Error en la API: ${res.status}`);
   }
 
-  return res.json();
+  return res.json() as Promise<T>;
 }
 
 type Params = {
@@ -36,14 +37,14 @@ export function useAsistencias(gymId?: string, params?: Params) {
 
   return useQuery({
     queryKey: ['asistencias', gymId, fecha],
-    queryFn: async () => {
+    queryFn: async (): Promise<AsistenciasResumen | null> => {
       if (!gymId) return null;
 
       const baseUrl = `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/stats/dashboard/gyms/${gymId}`;
 
       const [resTotal, resPorHora] = await Promise.all([
-        fetchWithAuth(`${baseUrl}/asistencias${qs}`),
-        fetchWithAuth(`${baseUrl}/asistencias/por-hora${qs}`),
+        fetchWithAuth<{ fecha: string; total: number }>(`${baseUrl}/asistencias${qs}`),
+        fetchWithAuth<{ items: AsistenciaPorHora[] }>(`${baseUrl}/asistencias/por-hora${qs}`),
       ]);
 
       return {

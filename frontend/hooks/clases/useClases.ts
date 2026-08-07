@@ -1,7 +1,7 @@
 'use client'
 import { useQuery, useMutation, useQueryClient, keepPreviousData } from '@tanstack/react-query'
 import { api } from '@/lib/api'
-import { Clase } from '@/models/Clase/Clase'
+import { Clase, ClasePayload } from '@/models/Clase/Clase'
 
 const clasesKey = (gymId: string) => ['clases', gymId] as const
 
@@ -51,7 +51,7 @@ export const useClases = (
 export const useAddClase = (gymId: string) => {
   const qc = useQueryClient()
   return useMutation({
-    mutationFn: async (values: any) => {
+    mutationFn: async (values: Omit<ClasePayload, 'sesiones'>) => {
       const { data } = await api.post(
         '/api/clases',
         { ...values, gym_id: gymId }
@@ -67,7 +67,7 @@ export const useAddClase = (gymId: string) => {
 export const useEditClase = (gymId: string) => {
   const qc = useQueryClient()
   return useMutation({
-    mutationFn: async ({ id, values }: { id: number; values: any }) => {
+    mutationFn: async ({ id, values }: { id: number; values: Omit<ClasePayload, 'sesiones'> }) => {
       const { data } = await api.put(
         `/api/clases/${id}`,
         values

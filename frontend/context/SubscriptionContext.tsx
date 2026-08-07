@@ -19,6 +19,8 @@ export interface GymPlan {
   appointments: boolean
   portal: boolean
   settings: boolean
+  /** Existe en gym_plans y viaja en `gym_plans(*)`; faltaba solo en el tipo. */
+  products: boolean
   created_at?: string
   updated_at?: string
 }
@@ -37,7 +39,7 @@ interface SubscriptionData {
   subscription: Subscription | null
 }
 
-type FeatureKey = keyof Omit<
+export type FeatureKey = keyof Omit<
   GymPlan,
   'id' | 'name' | 'max_alumnos' | 'created_at' | 'updated_at'
 >

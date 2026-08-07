@@ -11,9 +11,9 @@ import { useTheme, alpha } from '@mui/material/styles';
 import { GlowingEffect } from '@/components/ui/glowing-effect';
 import { useGymThemeSettings } from '@/hooks/useGymThemeSettings';
 import { DatePicker } from '@mui/x-date-pickers/DatePicker';
-import dayjs, { Dayjs } from 'dayjs';
 import { useUser } from '@/context/UserContext';
 import { useAsistencias } from '@/hooks/assists/useAsistenciasHoy';
+import { AsistenciaAlumno } from '@/models/Stats/Asistencias';
 import moment, { Moment } from 'moment';
 const COLOR_MAIN = '#ff7a18';
 
@@ -31,14 +31,14 @@ export function AsistenciasHoyListaCard({ fecha, onFechaChange }: Props) {
 
     const alumnosHoy =
         data?.porHora
-            ?.flatMap((item: any) => item.alumnos ?? [])
-            ?.reduce((acc: any[], alumno: any) => {
+            ?.flatMap(item => item.alumnos ?? [])
+            ?.reduce((acc: AsistenciaAlumno[], alumno) => {
                 if (!acc.find(a => a.alumno_id === alumno.alumno_id)) {
                     acc.push(alumno);
                 }
                 return acc;
             }, [])
-            ?.sort((a: any, b: any) => b.hora.localeCompare(a.hora))
+            ?.sort((a, b) => b.hora.localeCompare(a.hora))
         ?? [];
 
     return (
@@ -122,7 +122,7 @@ export function AsistenciasHoyListaCard({ fecha, onFechaChange }: Props) {
                                 cursor: 'pointer',
                             }}
                         >
-                            {alumnosHoy.map((a: any) => (
+                            {alumnosHoy.map(a => (
                                 <Box
                                     key={a.alumno_id}
                                     sx={{

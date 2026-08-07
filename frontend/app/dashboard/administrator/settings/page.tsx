@@ -60,10 +60,15 @@ export default function Page() {
   const initial: TabKey = urlTab && VALID.includes(urlTab) ? urlTab : 'theme'
   const [tab, setTab] = useState<TabKey>(initial)
 
-  useEffect(() => {
+  // Sincronizar el tab con el parametro de la URL, ajustando durante el render:
+  // asi la navegacion con ?tab= no pinta primero el tab anterior.
+  const tabKey = `${urlTab ?? ''}:${waEnabled}`
+  const [tabKeyPrevia, setTabKeyPrevia] = useState(tabKey)
+  if (tabKey !== tabKeyPrevia) {
+    setTabKeyPrevia(tabKey)
     if (urlTab && VALID.includes(urlTab) && urlTab !== tab) setTab(urlTab)
     else if (urlTab && !VALID.includes(urlTab)) setTab('theme')
-  }, [urlTab, waEnabled])
+  }
 
   function changeTab(v: TabKey) {
     setTab(v)

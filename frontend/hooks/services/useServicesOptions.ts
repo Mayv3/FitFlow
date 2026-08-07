@@ -1,5 +1,6 @@
 'use client'
 import { useQuery } from '@tanstack/react-query'
+import { Service } from '@/models/Services/Service'
 import axios from 'axios'
 import Cookies from 'js-cookie'
 
@@ -20,12 +21,12 @@ export const useServicesByGym = (gymId?: string) => {
     queryKey: servicesKey(gymId!),
     enabled: !!gymId,
     staleTime: 1000 * 60 * 5,
-    queryFn: async (): Promise<{ items: any[]; options: { label: string; value: string }[] }> => {
+    queryFn: async (): Promise<{ items: Service[]; options: { label: string; value: string }[] }> => {
       const { data } = await axiosServices.get('/api/servicios', {
         params: { gym_id: gymId },
       })
-      const items = Array.isArray(data?.items) ? data.items : data ?? []
-      const options = items.map((s: any) => ({
+      const items: Service[] = Array.isArray(data?.items) ? data.items : data ?? []
+      const options = items.map((s) => ({
         label: s.nombre,
         value: String(s.id),
       }))
@@ -33,7 +34,7 @@ export const useServicesByGym = (gymId?: string) => {
     },
     select: (res) => ({
       ...res,
-      byId: res.items.reduce<Record<string, any>>((acc, s) => {
+      byId: res.items.reduce<Record<string, Service>>((acc, s) => {
         acc[s.id] = s
         return acc
       }, {}),

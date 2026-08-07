@@ -12,6 +12,7 @@ import {
   Divider,
 } from "@mui/material"
 import { GymThemeEditor, ThemeSettings } from "@/components/ui/gymThemeEditor/gymThemeEditor"
+import { getApiErrorMessage } from "@/utils/errors/apiError"
 
 const initialsOf = (name: string) =>
   name.trim().split(/\s+/).map(p => p[0]).join("").slice(0, 2).toUpperCase()
@@ -77,8 +78,8 @@ export function CreateGym() {
       // Guardar el ID en cookies o en estado
       Cookies.set("last_created_gym_id", data.id, { expires: 1 })
       setCreatedGymId(data.id)   // 👈 lo guardamos local, sin redirigir
-    } catch (e: any) {
-      setError(e.response?.data?.error || "No se pudo crear el gimnasio")
+    } catch (e: unknown) {
+      setError(getApiErrorMessage(e) || "No se pudo crear el gimnasio")
     } finally {
       setLoading(false)
     }

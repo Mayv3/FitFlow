@@ -27,15 +27,12 @@ import {
   DialogTitle,
   DialogContent,
   IconButton,
-  List,
-  ListItem,
-  ListItemText,
-  Divider,
 } from '@mui/material';
 import CloseIcon from '@mui/icons-material/Close';
 
 import { useUser } from '@/context/UserContext';
 import { useAsistencias } from '@/hooks/assists/useAsistenciasHoy';
+import { AsistenciaAlumno } from '@/models/Stats/Asistencias';
 import { useState } from 'react';
 
 const COLOR_MAIN = '#ff7a18';
@@ -59,7 +56,7 @@ export function AsistenciasHoyPorHoraCard({ fecha }: Props) {
   const { borderRadius } = useGymThemeSettings();
   const [open, setOpen] = useState(false);
   const [horaSeleccionada, setHoraSeleccionada] = useState<string | null>(null);
-  const [alumnosHora, setAlumnosHora] = useState<any[]>([]);
+  const [alumnosHora, setAlumnosHora] = useState<AsistenciaAlumno[]>([]);
   const [totalHora, setTotalHora] = useState<number>(0);
 
   const handleClose = () => setOpen(false);
@@ -73,21 +70,6 @@ export function AsistenciasHoyPorHoraCard({ fecha }: Props) {
     px: 2,
     py: 1.5,
     mb: 1,
-  };
-
-  const badgeSx = {
-    width: 28,
-    height: 28,
-    borderRadius: '50%',
-    bgcolor: COLOR_MAIN,
-    color: '#fff',
-    fontSize: 13,
-    fontWeight: 700,
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    mr: 2,
-    flexShrink: 0,
   };
 
 
@@ -104,7 +86,7 @@ export function AsistenciasHoyPorHoraCard({ fecha }: Props) {
   } as const;
 
   const asistencias =
-    data?.porHora?.map((d: any) => ({
+    data?.porHora?.map(d => ({
       hora: `${String(d.hora).padStart(2, '0')}:00`,
       cantidad: d.total,
     })) ?? [];
@@ -163,13 +145,11 @@ export function AsistenciasHoyPorHoraCard({ fecha }: Props) {
                 <LineChart
                   data={asistencias}
                   margin={{ top: 10, right: 16, left: -10, bottom: 0 }}
-                  onClick={(e: any) => {
+                  onClick={e => {
                     if (!e || !e.activeLabel) return;
 
-                    const hora = parseInt(e.activeLabel);
-                    const detalle = data?.porHora?.find(
-                      (i: any) => i.hora === hora
-                    );
+                    const hora = parseInt(String(e.activeLabel));
+                    const detalle = data?.porHora?.find(i => i.hora === hora);
 
                     if (!detalle) return;
 
@@ -177,8 +157,7 @@ export function AsistenciasHoyPorHoraCard({ fecha }: Props) {
                     setTotalHora(detalle.total);
                     setAlumnosHora(
                       [...(detalle.alumnos ?? [])].sort(
-                        (a: any, b: any) =>
-                          horaToMinutos(b.hora) - horaToMinutos(a.hora)
+                        (a, b) => horaToMinutos(b.hora) - horaToMinutos(a.hora)
                       )
                     );
                     setOpen(true);
@@ -317,7 +296,7 @@ export function AsistenciasHoyPorHoraCard({ fecha }: Props) {
                   gap: .5,
                 }}
               >
-                {alumnosHora.map((a, idx) => (
+                {alumnosHora.map((a) => (
                   <Box key={a.alumno_id} sx={itemSx}>
                     <Box display="flex" alignItems="center" width='100%'>
                       <Box

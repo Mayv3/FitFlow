@@ -11,6 +11,7 @@ import QRCode from 'qrcode'
 import { useSupabaseAuthState, deleteSession } from './supabaseAuthState.js'
 import { supabaseAdmin } from '../../config/supabaseClient.js'
 import { notifyWaDown } from './notify.js'
+import { waLog, logCierre, primeGymName } from './logger.js'
 
 // Recuperación tras 440 (connectionReplaced). En deploys de Render dos instancias
 // se solapan con las mismas creds -> 440. Ceder es correcto para no entrar en guerra,
@@ -27,12 +28,35 @@ const RECONNECTABLE_STATES = new Set(['disconnected', 'logged_out', 'number_in_u
 
 const logger = pino({ level: 'silent' })
 
-// Silence Baileys "Closing session" spam once
-const _origLog = console.log
-console.log = (...args) => {
-  if (typeof args[0] === 'string' && args[0].includes('Closing session')) return
-  _origLog(...args)
+// Estados internos traducidos. Se usan en el error de sendText, que queda
+// guardado en whatsapp_mensajes.error_msg y lo lee el dueño del gym.
+const ESTADOS = {
+  none: 'nunca se inició la sesión en este proceso (el backend arrancó recién o el gym no está vinculado)',
+  disconnected: 'la sesión está caída',
+  connecting: 'todavía se está conectando, esperá unos segundos',
+  qr: 'falta escanear el QR desde el panel',
+  replaced: 'otra conexión tomó la sesión (hay dos procesos con las mismas credenciales)',
+  logged_out: 'WhatsApp cerró la sesión (401), hay que volver a escanear el QR',
+  forbidden: 'WhatsApp bloqueó la cuenta (403)',
+  number_in_use: 'el número ya está vinculado a otro gimnasio'
 }
+
+function describirEstado(status) {
+  return ESTADOS[status] ? `${ESTADOS[status]} (estado: ${status})` : `estado: ${status}`
+}
+
+// Silencia el spam de libsignal al rotar sesión de cifrado por contacto —
+// vuelca buffers de claves por consola en cada rotación, una por mensaje.
+// Usa console.info (session_record.js), no console.log; por eso van los dos.
+function silenciarCierreSesion(metodo) {
+  const original = console[metodo]
+  console[metodo] = (...args) => {
+    if (typeof args[0] === 'string' && args[0].includes('Closing session')) return
+    original(...args)
+  }
+}
+silenciarCierreSesion('log')
+silenciarCierreSesion('info')
 
 class WhatsappManager {
   constructor() {
@@ -79,7 +103,10 @@ class WhatsappManager {
       .neq('id', exceptGymId)
       .limit(1)
     if (error) {
-      console.warn(`[wa] uniqueness check failed:`, error.message)
+      waLog(exceptGymId, 'No pude chequear si el número ya está en otro gimnasio', {
+        level: 'warn',
+        detalle: { Error: error.message, 'Qué hago': 'Sigo con el vínculo igual.' }
+      })
       return null
     }
     return data?.[0]?.id || null
@@ -129,8 +156,13 @@ class WhatsappManager {
   }
 
   async _connect(gymId) {
+    primeGymName(gymId) // que los logs de esta sesión salgan con nombre, no con UUID
     const { state, saveCreds } = await useSupabaseAuthState(gymId)
     const { version } = await fetchLatestBaileysVersion()
+    waLog(gymId, 'Abriendo conexión con WhatsApp…', {
+      level: 'start',
+      detalle: { 'Versión Baileys': version.join('.') }
+    })
 
     const sock = makeWASocket({
       version,
@@ -159,12 +191,24 @@ class WhatsappManager {
       const { connection, lastDisconnect, qr } = u
 
       if (qr) {
+        const primerQr = inst.status !== 'qr'
         inst.qr = qr
         inst.status = 'qr'
         try {
           inst.qrDataUrl = await QRCode.toDataURL(qr)
         } catch (e) {
-          console.warn(`[wa ${gymId}] qr encode error:`, e.message)
+          waLog(gymId, 'No pude generar la imagen del QR', {
+            level: 'error',
+            detalle: { Error: e.message }
+          })
+        }
+        if (primerQr) {
+          waLog(gymId, 'Esperando escaneo del QR', {
+            detalle: {
+              'Qué hago': 'El QR está disponible en el panel del gym → Vincular WhatsApp.',
+              Recordatorios: 'NO se envía nada hasta que alguien escanee.'
+            }
+          })
         }
       }
 
@@ -179,7 +223,15 @@ class WhatsappManager {
           inst.qrDataUrl = null
           inst.lastError = 'Este número ya está vinculado a otro gimnasio. Usá otro número o desvinculalo del otro gimnasio primero.'
           this._clearReconnect(gymId)
-          console.warn(`[wa ${gymId}] número ${myJid} ya usado por gym ${conflictGym} — rechazo vínculo`)
+          waLog(gymId, 'Vínculo rechazado: el número ya está en otro gimnasio', {
+            level: 'error',
+            detalle: {
+              Número: myJid,
+              'Ya usado por': conflictGym,
+              'Qué hago': 'Cierro sesión y borro las credenciales que se acababan de guardar.',
+              'Qué hacer': 'Usar otro número, o desvincularlo del otro gimnasio primero.'
+            }
+          })
           // Quitar listeners ANTES de logout: evita reentrar acá con el 'close' (loggedOut)
           // y que se borre el inst con el mensaje de error.
           try { sock.ev?.removeAllListeners?.() } catch {}
@@ -190,7 +242,10 @@ class WhatsappManager {
           // ensucia la tabla y hace que el próximo connect() reintente con una
           // sesión muerta en vez de pedir QR.
           deleteSession(gymId, { reason: 'logged_out' }).catch((e) =>
-            console.warn(`[wa ${gymId}] limpieza tras number_in_use falló:`, e.message)
+            waLog(gymId, 'Falló la limpieza de credenciales tras rechazar el vínculo', {
+              level: 'error',
+              detalle: { Error: e.message }
+            })
           )
           return
         }
@@ -203,9 +258,15 @@ class WhatsappManager {
         this.replacedRecoveries.delete(gymId) // reset recuperación 440 al conectar OK
         // Persistir el número server-side (autoritativo para el chequeo de unicidad).
         this._persistAdminJid(gymId, myJid).catch((e) =>
-          console.warn(`[wa ${gymId}] persist admin_jid:`, e.message)
+          waLog(gymId, 'No pude guardar el admin_jid del gym', {
+            level: 'error',
+            detalle: { Error: e.message }
+          })
         )
-        console.log(`[wa ${gymId}] connected`)
+        waLog(gymId, 'CONECTADO — listo para enviar', {
+          level: 'ok',
+          detalle: { Número: myJid, 'Nombre WhatsApp': sock.user?.name || '—' }
+        })
       }
 
       if (connection === 'close') {
@@ -214,7 +275,7 @@ class WhatsappManager {
         const restartRequired = code === DisconnectReason.restartRequired
         const replaced = code === DisconnectReason.connectionReplaced // 440
         const forbidden = code === DisconnectReason.forbidden // 403
-        console.warn(`[wa ${gymId}] closed (${code}) loggedOut=${loggedOut} restart=${restartRequired} replaced=${replaced} forbidden=${forbidden}`)
+        logCierre(gymId, code, { Número: jidNormalizedUser(inst.sock?.user?.id || '') || undefined })
 
         // cerrar socket viejo SIEMPRE
         try { inst.sock?.ev?.removeAllListeners?.() } catch {}
@@ -234,8 +295,24 @@ class WhatsappManager {
           // da 401 de nuevo y nunca emite QR, dejando al gym trabado. Se borran
           // para que el próximo connect() arranque de cero.
           deleteSession(gymId, { reason: 'logged_out' })
-            .then(() => console.warn(`[wa ${gymId}] sesión borrada tras 401 (${jid || 'jid desconocido'})`))
-            .catch((e) => console.error(`[wa ${gymId}] no se pudo borrar la sesión tras 401:`, e.message))
+            .then(() =>
+              waLog(gymId, 'Credenciales borradas tras el 401', {
+                level: 'warn',
+                detalle: {
+                  Número: jid || 'desconocido',
+                  'Qué hacer': 'Panel del gym → Vincular WhatsApp → escanear QR nuevo.'
+                }
+              })
+            )
+            .catch((e) =>
+              waLog(gymId, 'No pude borrar las credenciales tras el 401', {
+                level: 'error',
+                detalle: {
+                  Error: e.message,
+                  'Por qué importa': 'Con creds muertas el próximo intento vuelve a dar 401 y nunca emite QR.'
+                }
+              })
+            )
 
           // Evento terminal y puntual: avisar SIEMPRE (force) para tener registro
           // del momento exacto en que se cayó el vínculo. Sin esto solo nos
@@ -264,12 +341,26 @@ class WhatsappManager {
           // reconecto UNA vez. Con tope para no hacer ping-pong si la otra sigue viva.
           const recoveries = this.replacedRecoveries.get(gymId) || 0
           if (recoveries >= MAX_REPLACED_RECOVERIES) {
-            console.warn(`[wa ${gymId}] cedí ${recoveries} veces sin recuperar — abandono para evitar guerra 440. Requiere restart.`)
+            waLog(gymId, 'ABANDONO la sesión tras 3 intentos de recuperación', {
+              level: 'error',
+              detalle: {
+                'Qué pasó': `Cedí ${recoveries} veces y otra conexión me la sacó siempre. Hay otro proceso vivo con las mismas credenciales.`,
+                'Qué hago': 'Dejo de pelear para no entrar en guerra de reconexiones 440.',
+                'Qué hacer': 'Verificar que no haya dos instancias del backend corriendo, y reiniciar el server.',
+                Recordatorios: 'NO se envía nada hasta reiniciar.'
+              }
+            })
             notifyWaDown(gymId, 'replaced_giveup', `tras ${recoveries} intentos de recuperación`).catch(() => {})
             return
           }
           this.replacedRecoveries.set(gymId, recoveries + 1)
-          console.warn(`[wa ${gymId}] reemplazada por otra sesión — cedo. Chequeo recuperación en ${REPLACED_RECOVERY_MS / 1000}s (intento ${recoveries + 1}/${MAX_REPLACED_RECOVERIES}).`)
+          waLog(gymId, `Cedo la sesión y reviso en ${REPLACED_RECOVERY_MS / 1000}s`, {
+            level: 'warn',
+            detalle: {
+              Intento: `${recoveries + 1} de ${MAX_REPLACED_RECOVERIES}`,
+              'Por qué': 'Reconectar ya mismo se la roba de vuelta a la otra conexión y arranca la guerra 440.'
+            }
+          })
 
           const t = setTimeout(() => {
             this.reconnectTimers.delete(gymId)
@@ -278,10 +369,19 @@ class WhatsappManager {
               this.replacedRecoveries.delete(gymId)
               return
             }
-            console.warn(`[wa ${gymId}] sigo caído tras cede — reconecto (recuperación ${recoveries + 1}/${MAX_REPLACED_RECOVERIES}).`)
+            waLog(gymId, 'Sigo caído después de ceder — reconecto', {
+              level: 'warn',
+              detalle: {
+                Recuperación: `${recoveries + 1} de ${MAX_REPLACED_RECOVERIES}`,
+                'Por qué': 'La conexión que me reemplazó tampoco quedó viva (típico de deploy con dos instancias solapadas).'
+              }
+            })
             this.instances.delete(gymId)
             this.connect(gymId).catch((e) =>
-              console.warn(`[wa ${gymId}] recovery reconnect failed:`, e.message)
+              waLog(gymId, 'Falló el reintento de recuperación', {
+                level: 'error',
+                detalle: { Error: e.message }
+              })
             )
           }, REPLACED_RECOVERY_MS)
           this.reconnectTimers.set(gymId, t)
@@ -311,12 +411,21 @@ class WhatsappManager {
           : Math.min(3000 * 2 ** attempts, 5 * 60 * 1000) // 3s,6s,12s,24s… tope 5min
         if (!restartRequired) this.reconnectAttempts.set(gymId, attempts + 1)
 
+        if (!restartRequired) {
+          waLog(gymId, `Reintento programado en ${Math.round(delay / 1000)}s`, {
+            detalle: { Intento: attempts + 1, 'Último error': inst.lastError || '—' }
+          })
+        }
+
         const prev = this.reconnectTimers.get(gymId)
         if (prev) clearTimeout(prev)
         const t = setTimeout(() => {
           this.reconnectTimers.delete(gymId)
           this.connect(gymId).catch((e) =>
-            console.warn(`[wa ${gymId}] reconnect failed:`, e.message)
+            waLog(gymId, 'Falló el reintento de conexión', {
+              level: 'error',
+              detalle: { Error: e.message }
+            })
           )
         }, delay)
         this.reconnectTimers.set(gymId, t)
@@ -356,12 +465,13 @@ class WhatsappManager {
   async sendText(gymId, jid, text) {
     const inst = this.instances.get(gymId)
     if (!inst || inst.status !== 'connected') {
-      throw new Error(`gym ${gymId} not connected (status=${inst?.status ?? 'none'})`)
+      // Este texto termina en whatsapp_mensajes.error_msg y se ve en el panel:
+      // tiene que explicar el estado, no solo nombrarlo.
+      const status = inst?.status ?? 'none'
+      throw new Error(`WhatsApp no conectado — ${describirEstado(status)}`)
     }
     const normalized = jidNormalizedUser(jid)
-    console.log(`[wa ${gymId}] sendText → ${normalized}`)
     const res = await inst.sock.sendMessage(normalized, { text })
-    console.log(`[wa ${gymId}] sendText ok id=${res?.key?.id}`)
     return res
   }
 }

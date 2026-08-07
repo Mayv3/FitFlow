@@ -5,16 +5,19 @@ import FullCalendar from '@fullcalendar/react'
 import dayGridPlugin from '@fullcalendar/daygrid'
 import interactionPlugin from '@fullcalendar/interaction'
 import esLocale from '@fullcalendar/core/locales/es'
+import type { EventClickArg, EventDropArg } from '@fullcalendar/core'
+import type { DateClickArg } from '@fullcalendar/interaction'
+import type { TurnoEvent } from '@/models/appointments/Appointment'
 import { Box } from '@mui/material'
 import { useTheme } from '@mui/material/styles'
 
 interface AppointmentCalendarProps {
-  events: any[]
+  events: TurnoEvent[]
   isMobile: boolean
   calendarRef: React.RefObject<FullCalendar>
-  onEventClick: (info: any) => void
-  onDateClick: (info: any) => void
-  onEventDrop: (info: any) => Promise<void>
+  onEventClick: (info: EventClickArg) => void
+  onDateClick: (info: DateClickArg) => void
+  onEventDrop: (info: EventDropArg) => Promise<void>
 }
 
 export function AppointmentCalendar({

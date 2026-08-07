@@ -4,7 +4,7 @@ import { useState } from 'react';
 import {
   Card, CardContent, Box, Typography, ToggleButtonGroup, ToggleButton, Chip,
   useMediaQuery, Skeleton, Tooltip as MuiTooltip, TextField, MenuItem,
-  Dialog, DialogTitle, DialogContent, DialogActions, Button, Table, TableBody,
+  Dialog, DialogContent, Table, TableBody,
   TableCell, TableContainer, TableHead, TableRow, Paper,
 } from '@mui/material';
 import { alpha, useTheme } from '@mui/material/styles';
@@ -17,6 +17,7 @@ import {
 import { InfoTooltip, RoundedTooltip } from '@/components/ui/tooltip/InfoTooltip';
 import moment from 'moment';
 import { useKpis } from '@/hooks/dashboard/useKpis';
+import { FacturacionMetodo, FacturacionPunto, PagoDetalle } from '@/models/Stats/Facturacion';
 import { useActiveMembersPaymentDetails } from '@/hooks/dashboard/useActiveMembersPaymentDetails';
 import { useAbandonosDetails } from '@/hooks/dashboard/useAbandonosDetails';
 import { useAltasDetails } from '@/hooks/dashboard/useAltasDetails';
@@ -39,11 +40,26 @@ const methodLabel: Record<string, string> = {
   'Mercado Pago': 'MP',
 };
 
-const BillingTooltip = ({ active, payload, label }: any) => {
+/** Punto del BarChart de facturacion, ya listo para render. */
+type BarDatum = {
+  m: string;
+  facturacion: number;
+  metodos: Record<string, FacturacionMetodo>;
+  fecha: string;
+};
+
+/** Recharts inyecta estas props al clonar el `content` del Tooltip. */
+type BillingTooltipProps = {
+  active?: boolean;
+  payload?: { payload: BarDatum }[];
+  label?: string | number;
+};
+
+const BillingTooltip = ({ active, payload, label }: BillingTooltipProps) => {
   if (!active || !payload || !payload.length) return null;
   const d = payload[0].payload;
   const metodos = d.metodos ?? {};
-  const entries = Object.entries(metodos).filter(([_, v]) => (v as any).count > 0);
+  const entries = Object.entries(metodos).filter(([, v]) => v.count > 0);
   return (
     <Box sx={{ p: 1.5, borderRadius: 1.5, bgcolor: 'background.paper', boxShadow: 2, fontSize: 12, maxWidth: 240 }}>
       <Typography variant="body2" fontWeight={600} gutterBottom>{label}</Typography>
@@ -52,7 +68,7 @@ const BillingTooltip = ({ active, payload, label }: any) => {
       </Typography>
       {entries.length > 0 && (
         <Box mt={0.5} pt={0.5} sx={{ borderTop: '1px solid', borderColor: 'divider' }}>
-          {entries.map(([name, data]: any) => (
+          {entries.map(([name, data]) => (
             <Box key={name} display="flex" justifyContent="space-between" gap={1}>
               <Typography variant="body2" color="text.secondary">
                 {methodLabel[name] ?? name}: {data.count} pago{data.count !== 1 ? 's' : ''}
@@ -106,7 +122,7 @@ export function FacturacionSection() {
   });
 
   const [barModalOpen, setBarModalOpen] = useState(false);
-  const [barPayments, setBarPayments] = useState<any[]>([]);
+  const [barPayments, setBarPayments] = useState<PagoDetalle[]>([]);
   const [barFilter, setBarFilter] = useState('TODOS');
   const [barLabel, setBarLabel] = useState('');
   const [barLoading, setBarLoading] = useState(false);
@@ -116,7 +132,7 @@ export function FacturacionSection() {
     'Mercado Pago': 'MP',
   };
 
-  const handleBarClick = async (data: any) => {
+  const handleBarClick = async (data: BarDatum) => {
     if (!data?.fecha) return;
     let startDate: string, endDate: string, label: string;
 
@@ -160,9 +176,9 @@ export function FacturacionSection() {
         { headers: { Authorization: `Bearer ${token}` } }
       );
       if (!res.ok) throw new Error('Error al obtener pagos');
-      const json = await res.json();
+      const json = (await res.json()) as { items?: PagoDetalle[] };
       setBarPayments(json.items ?? []);
-    } catch (e) {
+    } catch {
       setBarPayments([]);
     } finally {
       setBarLoading(false);
@@ -276,8 +292,8 @@ export function FacturacionSection() {
   ];
 
   // Bar data desde useFacturacionChart
-  const rawItems: any[] = facturacionData?.items ?? [];
-  const barData = rawItems.map((p: any) => {
+  const rawItems: FacturacionPunto[] = facturacionData?.items ?? [];
+  const barData: BarDatum[] = rawItems.map(p => {
     const monto = p.monto_centavos ?? p.monto ?? 0;
     let label: string;
     if (range === '12m') {
@@ -368,7 +384,7 @@ export function FacturacionSection() {
                     content={
                       <RoundedTooltip
                         formatter={(entry) =>
-                          `${entry.payload.tooltip || entry.payload.label}: ${entry.value.toLocaleString("es-AR")}`
+                          `${entry.payload.tooltip || entry.payload.label}: ${Number(entry.value ?? 0).toLocaleString("es-AR")}`
                         }
                       />
                     }
@@ -533,7 +549,16 @@ export function FacturacionSection() {
                       content={<BillingTooltip />}
                     />
 
-                    <Bar dataKey="facturacion" fill={primaryColor} radius={[8, 8, 0, 0]} barSize={barSize} onClick={handleBarClick} style={{ cursor: 'pointer' }} />
+                    <Bar
+                      dataKey="facturacion"
+                      fill={primaryColor}
+                      radius={[8, 8, 0, 0]}
+                      barSize={barSize}
+                      // Recharts spreadea el datum sobre el BarRectangleItem en runtime,
+                      // pero sus tipos no lo reflejan.
+                      onClick={data => { void handleBarClick(data as unknown as BarDatum); }}
+                      style={{ cursor: 'pointer' }}
+                    />
 
                   </BarChart>
                 </ResponsiveContainer>
@@ -740,7 +765,7 @@ export function FacturacionSection() {
                 {barPayments
                   .filter((p) => {
                     if (barFilter === 'TODOS') return true;
-                    return p.items?.some((i: any) => (methodLabelMap[i.metodo] ?? i.metodo) === barFilter);
+                    return p.items?.some(i => (methodLabelMap[i.metodo] ?? i.metodo) === barFilter);
                   })
                   .map((p) => (
                     <TableRow key={p.id} sx={{ '&:last-child td': { border: 0 } }}>
@@ -751,7 +776,7 @@ export function FacturacionSection() {
                         {p.alumno_nombre}
                       </TableCell>
                       <TableCell sx={{ fontSize: '0.875rem' }}>
-                        {p.items?.map((i: any, idx: number) => (
+                        {p.items?.map((i, idx) => (
                           <span key={idx}>
                             {idx > 0 && ' / '}
                             {methodLabelMap[i.metodo] ?? i.metodo}: ${Number(i.monto).toLocaleString('es-AR')}

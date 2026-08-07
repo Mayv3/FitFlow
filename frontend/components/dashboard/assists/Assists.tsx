@@ -53,6 +53,31 @@ type RegistrarResponse = {
     summary: Summary
 }
 
+/** Cuerpo de error de POST /api/asistencias (incluye el 409 de doble fichada). */
+type RegistrarErrorBody = {
+    alreadyCheckedIn?: boolean
+    hora?: string
+    nombre?: string
+    error?: string
+    message?: string
+}
+
+/**
+ * 409: el alumno ya fichó hoy. Lleva hora y nombre para el modal, en vez de
+ * colgarlos como props sueltas de un Error comun.
+ */
+class AlreadyCheckedInError extends Error {
+    readonly hora?: string
+    readonly nombre?: string
+
+    constructor(hora?: string, nombre?: string) {
+        super('ALREADY_CHECKED_IN')
+        this.name = 'AlreadyCheckedInError'
+        this.hora = hora
+        this.nombre = nombre
+    }
+}
+
 type Asistencia = {
     id: string
     fecha: string
@@ -77,12 +102,12 @@ export default function Assists() {
     const theme = useTheme()
     const [dni, setDni] = useState('')
     const [openModal, setOpenModal] = useState(false)
-    const [asistencia, setAsistencia] = useState<Asistencia | null>(null)
+    const [, setAsistencia] = useState<Asistencia | null>(null)
     const [isLoading, setIsLoading] = useState(false);
     const inputRef = useRef<HTMLInputElement>(null)
     const [summary, setSummary] = useState<Summary | null>(null)
     const [openAlreadyModal, setOpenAlreadyModal] = useState(false)
-    const [alreadyInfo, setAlreadyInfo] = useState<{ hora: string; nombre: string } | null>(null)
+    const [alreadyInfo, setAlreadyInfo] = useState<{ hora?: string; nombre?: string } | null>(null)
     const [openErrorModal, setOpenErrorModal] = useState(false)
     const [errorModalMsg, setErrorModalMsg] = useState<string | null>(null)
     const [isFullscreen, setIsFullscreen] = useState(false)
@@ -148,12 +173,9 @@ export default function Assists() {
                 const { data } = await api.post('/api/asistencias', payload)
                 return data
             } catch (e) {
-                const err = e as AxiosError<any>
+                const err = e as AxiosError<RegistrarErrorBody>
                 if (err.response?.status === 409 && err.response?.data?.alreadyCheckedIn) {
-                    const alreadyErr = new Error('ALREADY_CHECKED_IN')
-                    ;(alreadyErr as any).hora = err.response.data.hora
-                    ;(alreadyErr as any).nombre = err.response.data.nombre
-                    throw alreadyErr
+                    throw new AlreadyCheckedInError(err.response.data.hora, err.response.data.nombre)
                 }
                 const msg =
                     err.response?.data?.error ||
@@ -174,8 +196,8 @@ export default function Assists() {
         },
         onError: (err) => {
             setDni('')
-            if (err.message === 'ALREADY_CHECKED_IN') {
-                setAlreadyInfo({ hora: (err as any).hora, nombre: (err as any).nombre })
+            if (err instanceof AlreadyCheckedInError) {
+                setAlreadyInfo({ hora: err.hora, nombre: err.nombre })
                 setOpenAlreadyModal(true)
                 return
             }

@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useEffect, useMemo, useState } from "react"
 import {
     Box,
     Paper,
@@ -13,6 +13,15 @@ import {
     CircularProgress,
     Avatar,
     Stack,
+    Checkbox,
+    Chip,
+    Button,
+    Table,
+    TableHead,
+    TableBody,
+    TableRow,
+    TableCell,
+    TableContainer,
 } from "@mui/material"
 import { alpha, useTheme } from "@mui/material/styles"
 import ChevronLeftIcon from "@mui/icons-material/ChevronLeft"
@@ -21,6 +30,7 @@ import GroupIcon from "@mui/icons-material/Group"
 import PersonAddIcon from "@mui/icons-material/PersonAdd"
 import PaidIcon from "@mui/icons-material/Paid"
 import ReceiptLongIcon from "@mui/icons-material/ReceiptLong"
+import PriceCheckIcon from "@mui/icons-material/PriceCheck"
 import CheckCircleIcon from "@mui/icons-material/CheckCircle"
 import CancelIcon from "@mui/icons-material/Cancel"
 import {
@@ -37,6 +47,8 @@ import {
 } from "recharts"
 import { api } from "@/lib/api"
 import { useGyms } from "@/hooks/gyms/useGyms"
+import { getApiErrorMessage, getErrorMessage } from "@/utils/errors/apiError"
+import type { ChartTooltipProps } from "@/models/Charts/ChartTooltip"
 
 const MONTHS = [
     "Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio",
@@ -44,10 +56,12 @@ const MONTHS = [
 ]
 
 interface SeriePunto { month: string; facturacion: number; altas: number; pagos: number }
+interface PlanPrecio { id: number; nombre: string; precio: number }
 interface OverviewData {
     month: string
     alumnos: { total: number; activos: number; vencidos: number; altas_mes: number }
     facturacion: { total: number; cantidad: number }
+    planes: { total: number; items: PlanPrecio[]; excluded_ids: number[]; precio_promedio: number }
     series: SeriePunto[]
 }
 
@@ -63,7 +77,7 @@ const shortMonth = (mk: string) => {
 }
 
 /** Tooltip redondeado estilo dashboard admin */
-function ChartTooltip({ active, payload, label, money: isMoney }: any) {
+function ChartTooltip({ active, payload, label, money: isMoney }: ChartTooltipProps & { money?: boolean }) {
     if (!active || !payload?.length) return null
     const p = payload[0]
     return (
@@ -79,19 +93,38 @@ function ChartTooltip({ active, payload, label, money: isMoney }: any) {
     )
 }
 
-function StatCard({ icon, label, value, color }: {
-    icon: React.ReactNode; label: string; value: number | string; color: string
+/** Tabla horizontal de métricas: una columna por dato */
+function StatsTable({ items }: {
+    items: { icon: React.ReactNode; label: string; value: number | string; color: string }[]
 }) {
     return (
-        <Paper variant="outlined" sx={{ p: 2, borderRadius: 2, flex: "1 1 160px", minWidth: 160 }}>
-            <Stack direction="row" spacing={1.5} alignItems="center">
-                <Avatar sx={{ bgcolor: color, width: 40, height: 40 }}>{icon}</Avatar>
-                <Box minWidth={0}>
-                    <Typography variant="caption" color="text.secondary" noWrap>{label}</Typography>
-                    <Typography variant="h6" fontWeight={700} noWrap>{value}</Typography>
-                </Box>
-            </Stack>
-        </Paper>
+        <TableContainer component={Paper} variant="outlined" sx={{ borderRadius: 2, overflowX: "auto" }}>
+            <Table size="small">
+                <TableHead>
+                    <TableRow>
+                        {items.map((it) => (
+                            <TableCell key={it.label} align="center" sx={{ fontWeight: 700, fontSize: "0.72rem", whiteSpace: "nowrap" }}>
+                                <Stack direction="row" spacing={0.75} alignItems="center" justifyContent="center">
+                                    <Avatar variant="rounded" sx={{ bgcolor: `${it.color}1A`, color: it.color, width: 22, height: 22 }}>
+                                        {it.icon}
+                                    </Avatar>
+                                    <span>{it.label}</span>
+                                </Stack>
+                            </TableCell>
+                        ))}
+                    </TableRow>
+                </TableHead>
+                <TableBody>
+                    <TableRow sx={{ "& td": { border: 0 } }}>
+                        {items.map((it) => (
+                            <TableCell key={it.label} align="center" sx={{ py: 0.75 }}>
+                                <Typography variant="body2" fontWeight={700} noWrap>{it.value}</Typography>
+                            </TableCell>
+                        ))}
+                    </TableRow>
+                </TableBody>
+            </Table>
+        </TableContainer>
     )
 }
 
@@ -99,16 +132,17 @@ export function GymStatsSection() {
     const t = useTheme()
     const { data: gyms = [] } = useGyms()
     const today = new Date()
-    const [gymId, setGymId] = useState("")
+    const [gymIdElegido, setGymId] = useState("")
     const [year, setYear] = useState(today.getFullYear())
     const [month, setMonth] = useState(today.getMonth())
     const [data, setData] = useState<OverviewData | null>(null)
     const [loading, setLoading] = useState(false)
     const [error, setError] = useState<string | null>(null)
+    const [checkedPlanIds, setCheckedPlanIds] = useState<Set<number>>(new Set())
 
-    useEffect(() => {
-        if (!gymId && gyms.length) setGymId(gyms[0].id)
-    }, [gyms, gymId])
+    // Default derivado durante el render: el primer gimnasio hasta que el usuario
+    // elija otro. Antes esto era un useEffect que disparaba un render extra.
+    const gymId = gymIdElegido || gyms[0]?.id || ""
 
     const monthParam = `${year}-${String(month + 1).padStart(2, "0")}`
 
@@ -122,15 +156,40 @@ export function GymStatsSection() {
                     `/api/stats/dashboard/owner/gyms/${gymId}/overview`,
                     { params: { month: monthParam } }
                 )
-                if (!cancelled) setData(d)
-            } catch (e: any) {
-                if (!cancelled) setError(e?.response?.data?.error || e.message)
+                if (!cancelled) {
+                    setData(d)
+                    const excluded = new Set<number>(d?.planes?.excluded_ids ?? [])
+                    const initial = new Set<number>(
+                        (d?.planes?.items ?? [])
+                            .map((p: PlanPrecio) => p.id)
+                            .filter((id: number) => !excluded.has(id))
+                    )
+                    setCheckedPlanIds(initial)
+                }
+            } catch (e: unknown) {
+                if (!cancelled) setError(getApiErrorMessage(e) ?? getErrorMessage(e) ?? null)
             } finally {
                 if (!cancelled) setLoading(false)
             }
         })()
         return () => { cancelled = true }
     }, [gymId, monthParam])
+
+    const togglePlan = (id: number) => {
+        setCheckedPlanIds((prev) => {
+            const next = new Set(prev)
+            if (next.has(id)) next.delete(id)
+            else next.add(id)
+            return next
+        })
+    }
+
+    const livePrecioPromedio = useMemo(() => {
+        const items = data?.planes.items ?? []
+        const checked = items.filter((p) => checkedPlanIds.has(p.id))
+        if (!checked.length) return 0
+        return checked.reduce((sum, p) => sum + p.precio, 0) / checked.length
+    }, [data, checkedPlanIds])
 
     const isCurrentMonth = year === today.getFullYear() && month === today.getMonth()
     function prevMonth() {
@@ -145,10 +204,10 @@ export function GymStatsSection() {
 
     const gridStroke = alpha(t.palette.text.primary, 0.08)
     const chartPaperSx = {
-        p: 2.5,
+        p: 1.5,
         borderRadius: 2,
-        flex: "1 1 320px",
-        minWidth: 300,
+        flex: "1 1 280px",
+        minWidth: 260,
         border: `1px solid ${alpha(t.palette.text.primary, 0.08)}`,
         boxShadow: "0 2px 10px rgba(0,0,0,0.05)",
     } as const
@@ -165,8 +224,8 @@ export function GymStatsSection() {
 
     return (
         <Box>
-            <Stack direction={{ xs: "column", sm: "row" }} spacing={2} alignItems={{ sm: "center" }} justifyContent="space-between" mb={2}>
-                <FormControl size="small" sx={{ minWidth: 220 }}>
+            <Stack direction={{ xs: "column", sm: "row" }} spacing={1.5} alignItems={{ sm: "center" }} justifyContent="space-between" mb={1.5}>
+                <FormControl size="small" sx={{ minWidth: 200 }}>
                     <InputLabel>Gimnasio</InputLabel>
                     <Select value={gymId} label="Gimnasio" onChange={(e) => setGymId(e.target.value)}>
                         {gyms.map((g) => (
@@ -174,42 +233,138 @@ export function GymStatsSection() {
                         ))}
                     </Select>
                 </FormControl>
-                <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-                    <IconButton size="small" onClick={prevMonth}><ChevronLeftIcon /></IconButton>
-                    <Typography sx={{ fontWeight: 600, minWidth: 150, textAlign: "center" }}>
+                <Box sx={{ display: "flex", alignItems: "center", gap: 0.5 }}>
+                    <IconButton size="small" onClick={prevMonth}><ChevronLeftIcon fontSize="small" /></IconButton>
+                    <Typography variant="body2" sx={{ fontWeight: 600, minWidth: 130, textAlign: "center" }}>
                         {MONTHS[month]} {year}
                     </Typography>
                     <IconButton size="small" onClick={nextMonth} disabled={isCurrentMonth}>
-                        <ChevronRightIcon />
+                        <ChevronRightIcon fontSize="small" />
                     </IconButton>
                 </Box>
             </Stack>
 
-            {error && <Typography color="error" sx={{ mb: 2 }}>{error}</Typography>}
+            {error && <Typography color="error" sx={{ mb: 1.5 }}>{error}</Typography>}
 
             {loading ? (
                 <Box display="flex" justifyContent="center" py={4}><CircularProgress /></Box>
             ) : data ? (
                 <>
-                    <Box sx={{ display: "flex", flexWrap: "wrap", gap: 2 }}>
-                        <StatCard icon={<GroupIcon />} label="Alumnos totales" value={data.alumnos.total} color="#16A34A" />
-                        <StatCard icon={<CheckCircleIcon />} label="Activos" value={data.alumnos.activos} color="#16a34a" />
-                        <StatCard icon={<CancelIcon />} label="Vencidos" value={data.alumnos.vencidos} color="#ef4444" />
-                        <StatCard icon={<PersonAddIcon />} label="Altas del mes" value={data.alumnos.altas_mes} color="#3b82f6" />
-                        <StatCard icon={<PaidIcon />} label="Facturación del mes" value={money(data.facturacion.total)} color="#7c3aed" />
-                        <StatCard icon={<ReceiptLongIcon />} label="Pagos del mes" value={data.facturacion.cantidad} color="#f59e0b" />
-                    </Box>
-                    <Typography variant="caption" color="text.secondary" sx={{ display: "block", mt: 1.5 }}>
-                        Alumnos: estado actual · Altas / Facturación / Pagos: del mes seleccionado.
-                    </Typography>
+                    <StatsTable
+                        items={[
+                            { icon: <GroupIcon fontSize="small" />, label: "Alumnos totales", value: data.alumnos.total, color: "#16A34A" },
+                            { icon: <CheckCircleIcon fontSize="small" />, label: "Activos", value: data.alumnos.activos, color: "#16a34a" },
+                            { icon: <CancelIcon fontSize="small" />, label: "Vencidos", value: data.alumnos.vencidos, color: "#ef4444" },
+                            { icon: <PersonAddIcon fontSize="small" />, label: "Altas del mes", value: data.alumnos.altas_mes, color: "#3b82f6" },
+                            { icon: <PaidIcon fontSize="small" />, label: "Facturación del mes", value: money(data.facturacion.total), color: "#7c3aed" },
+                            { icon: <ReceiptLongIcon fontSize="small" />, label: "Pagos del mes", value: data.facturacion.cantidad, color: "#f59e0b" },
+                            { icon: <PriceCheckIcon fontSize="small" />, label: "Precio promedio planes", value: money(livePrecioPromedio), color: "#0891b2" },
+                        ]}
+                    />
 
-                    <Box sx={{ display: "flex", flexWrap: "wrap", gap: 2, mt: 2 }}>
+                    {/* Planificaciones — tabla horizontal, tildar/destildar para revisar el promedio */}
+                    <Paper variant="outlined" sx={{ borderRadius: 2, mt: 1.5, overflow: "hidden" }}>
+                        <Stack direction="row" alignItems="center" spacing={1} sx={{ px: 1.5, py: 0.75, borderBottom: 1, borderColor: "divider" }}>
+                            <Typography variant="caption" fontWeight={700} sx={{ flex: 1 }}>
+                                Planificaciones — promedio ({checkedPlanIds.size}/{data.planes.items.length} incluidas): {" "}
+                                <Box component="span" sx={{ color: "#0891b2", fontWeight: 700 }}>{money(livePrecioPromedio)}</Box>
+                            </Typography>
+                            <Button
+                                size="small"
+                                sx={{ minWidth: 0, fontSize: "0.7rem" }}
+                                onClick={() => setCheckedPlanIds(new Set(data.planes.items.map((p) => p.id)))}
+                            >
+                                Tildar todos
+                            </Button>
+                            <Button
+                                size="small"
+                                sx={{ minWidth: 0, fontSize: "0.7rem" }}
+                                onClick={() => {
+                                    const excluded = new Set<number>(data.planes.excluded_ids)
+                                    setCheckedPlanIds(new Set(data.planes.items.map((p) => p.id).filter((id) => !excluded.has(id))))
+                                }}
+                            >
+                                Restablecer
+                            </Button>
+                        </Stack>
+
+                        {data.planes.items.length === 0 ? (
+                            <Typography variant="caption" color="text.secondary" sx={{ display: "block", p: 1.5 }}>
+                                Este gimnasio no tiene planificaciones cargadas.
+                            </Typography>
+                        ) : (
+                            <TableContainer sx={{ overflowX: "auto" }}>
+                                <Table size="small">
+                                    <TableHead>
+                                        <TableRow>
+                                            <TableCell sx={{ fontWeight: 700, fontSize: "0.72rem", whiteSpace: "nowrap" }}>Plan</TableCell>
+                                            {data.planes.items.map((p) => (
+                                                <TableCell key={p.id} align="center" sx={{ fontWeight: 700, fontSize: "0.72rem", whiteSpace: "nowrap" }}>
+                                                    {p.nombre}
+                                                </TableCell>
+                                            ))}
+                                        </TableRow>
+                                    </TableHead>
+                                    <TableBody>
+                                        <TableRow>
+                                            <TableCell sx={{ fontSize: "0.72rem" }}>Incluir</TableCell>
+                                            {data.planes.items.map((p) => (
+                                                <TableCell key={p.id} align="center" sx={{ py: 0.25 }}>
+                                                    <Checkbox
+                                                        size="small"
+                                                        checked={checkedPlanIds.has(p.id)}
+                                                        onChange={() => togglePlan(p.id)}
+                                                    />
+                                                </TableCell>
+                                            ))}
+                                        </TableRow>
+                                        <TableRow sx={{ "& td": { border: 0 } }}>
+                                            <TableCell sx={{ fontSize: "0.72rem" }}>Precio</TableCell>
+                                            {data.planes.items.map((p) => {
+                                                const checked = checkedPlanIds.has(p.id)
+                                                return (
+                                                    <TableCell key={p.id} align="center" sx={{ py: 0.5 }}>
+                                                        <Typography
+                                                            variant="body2"
+                                                            fontWeight={600}
+                                                            sx={{
+                                                                textDecoration: checked ? "none" : "line-through",
+                                                                color: checked ? "text.primary" : "text.disabled",
+                                                            }}
+                                                            noWrap
+                                                        >
+                                                            {money(p.precio)}
+                                                        </Typography>
+                                                    </TableCell>
+                                                )
+                                            })}
+                                        </TableRow>
+                                        <TableRow sx={{ "& td": { border: 0 } }}>
+                                            <TableCell sx={{ fontSize: "0.72rem" }}>Nota</TableCell>
+                                            {data.planes.items.map((p) => {
+                                                const isMin = p.precio === Math.min(...data.planes.items.map((x) => x.precio))
+                                                const isMax = p.precio === Math.max(...data.planes.items.map((x) => x.precio))
+                                                return (
+                                                    <TableCell key={p.id} align="center" sx={{ py: 0.25 }}>
+                                                        {isMax && <Chip label="+ caro" size="small" color="error" variant="outlined" sx={{ height: 18, fontSize: "0.65rem" }} />}
+                                                        {isMin && !isMax && <Chip label="+ barato" size="small" color="info" variant="outlined" sx={{ height: 18, fontSize: "0.65rem" }} />}
+                                                    </TableCell>
+                                                )
+                                            })}
+                                        </TableRow>
+                                    </TableBody>
+                                </Table>
+                            </TableContainer>
+                        )}
+                    </Paper>
+
+                    <Box sx={{ display: "flex", flexWrap: "wrap", gap: 1.5, mt: 1.5 }}>
                         {/* Donut activos vs vencidos */}
                         <Paper variant="outlined" sx={chartPaperSx}>
-                            <Typography variant="subtitle2" fontWeight={600} color="text.secondary" mb={1}>
+                            <Typography variant="caption" fontWeight={600} color="text.secondary" component="div" mb={0.5}>
                                 Alumnos — activos vs vencidos
                             </Typography>
-                            <Box sx={{ height: 190 }}>
+                            <Box sx={{ height: 130 }}>
                                 <ResponsiveContainer>
                                     <PieChart>
                                         <defs>
@@ -239,12 +394,12 @@ export function GymStatsSection() {
                                     </PieChart>
                                 </ResponsiveContainer>
                             </Box>
-                            <Box sx={{ display: "flex", justifyContent: "center", gap: 3, mt: 1 }}>
+                            <Box sx={{ display: "flex", justifyContent: "center", gap: 2, mt: 0.5 }}>
                                 {donut.map((d) => (
-                                    <Box key={d.name} sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-                                        <Box sx={{ width: 14, height: 14, borderRadius: "50%", background: d.css }} />
+                                    <Box key={d.name} sx={{ display: "flex", alignItems: "center", gap: 0.75 }}>
+                                        <Box sx={{ width: 10, height: 10, borderRadius: "50%", background: d.css }} />
                                         <Box>
-                                            <Typography variant="caption" color="text.secondary" display="block" lineHeight={1.1}>{d.name}</Typography>
+                                            <Typography variant="caption" color="text.secondary" display="block" lineHeight={1.1} sx={{ fontSize: "0.65rem" }}>{d.name}</Typography>
                                             <Typography variant="body2" fontWeight={700} lineHeight={1.1}>{d.value.toLocaleString("es-AR")}</Typography>
                                         </Box>
                                     </Box>
@@ -254,10 +409,10 @@ export function GymStatsSection() {
 
                         {/* Facturación últimos 6 meses */}
                         <Paper variant="outlined" sx={chartPaperSx}>
-                            <Typography variant="subtitle2" fontWeight={600} color="text.secondary" mb={1}>
+                            <Typography variant="caption" fontWeight={600} color="text.secondary" component="div" mb={0.5}>
                                 Facturación — últimos 6 meses
                             </Typography>
-                            <Box sx={{ height: 230 }}>
+                            <Box sx={{ height: 170 }}>
                                 <ResponsiveContainer>
                                     <BarChart data={factData} margin={{ top: 8, right: 8, left: 0, bottom: 0 }} barCategoryGap={16}>
                                         <defs>
@@ -267,10 +422,10 @@ export function GymStatsSection() {
                                             </linearGradient>
                                         </defs>
                                         <CartesianGrid vertical={false} stroke={gridStroke} />
-                                        <XAxis dataKey="name" tickLine={false} axisLine={false} tickMargin={8} tick={{ fontSize: 12 }} />
-                                        <YAxis tickLine={false} axisLine={false} width={46} tickMargin={4} tick={{ fontSize: 11 }} tickFormatter={(v: number) => moneyShort(v)} />
+                                        <XAxis dataKey="name" tickLine={false} axisLine={false} tickMargin={8} tick={{ fontSize: 11 }} />
+                                        <YAxis tickLine={false} axisLine={false} width={40} tickMargin={4} tick={{ fontSize: 10 }} tickFormatter={(v: number) => moneyShort(v)} />
                                         <Tooltip cursor={{ fill: alpha(t.palette.primary.main, 0.06) }} content={<ChartTooltip money />} />
-                                        <Bar dataKey="value" name="Facturación" fill="url(#gradFact)" radius={[8, 8, 0, 0]} barSize={30} />
+                                        <Bar dataKey="value" name="Facturación" fill="url(#gradFact)" radius={[6, 6, 0, 0]} barSize={22} />
                                     </BarChart>
                                 </ResponsiveContainer>
                             </Box>
@@ -278,10 +433,10 @@ export function GymStatsSection() {
 
                         {/* Altas últimos 6 meses */}
                         <Paper variant="outlined" sx={chartPaperSx}>
-                            <Typography variant="subtitle2" fontWeight={600} color="text.secondary" mb={1}>
+                            <Typography variant="caption" fontWeight={600} color="text.secondary" component="div" mb={0.5}>
                                 Altas — últimos 6 meses
                             </Typography>
-                            <Box sx={{ height: 230 }}>
+                            <Box sx={{ height: 170 }}>
                                 <ResponsiveContainer>
                                     <BarChart data={altasData} margin={{ top: 8, right: 8, left: 0, bottom: 0 }} barCategoryGap={16}>
                                         <defs>
@@ -291,10 +446,10 @@ export function GymStatsSection() {
                                             </linearGradient>
                                         </defs>
                                         <CartesianGrid vertical={false} stroke={gridStroke} />
-                                        <XAxis dataKey="name" tickLine={false} axisLine={false} tickMargin={8} tick={{ fontSize: 12 }} />
-                                        <YAxis tickLine={false} axisLine={false} width={28} tickMargin={4} tick={{ fontSize: 11 }} allowDecimals={false} />
+                                        <XAxis dataKey="name" tickLine={false} axisLine={false} tickMargin={8} tick={{ fontSize: 11 }} />
+                                        <YAxis tickLine={false} axisLine={false} width={24} tickMargin={4} tick={{ fontSize: 10 }} allowDecimals={false} />
                                         <Tooltip cursor={{ fill: alpha(t.palette.primary.main, 0.06) }} content={<ChartTooltip />} />
-                                        <Bar dataKey="value" name="Altas" fill="url(#gradAltas)" radius={[8, 8, 0, 0]} barSize={30} />
+                                        <Bar dataKey="value" name="Altas" fill="url(#gradAltas)" radius={[6, 6, 0, 0]} barSize={22} />
                                     </BarChart>
                                 </ResponsiveContainer>
                             </Box>

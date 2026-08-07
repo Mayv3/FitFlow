@@ -9,7 +9,7 @@ export const useValidateDniFromApi = () => {
 
       return 'Este DNI ya está registrado';
 
-    } catch (error: any) {
+    } catch (error: unknown) {
       if (axios.isAxiosError(error) && error.response?.status === 404) {
         return null;
       }

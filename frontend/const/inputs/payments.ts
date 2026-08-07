@@ -1,5 +1,5 @@
-import { Field } from "@/models/Fields/Field";
-import { fechaHoyArgentinaISO, fechaHoyMasUnMesISO, horaActualArgentina } from "@/utils/date/dateUtils";
+import { Field, SelectOption } from "@/models/Fields/Field";
+import { fechaHoyArgentinaISO, fechaHoyMasUnMesISO } from "@/utils/date/dateUtils";
 import Cookies from "js-cookie";
 
 export const getInputFieldsPagos = ({
@@ -9,11 +9,13 @@ export const getInputFieldsPagos = ({
     cantidadOptions,
     searchFromCache
 }: {
-    planOptions: { label: string; value: number }[];
-    serviceOptions: { label: string; value: number }[];
-    productOptions: { label: string; value: string }[];
-    cantidadOptions: { label: string; value: number }[];
-    searchFromCache: (gymId: string, q: string) => { label: string; value: any }[];
+    // Los ids llegan mezclados: planes/cantidad como number, servicios/productos
+    // como string. SelectOption cubre ambos, igual que Field['options'].
+    planOptions: SelectOption[];
+    serviceOptions: SelectOption[];
+    productOptions: SelectOption[];
+    cantidadOptions: SelectOption[];
+    searchFromCache: (gymId: string, q: string) => SelectOption[];
 }): Field[] => [
         {
             label: 'Alumno (obligatorio)',

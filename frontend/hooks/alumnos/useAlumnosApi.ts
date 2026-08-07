@@ -1,5 +1,5 @@
-import { Member } from '@/models/Member/Member';
-import { useQuery, useMutation, keepPreviousData } from '@tanstack/react-query';
+import { AlumnoSimple, Member, MemberFormValues } from '@/models/Member/Member';
+import { useQuery, useMutation, keepPreviousData, useQueryClient } from '@tanstack/react-query';
 import axios from 'axios';
 import Cookies from 'js-cookie';
 
@@ -19,13 +19,35 @@ axiosInstance.interceptors.request.use((config) => {
   return config;
 });
 
-type GetAlumnosResponse<T = any> = {
+type GetAlumnosResponse<T = Member> = {
   items: T[];
   total: number;
   page: number;
   limit: number;
   q: string;
 };
+
+/**
+ * Las tres listas de alumnos que hay en la app, cada una con su propia key.
+ * Cualquier alta/edicion/baja las invalida a todas: si solo se refrescara
+ * `members`, el select de Pagos (`alumnos-simple`) seguiria sin el alumno nuevo.
+ */
+const ALUMNOS_QUERY_KEYS = [
+  ['members'],
+  ['members-simple'],
+  ['members-expired'],
+  ['alumnos-simple'],
+] as const;
+
+/** Invalida por prefijo, asi alcanza a todas las variantes de page/limit/q. */
+function useInvalidateAlumnos() {
+  const qc = useQueryClient();
+  return () => {
+    ALUMNOS_QUERY_KEYS.forEach((queryKey) => {
+      qc.invalidateQueries({ queryKey: [...queryKey] });
+    });
+  };
+}
 
 export function useAlumnosByGym(
   gymId: string,
@@ -37,10 +59,10 @@ export function useAlumnosByGym(
     queryKey: ['members', gymId, page, limit, q],
     enabled: Boolean(gymId),
     placeholderData: keepPreviousData,
-    staleTime: 1000 * 60 * 10,
+    staleTime: 0,
     gcTime: 1000 * 60 * 30,
     retry: 1,
-    refetchOnMount: false,
+    refetchOnMount: 'always',
     refetchOnWindowFocus: false,
     queryFn: async () => {
       const { data } = await axiosInstance.get('/api/alumnos', {
@@ -52,6 +74,7 @@ export function useAlumnosByGym(
 }
 
 export function useDeleteAlumnoByDNI() {
+  const invalidateAlumnos = useInvalidateAlumnos();
   return useMutation({
     mutationFn: async (dni: string) => {
       const gymId = Cookies.get('gym_id');
@@ -67,35 +90,38 @@ export function useDeleteAlumnoByDNI() {
       });
       return dni;
     },
-    onSuccess: () => {}
+    onSuccess: invalidateAlumnos,
   });
 }
 
 export function useEditAlumnoByDNI() {
-  return useMutation<Member, Error, { dni: string; values: Record<string, any> }>({
+  const invalidateAlumnos = useInvalidateAlumnos();
+  return useMutation<Member, Error, { dni: string; values: MemberFormValues }>({
     mutationFn: async ({ dni, values }) => {
       const res = await axiosInstance.put(`/api/alumnos/${dni}`, values);
       return res.data as Member;
     },
-    onSuccess: () => {}
+    onSuccess: invalidateAlumnos,
   });
 }
 
 export function useAddAlumno() {
+  const invalidateAlumnos = useInvalidateAlumnos();
   return useMutation({
-    mutationFn: async (values: Record<string, any>) => {
+    mutationFn: async (values: MemberFormValues) => {
       const res = await axiosInstance.post('/api/alumnos', values);
       return res.data;
     },
-    onSuccess: () => {}
+    onSuccess: invalidateAlumnos,
   });
 }
 
 export function useExpiredAlumnos(gymId: string) {
-  return useQuery<{ items: any[]; total: number }>({
+  return useQuery<{ items: Member[]; total: number }>({
     queryKey: ['members-expired', gymId],
     enabled: Boolean(gymId),
-    staleTime: 1000 * 60 * 5,
+    staleTime: 0,
+    refetchOnMount: 'always',
     refetchOnWindowFocus: false,
     queryFn: async () => {
       const { data } = await axiosInstance.get('/api/alumnos/expired', {
@@ -110,8 +136,9 @@ export function useAlumnosSimpleService(gymId: string) {
   return useQuery({
     queryKey: ['members-simple', gymId],
     enabled: Boolean(gymId),
-    staleTime: 1000 * 60 * 10,
-    queryFn: async () => {
+    staleTime: 0,
+    refetchOnMount: 'always',
+    queryFn: async (): Promise<AlumnoSimple[]> => {
       const { data } = await axiosInstance.get('/api/alumnos/simple', {
         params: { gym_id: gymId },
       });

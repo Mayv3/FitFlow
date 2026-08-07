@@ -1,6 +1,6 @@
 import * as React from 'react';
-import { Chip, Tooltip, Box } from '@mui/material';
-import { alpha } from '@mui/material/styles';
+import { Chip, Tooltip } from '@mui/material';
+import { alpha, type Theme } from '@mui/material/styles';
 import CheckCircleRounded from '@mui/icons-material/CheckCircleRounded';
 import AccessTimeRounded from '@mui/icons-material/AccessTimeRounded';
 import ErrorOutlineRounded from '@mui/icons-material/ErrorOutlineRounded';
@@ -24,7 +24,7 @@ export function StateCheap({
     code === 'limit' ? undefined :
     <RemoveCircleOutlineRounded />;
 
-  const sx = (theme: any) => {
+  const sx = (theme: Theme) => {
     const soft = (color: string) => ({
       bgcolor: alpha(color, 0.12),
       color: alpha(color, 0.9),

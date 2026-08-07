@@ -1,3 +1,4 @@
+import { Product } from '@/models/Product/Product'
 import { Box, Chip, IconButton } from '@mui/material'
 import { GridColDef } from '@mui/x-data-grid'
 import EditIcon from '@mui/icons-material/Edit'
@@ -23,7 +24,7 @@ const CATEGORY_COLORS: Record<string, 'primary' | 'secondary' | 'success' | 'err
 const getCategoryColor = (categoria: string) => CATEGORY_COLORS[categoria] ?? 'primary'
 
 export const columnsProducts = (
-  handleEdit: (product: any) => void,
+  handleEdit: (product: Product) => void,
   handleDelete: (id: string) => void
 ): GridColDef[] => [
     {

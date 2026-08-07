@@ -15,10 +15,6 @@ import { GlowingEffect } from '@/components/ui/glowing-effect';
 import { useGymThemeSettings } from '@/hooks/useGymThemeSettings';
 import {
   ResponsiveContainer,
-  PieChart,
-  Pie,
-  Cell,
-  Tooltip as ReTooltip,
   BarChart,
   Bar,
   XAxis,
@@ -31,9 +27,24 @@ import {
   RoundedTooltip,
 } from '@/components/ui/tooltip/InfoTooltip';
 import { usePlanes } from '@/hooks/dashboard/usePlanes';
+import { PlanStatsRow } from '@/models/Stats/Planes';
 import { useFacturacionPorPlan } from '@/hooks/dashboard/useFacturacionPorPlan';
 import { useState } from 'react';
 import { YearSelector, useYearState } from './YearSelector';
+
+/**
+ * Fila del Top 5 lista para render. El Top 5 se completa hasta 5 filas con
+ * placeholders '—', por eso los numericos admiten string.
+ */
+type Top5Row = Omit<
+  PlanStatsRow,
+  'cantidad_alumnos' | 'facturacion_mes_actual' | 'facturacion_mes_anterior' | 'variacion'
+> & {
+  cantidad_alumnos: number | string;
+  facturacion_mes_actual: number | string;
+  facturacion_mes_anterior?: number | string;
+  variacion: number | string;
+};
 
 const MONTHS = [
   { value: 1, label: 'Enero' },
@@ -108,9 +119,10 @@ export function PlanesSection() {
 
   if (!data) return null;
 
-  const top5 = [...(data.top5 ?? [])]
+  // La lista siempre muestra 5 filas: las de relleno usan '—' en vez de numeros.
+  const top5: Top5Row[] = [...(data.top5 ?? [])]
     .sort(
-      (a: any, b: any) =>
+      (a, b) =>
         Number(b.facturacion_mes_actual ?? 0) -
         Number(a.facturacion_mes_actual ?? 0)
     )
@@ -129,30 +141,22 @@ export function PlanesSection() {
   const alumnos = data.alumnos ?? [];
 
   const facturacion = (facData ?? [])
-    .map((f: any) => ({
+    .map(f => ({
       plan_nombre: f.plan_nombre || '—',
       actual: f.actual !== null ? Number(f.actual) : 0,
       anterior: f.anterior !== null ? Number(f.anterior) : 0,
       variacion: f.variacion !== null ? Number(f.variacion) : 0,
     }))
-    .sort((a: any, b: any) => b.actual - a.actual);
+    .sort((a, b) => b.actual - a.actual);
 
   // Donut Data
   const donutData = alumnos
-    .map((p: any) => ({
+    .map(p => ({
       key: p.plan_id,
       label: p.plan_nombre,
       value: p.cantidad_alumnos,
     }))
-    .sort((a: any, b: any) => b.value - a.value);
-
-  const gradients = [
-    ['#FFA45B', '#FF6CA3'],
-    ['#1DC8FF', '#1674FF'],
-    ['#6B00FF', '#FF30C8'],
-    ['#FF0202', '#FFBCBC'],
-    ['#00C853', '#B2FF59'],
-  ];
+    .sort((a, b) => b.value - a.value);
 
   return (
     <Box
@@ -184,7 +188,7 @@ export function PlanesSection() {
               Top 5 planes más vendidos
             </Typography>
             <Box display="flex" flexDirection="column" gap={1} flex={1}>
-              {top5.map((p: any, i: number) => (
+              {top5.map(p => (
                 <Box
                   key={p.plan_id}
                   sx={{

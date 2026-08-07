@@ -107,9 +107,11 @@ const createWrapper = () => {
     },
   });
 
-  return ({ children }: { children: ReactNode }) => (
+  const Wrapper = ({ children }: { children: ReactNode }) => (
     <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
   );
+  Wrapper.displayName = 'QueryWrapper';
+  return Wrapper;
 };
 
 describe('Members CRUD Operations', () => {
@@ -119,6 +121,8 @@ describe('Members CRUD Operations', () => {
 
   describe('CREATE - Crear un nuevo miembro con useAddAlumno', () => {
     it('debería crear un nuevo miembro exitosamente usando el hook', async () => {
+      // `satisfies` mantiene el tipo literal de `origen` (sin esto se ensancha a
+      // string y no encaja en Member) y ademas valida el fixture contra el modelo.
       const newMemberData = {
         nombre: 'Carlos López',
         dni: '11223344',
@@ -129,7 +133,7 @@ describe('Members CRUD Operations', () => {
         plan_id: 1,
         gym_id: 'gym-123',
         origen: 'facebook',
-      };
+      } satisfies Partial<Member>;
 
       const createdMember: Member = {
         id: '3',
@@ -582,8 +586,9 @@ describe('Members CRUD Operations', () => {
     });
 
     it('debería requerir token para eliminar', async () => {
-      // Mock Cookies sin token
-      const Cookies = require('js-cookie');
+      // Mock Cookies sin token. jest.requireMock en vez de require() para no
+      // saltear la regla no-require-imports; devuelve la misma factory de arriba.
+      const Cookies = jest.requireMock('js-cookie') as { get: jest.Mock };
       Cookies.get.mockImplementation((key: string) => {
         if (key === 'gym_id') return 'gym-123';
         return null; // No hay token
@@ -633,8 +638,8 @@ describe('Members CRUD Operations', () => {
         params: { gym_id: 'gym-123' },
       });
       expect(result.current.data).toHaveLength(2);
-      expect(result.current.data[0]).toHaveProperty('nombre');
-      expect(result.current.data[0]).toHaveProperty('dni');
+      expect(result.current.data?.[0]).toHaveProperty('nombre');
+      expect(result.current.data?.[0]).toHaveProperty('dni');
     });
   });
 
@@ -769,7 +774,7 @@ describe('Members CRUD Operations', () => {
         plan_id: 1,
         gym_id: 'gym-123',
         origen: 'recomendacion',
-      };
+      } satisfies Partial<Member>;
 
       const createdMember: Member = {
         id: '10',

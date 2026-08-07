@@ -4,6 +4,5 @@ export interface SearchBarProps {
   onSearch?: (q: string) => void;
   placeholder?: string;
   isLoading?: boolean;
-  autoFocus?: boolean;
   debounce?: number;
 };

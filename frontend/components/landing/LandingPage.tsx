@@ -558,14 +558,6 @@ const CSS = `
   }
 `
 
-function LogoSVG() {
-  return (
-    <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-      <path d="M2 8h2M5.5 4v8M9.5 2v12M13 6v4M7.5 6v4" stroke="#fff" strokeWidth="1.7" strokeLinecap="round"/>
-    </svg>
-  )
-}
-
 export default function LandingPage() {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const navRef    = useRef<HTMLElement>(null)
@@ -690,16 +682,17 @@ export default function LandingPage() {
 
   return (
     <div className="lp">
-      <link rel="preconnect" href="https://fonts.googleapis.com" />
-      <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="" />
-      <link href="https://fonts.googleapis.com/css2?family=Quicksand:wght@400;500;600;700&display=swap" rel="stylesheet" />
+      {/* Las fuentes (Quicksand incluida) se cargan una sola vez en app/layout.tsx.
+          Repetir los <link> aca las pedia de nuevo en cada visita a la landing. */}
       <style dangerouslySetInnerHTML={{ __html: CSS }} />
 
       {/* ── NAVBAR ── */}
       <nav className="lp-nav" ref={navRef}>
         <Link href="/" className="lp-logo">
+          {/* eslint-disable-next-line @next/next/no-img-element -- next/image no aporta nada aca: next.config.mjs usa images.unoptimized */}
           <img src="/images/icon.png" alt="FitFlow" className="lp-logo-mark" style={{width:'30px',height:'30px',objectFit:'contain',borderRadius:0}} />
           <span className="lp-logo-full">Fitness Flow</span>
+          {/* eslint-disable-next-line @next/next/no-img-element -- next/image no aporta nada aca: next.config.mjs usa images.unoptimized */}
           <img src="/images/icon.png" alt="FitFlow" className="lp-logo-short" />
         </Link>
         <ul className="lp-nav-links">
@@ -1306,6 +1299,7 @@ export default function LandingPage() {
       <div className="lp-div" />
       <div className="lp-footer">
         <Link href="/" className="lp-logo">
+          {/* eslint-disable-next-line @next/next/no-img-element -- next/image no aporta nada aca: next.config.mjs usa images.unoptimized */}
           <img src="/images/icon.png" alt="FitFlow" style={{width:'30px',height:'30px',objectFit:'contain',borderRadius:0}} />FitFlow
         </Link>
         <span className="lp-copy">© 2026 FitFlow. Software para gimnasios.</span>

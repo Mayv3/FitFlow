@@ -205,7 +205,7 @@ export function DemografiaSection() {
                                         ))}
                                     </defs>
                                     <Pie
-                                        data={porSexo.map((d: any) => ({
+                                        data={porSexo.map(d => ({
                                             ...d,
                                             label: d.sexo === 'M' ? 'Hombres' : 'Mujeres',
                                             value: d.cantidad,
@@ -218,7 +218,7 @@ export function DemografiaSection() {
                                         endAngle={-270}
                                         stroke="transparent"
                                     >
-                                        {porSexo.map((_: any, i: any) => (
+                                        {porSexo.map((_, i) => (
                                             <Cell key={i} fill={`url(#donut-grad-sex-${i})`} />
                                         ))}
                                     </Pie>
@@ -234,7 +234,7 @@ export function DemografiaSection() {
                             </ResponsiveContainer>
 
                             <Box display="flex" gap={3} flexWrap="wrap" justifyContent="center" mt={2}>
-                                {porSexo.map((d: any, i: any) => {
+                                {porSexo.map((d, i) => {
                                     const grads = [
                                         'linear-gradient(135deg, #FFA45B, #FF6CA3)', // Mujeres
                                         'linear-gradient(135deg, #1DC8FF, #1674FF)', // Hombres

@@ -1,5 +1,6 @@
 import fetch from 'node-fetch'
 import { supabaseAdmin } from '../../config/supabaseClient.js'
+import { waLog, rememberGymName } from './logger.js'
 
 // Alerta best-effort cuando el WhatsApp de un gym queda caído.
 // NUNCA tira: no debe romper el flujo de reconexión ni el envío de recordatorios.
@@ -26,6 +27,7 @@ async function getGymName(gymId) {
       .maybeSingle()
     const name = data?.name || null
     gymNameCache.set(gymId, name)
+    rememberGymName(gymId, name) // que los logs de este gym salgan con nombre
     return name
   } catch {
     return null
@@ -86,9 +88,15 @@ export async function notifyWaDown(gymId, reason, detail = '', { force = false }
   const gymName = await getGymName(gymId)
   const label = gymName ? `"${gymName}" (${gymId})` : gymId
 
-  console.error(`[wa alert] gym=${label} reason=${reason}${detail ? ' ' + detail : ''}`)
+  waLog(gymId, `ALERTA — ${reason}`, {
+    level: 'error',
+    detalle: {
+      Detalle: detail || undefined,
+      Mail: BREVO_API_KEY && ALERT_EMAIL ? `se manda a ${ALERT_EMAIL}` : 'sin configurar (BREVO_API_KEY), este log es la única alerta'
+    }
+  })
 
-  if (!BREVO_API_KEY || !ALERT_EMAIL) return // sin config -> el console.error de arriba es la alerta
+  if (!BREVO_API_KEY || !ALERT_EMAIL) return // sin config -> el waLog de arriba es la alerta
 
   const copy = REASON_COPY[reason]
   const when = new Date().toLocaleString('es-AR', { timeZone: 'America/Argentina/Buenos_Aires' })
@@ -118,8 +126,16 @@ export async function notifyWaDown(gymId, reason, detail = '', { force = false }
         textContent: `${body}\n\nFecha del evento: ${when} (hora Argentina)\nMotivo interno: ${reason}\nGym ID: ${gymId}`
       })
     })
-    if (!res.ok) console.error(`[wa alert] brevo ${res.status}: ${await res.text()}`)
+    if (!res.ok) {
+      waLog(gymId, 'No se pudo mandar el mail de alerta', {
+        level: 'error',
+        detalle: { 'Brevo respondió': res.status, Respuesta: await res.text() }
+      })
+    }
   } catch (e) {
-    console.error(`[wa alert] send failed: ${e.message}`)
+    waLog(gymId, 'No se pudo mandar el mail de alerta', {
+      level: 'error',
+      detalle: { Error: e.message }
+    })
   }
 }

@@ -1,6 +1,7 @@
 "use client"
 
-import { useEffect, useMemo, useState } from "react"
+import { useMemo, useState } from "react"
+import { useQuery } from "@tanstack/react-query"
 import { api } from "@/lib/api"
 import {
   Box,
@@ -43,6 +44,7 @@ import {
   useUpdateSuscription,
 } from "@/hooks/gymSubscriptions/useSuscriptions"
 import { EmailLogs } from "@/components/owner/EmailLogs"
+import { getErrorMessage } from "@/utils/errors/apiError"
 
 interface Props {
   gym: Gym | null
@@ -68,9 +70,15 @@ function toLocalISOString(dateStr: string) {
 export function GymDetailDrawer({ gym, open, onClose }: Props) {
   const [tab, setTab] = useState(0)
 
-  useEffect(() => {
+  // Volver al primer tab cada vez que se abre el drawer o cambia el gimnasio.
+  // Ajuste durante el render (patron documentado por React) en vez de useEffect:
+  // evita el parpadeo de mostrar el tab viejo antes de resetear.
+  const drawerKey = `${open}:${gym?.id ?? ""}`
+  const [drawerKeyPrevia, setDrawerKeyPrevia] = useState(drawerKey)
+  if (drawerKey !== drawerKeyPrevia) {
+    setDrawerKeyPrevia(drawerKey)
     if (open) setTab(0)
-  }, [open, gym?.id])
+  }
 
   return (
     <Drawer
@@ -134,11 +142,14 @@ function DetailsTab({ gym, onDeleted }: { gym: Gym; onDeleted: () => void }) {
   const updateGym = useUpdateGym()
   const softDelete = useSoftDeleteGym()
 
-  useEffect(() => {
+  // Resetear el formulario cuando cambia el gimnasio, ajustando durante el render.
+  const [gymIdPrevio, setGymIdPrevio] = useState(gym.id)
+  if (gym.id !== gymIdPrevio) {
+    setGymIdPrevio(gym.id)
     setName(gym.name)
     setLogoUrl(gym.logo_url || "")
     setWaModule(!!gym.settings?.whatsapp_module_enabled)
-  }, [gym.id])
+  }
 
   const toggleWaModule = async (next: boolean) => {
     setWaBusy(true)
@@ -147,8 +158,8 @@ function DetailsTab({ gym, onDeleted }: { gym: Gym; onDeleted: () => void }) {
       await updateGym.mutateAsync({ id: gym.id, settings: newSettings })
       setWaModule(next)
       notify.success(next ? "Módulo WhatsApp habilitado" : "Módulo WhatsApp deshabilitado")
-    } catch (e: any) {
-      notify.error(e.message || "Error al actualizar módulo")
+    } catch (e: unknown) {
+      notify.error(getErrorMessage(e) || "Error al actualizar módulo")
     } finally {
       setWaBusy(false)
     }
@@ -163,8 +174,8 @@ function DetailsTab({ gym, onDeleted }: { gym: Gym; onDeleted: () => void }) {
         logo_url: logoUrl.trim() || null,
       })
       notify.success("Gimnasio actualizado")
-    } catch (e: any) {
-      notify.error(e.message || "Error al actualizar")
+    } catch (e: unknown) {
+      notify.error(getErrorMessage(e) || "Error al actualizar")
     }
   }
 
@@ -174,8 +185,8 @@ function DetailsTab({ gym, onDeleted }: { gym: Gym; onDeleted: () => void }) {
       await softDelete.mutateAsync(gym.id)
       notify.success("Gimnasio eliminado")
       onDeleted()
-    } catch (e: any) {
-      notify.error(e.message || "Error al eliminar")
+    } catch (e: unknown) {
+      notify.error(getErrorMessage(e) || "Error al eliminar")
     }
   }
 
@@ -265,7 +276,12 @@ function SubscriptionTab({ gym }: { gym: Gym }) {
   const [startDate, setStartDate] = useState("")
   const [endDate, setEndDate] = useState("")
 
-  useEffect(() => {
+  // Cargar el formulario con la suscripcion vigente cuando cambia el gimnasio o
+  // la suscripcion, ajustando durante el render en vez de con un efecto.
+  const subKey = `${gym.id}:${currentSub?.id ?? ""}`
+  const [subKeyPrevia, setSubKeyPrevia] = useState(subKey)
+  if (subKey !== subKeyPrevia) {
+    setSubKeyPrevia(subKey)
     if (currentSub) {
       setPlanId(currentSub.plan_id)
       setStartDate(currentSub.start_at ? currentSub.start_at.split("T")[0] : "")
@@ -275,10 +291,10 @@ function SubscriptionTab({ gym }: { gym: Gym }) {
       setStartDate(new Date().toISOString().split("T")[0])
       setEndDate("")
     }
-  }, [currentSub?.id, gym.id])
+  }
 
   const selectedPlan = useMemo(
-    () => plans.find((p: any) => p.id === planId),
+    () => plans.find((p) => p.id === planId),
     [planId, plans]
   )
 
@@ -302,8 +318,8 @@ function SubscriptionTab({ gym }: { gym: Gym }) {
       })
       setEndDate(nextStr)
       notify.success(`Renovado hasta ${next.toLocaleDateString("es-AR")}`)
-    } catch (e: any) {
-      notify.error(e.message || "Error renovando suscripción")
+    } catch (e: unknown) {
+      notify.error(getErrorMessage(e) || "Error renovando suscripción")
     }
   }
 
@@ -326,8 +342,8 @@ function SubscriptionTab({ gym }: { gym: Gym }) {
           end_at: endDate ? toLocalISOString(endDate) : null,
         })
       }
-    } catch (e: any) {
-      notify.error(e.message || "Error guardando suscripción")
+    } catch (e: unknown) {
+      notify.error(getErrorMessage(e) || "Error guardando suscripción")
     }
   }
 
@@ -370,7 +386,7 @@ function SubscriptionTab({ gym }: { gym: Gym }) {
           label="Plan"
           onChange={(e) => setPlanId(Number(e.target.value) || null)}
         >
-          {plans.map((p: any) => (
+          {plans.map((p) => (
             <MenuItem key={p.id} value={p.id}>
               {p.name} ({p.max_alumnos} alumnos)
             </MenuItem>
@@ -456,27 +472,19 @@ function SubscriptionTab({ gym }: { gym: Gym }) {
 }
 
 function UsersTab({ gym }: { gym: Gym }) {
-  const [users, setUsers] = useState<UserRow[]>([])
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState("")
-
-  const fetchUsers = async () => {
-    setLoading(true)
-    setError("")
-    try {
+  const {
+    data: users = [],
+    isPending: loading,
+    error: queryError,
+  } = useQuery({
+    queryKey: ["owner", "gymUsers", gym.id],
+    queryFn: async (): Promise<UserRow[]> => {
       const res = await api.get(`/api/users?gym_id=${gym.id}`)
-      setUsers(Array.isArray(res.data) ? res.data : res.data?.items ?? [])
-    } catch (e: any) {
-      setError(e.response?.data?.error || "Error al cargar usuarios")
-    } finally {
-      setLoading(false)
-    }
-  }
+      return Array.isArray(res.data) ? res.data : res.data?.items ?? []
+    },
+  })
 
-  useEffect(() => {
-    fetchUsers()
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [gym.id])
+  const error = queryError ? "Error al cargar usuarios" : ""
 
   if (loading) {
     return (

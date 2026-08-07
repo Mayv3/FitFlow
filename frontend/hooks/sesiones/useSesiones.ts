@@ -1,7 +1,7 @@
 'use client'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { api } from '@/lib/api'
-import { Sesion, Inscripcion } from '@/models/Sesion/Sesion'
+import { Sesion, Inscripcion, SesionFormValues } from '@/models/Sesion/Sesion'
 
 const sesionesKey = (claseId: number) => ['sesiones', claseId] as const
 
@@ -24,7 +24,7 @@ export const useSesionesByClase = (claseId?: number) => {
 export const useAddSesion = (claseId: number) => {
   const qc = useQueryClient()
   return useMutation({
-    mutationFn: async (values: any) => {
+    mutationFn: async (values: SesionFormValues & { gym_id: string }) => {
       const { data } = await api.post(
         `/api/sesiones`,
         { ...values, clase_id: claseId }
@@ -41,7 +41,7 @@ export const useAddSesion = (claseId: number) => {
 export const useEditSesion = (claseId: number) => {
   const qc = useQueryClient()
   return useMutation({
-    mutationFn: async ({ id, values }: { id: number; values: any }) => {
+    mutationFn: async ({ id, values }: { id: number; values: SesionFormValues & { gym_id: string } }) => {
       const { data } = await api.put(
         `/api/sesiones/${id}`,
         values

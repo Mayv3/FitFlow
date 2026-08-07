@@ -1,6 +1,12 @@
 import { useQuery } from '@tanstack/react-query'
 import { api } from '@/lib/api'
 
+/**
+ * Alumnos para los selects (pagos, turnos). Sin cache: `staleTime: 0` mas
+ * `refetchOnMount: 'always'` para que al entrar a Pagos despues de crear un
+ * alumno el select ya lo traiga. `placeholderData` solo evita el parpadeo:
+ * pinta la lista anterior mientras revalida.
+ */
 export const useAlumnosSimpleByGym = (gymId?: string) => {
   return useQuery({
     queryKey: ['alumnos-simple', gymId],
@@ -12,6 +18,7 @@ export const useAlumnosSimpleByGym = (gymId?: string) => {
       return data
     },
     placeholderData: (prev) => prev,
-    staleTime: 1000 * 60 * 5,
+    staleTime: 0,
+    refetchOnMount: 'always',
   })
 }

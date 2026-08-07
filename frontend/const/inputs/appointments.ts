@@ -1,12 +1,13 @@
-import { Field } from "@/models/Fields/Field"
+import { Field, SelectOption } from "@/models/Fields/Field"
 import { fechaHoyArgentinaISO } from "@/utils/date/dateUtils"
 
 export const getInputFieldsTurnos = ({
     serviceOptions,
     searchFromCache,
 }: {
-    serviceOptions: { label: string; value: number }[]
-    searchFromCache: (gymId: string, q: string) => { label: string; value: any }[]
+    // useServicesByGym emite value: String(s.id), no number.
+    serviceOptions: SelectOption[]
+    searchFromCache: (gymId: string, q: string) => SelectOption[]
 }): Field[] => [
         {
             label: "Título (obligatorio)",

@@ -48,6 +48,8 @@ import { ManageNovedades } from "@/components/owner/ManageNovedades"
 import { CommsHistory } from "@/components/owner/CommsHistory"
 import { GymStatsSection } from "@/components/owner/GymStatsSection"
 import { WaDryRun } from "@/components/owner/WaDryRun"
+import { useNow } from "@/hooks/useNow"
+import { getErrorMessage } from "@/utils/errors/apiError"
 
 const GREEN = "#16A34A"
 
@@ -150,6 +152,21 @@ function StatStrip({
   )
 }
 
+/**
+ * Proxima fecha de corte: +1 mes desde el vencimiento vigente (o desde hoy si ya
+ * vencio), fijada al dia 1 al mediodia. Vive fuera del componente para que el
+ * `Date.now()` no quede en scope de render (debe ser el tiempo real, no un
+ * snapshot: se usa para escribir en la DB).
+ */
+function proximaFechaDeRenovacion(endAt?: string | null): Date {
+  const base =
+    endAt && new Date(endAt).getTime() > Date.now() ? new Date(endAt) : new Date()
+  const next = new Date(base)
+  next.setMonth(next.getMonth() + 1, 1)
+  next.setHours(12, 0, 0, 0)
+  return next
+}
+
 export function OwnerDashboard() {
   const { data: gyms = [], isLoading: loadingGyms } = useGyms()
   const { data: subs = [], isLoading: loadingSubs } = useSuscriptions()
@@ -157,22 +174,16 @@ export function OwnerDashboard() {
   const restoreGym = useRestoreGym()
   const updateSub = useUpdateSuscription()
   const [renewingId, setRenewingId] = useState<number | null>(null)
+  const now = useNow()
 
   const handleRenewSub = async (sub: Suscription) => {
-    const base =
-      sub.end_at && new Date(sub.end_at).getTime() > Date.now()
-        ? new Date(sub.end_at)
-        : new Date()
-    const next = new Date(base)
-    // +1 mes, pero fijar al día 1 del mes siguiente
-    next.setMonth(next.getMonth() + 1, 1)
-    next.setHours(12, 0, 0, 0)
+    const next = proximaFechaDeRenovacion(sub.end_at)
     setRenewingId(sub.id)
     try {
       await updateSub.mutateAsync({ id: sub.id, end_at: next.toISOString() })
       notify.success(`Renovado hasta ${next.toLocaleDateString("es-AR")}`)
-    } catch (e: any) {
-      notify.error(e.message || "Error renovando")
+    } catch (e: unknown) {
+      notify.error(getErrorMessage(e) || "Error renovando")
     } finally {
       setRenewingId(null)
     }
@@ -220,7 +231,6 @@ export function OwnerDashboard() {
   )
 
   const stats = useMemo(() => {
-    const now = Date.now()
     const sevenDays = now + 7 * 24 * 60 * 60 * 1000
     const activeGymIds = new Set(gyms.map((g) => g.id))
     let activas = 0
@@ -237,7 +247,7 @@ export function OwnerDashboard() {
       }
     }
     return { totalGyms: gyms.length, activas, porVencer, vencidas }
-  }, [subs, gyms])
+  }, [subs, gyms, now])
 
   const loading = loadingGyms || loadingSubs
 
@@ -482,9 +492,10 @@ function GymRow({
   onOpen: () => void
   onRenew: () => void
 }) {
-  const isExpired = !!subscription?.end_at && new Date(subscription.end_at).getTime() < Date.now()
+  const now = useNow()
+  const isExpired = !!subscription?.end_at && new Date(subscription.end_at).getTime() < now
   const isExpiringSoon =
-    !isExpired && !!subscription?.end_at && new Date(subscription.end_at).getTime() <= Date.now() + 7 * 24 * 60 * 60 * 1000
+    !isExpired && !!subscription?.end_at && new Date(subscription.end_at).getTime() <= now + 7 * 24 * 60 * 60 * 1000
   const venceStr = subscription?.end_at ? new Date(subscription.end_at).toLocaleDateString("es-AR") : null
   const venceColor = isExpired ? "error.main" : isExpiringSoon ? "warning.main" : "text.secondary"
 

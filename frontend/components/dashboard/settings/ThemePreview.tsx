@@ -24,7 +24,7 @@ import {
 } from "@mui/icons-material"
 import { StateCheap } from "@/components/ui/cheap/StateCheap"
 import { ThemeSettings } from "@/components/ui/gymThemeEditor/gymThemeEditor"
-import { createAppTheme, DEFAULT_SETTINGS } from "@/themeProvider/theme"
+import { createAppTheme } from "@/themeProvider/theme"
 
 type Props = {
   settings?: ThemeSettings | null
@@ -126,12 +126,12 @@ export function ThemePreview({ settings }: Props) {
               <Typography variant="body2">Acciones</Typography>
             </Box>
 
-            {[
+            {([
               { nombre: "José", plan: "Pase Libre", code: "active", label: "Activo", daysDiff: 12 },
               { nombre: "Nico", plan: "Prueba", code: "expired", label: "Vencido", daysDiff: -3 },
               { nombre: "Lucía", plan: "Crossfit", code: "expiring", label: "Por vencer", daysDiff: 2 },
               { nombre: "Mariana", plan: "Funcional", code: "expired", label: "Vencido", daysDiff: -10 },
-            ].map((alumno, i) => (
+            ] as const).map((alumno, i) => (
               <Box
                 key={i}
                 sx={{
@@ -148,7 +148,7 @@ export function ThemePreview({ settings }: Props) {
 
                 <Box sx={{ display: { xs: "none", md: "block" } }}>
                   <StateCheap
-                    code={alumno.code as any}
+                    code={alumno.code}
                     label={alumno.label}
                     daysDiff={alumno.daysDiff}
                   />

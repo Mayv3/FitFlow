@@ -4,10 +4,7 @@ import { useState, useEffect } from 'react'
 import {
   Chip,
   Dialog,
-  DialogTitle,
   DialogContent,
-  DialogActions,
-  Button,
   Typography,
   Box,
   Divider,
@@ -24,6 +21,7 @@ import StarIcon from '@mui/icons-material/Star'
 import DarkModeIcon from '@mui/icons-material/DarkMode'
 import LightModeIcon from '@mui/icons-material/LightMode'
 import { useSubscription } from '@/context/SubscriptionContext'
+import { FlushDialogActions } from '@/components/ui/modals/FlushDialogActions'
 import { useDarkMode } from '@/context/DarkModeContext'
 
 function formatDate(dateStr: string | null | undefined): string {
@@ -42,7 +40,10 @@ function getStatus(
   isActive: boolean,
   isExpiring: boolean,
   days: number | null,
-  isPaymentWarning: boolean
+  // TODO: declarado pero nunca leido, por eso getStatus jamas devuelve
+  // 'payment-warning'. El aviso se sigue mostrando por la rama isPaymentWarning
+  // del efecto, pero el chip no refleja el estado.
+  _isPaymentWarning: boolean
 ): StatusType {
   if (!isActive) return 'none'
   if (days !== null && days < 0) return 'expired'
@@ -107,12 +108,15 @@ export const SubscriptionStatusBadge = () => {
 
   const status = getStatus(isSubscriptionActive, isExpiringSoon, daysUntilExpiration, isPaymentWarning)
 
-  // Auto-abrir el modal si el plan está vencido, sin plan, o en aviso de pago pendiente
+  // Auto-abrir el modal si el plan está vencido, sin plan, o en aviso de pago
+  // pendiente. No es estado derivable: el usuario puede cerrarlo y debe quedar
+  // cerrado, asi que el efecto solo lo abre cuando terminan de cargar los datos.
   useEffect(() => {
     if (!isSubscriptionLoading && (status === 'none' || isPaymentWarning)) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setOpen(true)
     }
-  }, [isSubscriptionLoading, status])
+  }, [isSubscriptionLoading, status, isPaymentWarning])
 
   if (isSubscriptionLoading) return null
 
@@ -360,11 +364,7 @@ export const SubscriptionStatusBadge = () => {
           )}
         </DialogContent>
 
-        <DialogActions sx={{ px: 3, pb: 2 }}>
-          <Button onClick={() => setOpen(false)} variant="outlined" size="small" color='success'>
-            Cerrar
-          </Button>
-        </DialogActions>
+        <FlushDialogActions actions={[{ label: 'Cerrar', onClick: () => setOpen(false), tone: 'confirm' }]} />
       </Dialog>
     </>
   )

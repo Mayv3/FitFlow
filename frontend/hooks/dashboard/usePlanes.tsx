@@ -1,6 +1,7 @@
 'use client';
 
 import { useQuery } from '@tanstack/react-query';
+import { PlanesStats } from '@/models/Stats/Planes';
 
 export function usePlanes(
   year: number = new Date().getFullYear(),
@@ -30,7 +31,7 @@ export function usePlanes(
         throw new Error(`Error en la API Planes: ${res.status}`);
       }
 
-      return res.json();
+      return res.json() as Promise<PlanesStats>;
     },
     staleTime: 1000 * 60 * 2,
     gcTime: 1000 * 60 * 5,

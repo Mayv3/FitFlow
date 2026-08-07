@@ -1,22 +1,22 @@
 import React from 'react';
 import { Box, TextField, Typography, MenuItem, Chip, Autocomplete } from '@mui/material';
-import { Field } from '@/models/Fields/Field';
+import { Field, FieldValue, FormValues, SelectOption } from '@/models/Fields/Field';
 import { ColorPickerPopover } from '../colorSelector/colorSelector';
 
 // ── ColorField ────────────────────────────────────────────────────────────────
 
 export interface ColorFieldProps {
   field: Field;
-  val: any;
+  val: FieldValue;
   style: React.CSSProperties;
-  setValues: React.Dispatch<React.SetStateAction<any>>;
+  setValues: React.Dispatch<React.SetStateAction<FormValues>>;
 }
 
 export const ColorField: React.FC<ColorFieldProps> = ({ field, val, style, setValues }) => (
   <Box style={style}>
     <ColorPickerPopover
-      value={val || ''}
-      onChange={c => setValues((prev: any) => ({ ...prev, [field.name]: c }))}
+      value={typeof val === 'string' ? val : ''}
+      onChange={c => setValues(prev => ({ ...prev, [field.name]: c }))}
       label={field.label}
     />
   </Box>
@@ -26,10 +26,10 @@ export const ColorField: React.FC<ColorFieldProps> = ({ field, val, style, setVa
 
 export interface EmailsFieldProps {
   field: Field;
-  val: any;
+  val: FieldValue;
   style: React.CSSProperties;
   mode: string;
-  setValues: React.Dispatch<React.SetStateAction<any>>;
+  setValues: React.Dispatch<React.SetStateAction<FormValues>>;
 }
 
 export const EmailsField: React.FC<EmailsFieldProps> = ({ field, val, style, mode, setValues }) => {
@@ -56,9 +56,11 @@ export const EmailsField: React.FC<EmailsFieldProps> = ({ field, val, style, mod
             key={i}
             label={email}
             onDelete={() =>
-              setValues((prev: any) => ({
+              setValues(prev => ({
                 ...prev,
-                emails: prev.emails.filter((_: string, idx: number) => idx !== i),
+                emails: (Array.isArray(prev.emails) ? prev.emails : []).filter(
+                  (_, idx) => idx !== i
+                ),
               }))
             }
             color="primary"
@@ -74,7 +76,7 @@ export const EmailsField: React.FC<EmailsFieldProps> = ({ field, val, style, mod
               e.preventDefault();
               const input = (e.target as HTMLInputElement).value.trim();
               if (input && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(input)) {
-                setValues((prev: any) => ({
+                setValues(prev => ({
                   ...prev,
                   emails: [...(Array.isArray(prev.emails) ? prev.emails : []), input],
                 }));
@@ -93,7 +95,7 @@ export const EmailsField: React.FC<EmailsFieldProps> = ({ field, val, style, mod
 
 export interface SearchSelectFieldProps {
   field: Field;
-  val: any;
+  val: FieldValue;
   style: React.CSSProperties;
   isError: boolean;
   helperText: string;
@@ -102,7 +104,7 @@ export interface SearchSelectFieldProps {
   gymId?: string;
   searchTerms: Record<string, string>;
   setSearchTerms: React.Dispatch<React.SetStateAction<Record<string, string>>>;
-  setValues: React.Dispatch<React.SetStateAction<any>>;
+  setValues: React.Dispatch<React.SetStateAction<FormValues>>;
 }
 
 export const SearchSelectField: React.FC<SearchSelectFieldProps> = ({
@@ -115,21 +117,21 @@ export const SearchSelectField: React.FC<SearchSelectFieldProps> = ({
   if (!results || results.length === 0) results = allOptions;
 
   const selectedOption = val
-    ? allOptions.find((o: any) => o.value === val) || null
+    ? allOptions.find(o => o.value === val) || null
     : null;
 
   return (
     <Box style={style}>
       <Autocomplete
         options={results}
-        isOptionEqualToValue={(o: any, v: any) => o.value === v.value}
-        getOptionLabel={(option: any) => option.label}
+        isOptionEqualToValue={(o, v) => o.value === v.value}
+        getOptionLabel={option => option.label}
         value={selectedOption}
         onInputChange={(_, newInputValue) => {
           setSearchTerms(prev => ({ ...prev, [field.name]: newInputValue }));
         }}
-        onChange={(_, newValue: any) => {
-          setValues((prev: any) => ({ ...prev, [field.name]: newValue?.value ?? null }));
+        onChange={(_, newValue: SelectOption | null) => {
+          setValues(prev => ({ ...prev, [field.name]: newValue?.value ?? null }));
         }}
         renderInput={params => (
           <TextField
@@ -155,7 +157,7 @@ export const SearchSelectField: React.FC<SearchSelectFieldProps> = ({
 
 export interface StandardFieldProps {
   field: Field;
-  val: any;
+  val: FieldValue;
   style: React.CSSProperties;
   index: number;
   isError: boolean;
@@ -164,7 +166,7 @@ export interface StandardFieldProps {
   locked: boolean;
   firstInputRef: React.RefObject<HTMLInputElement | null>;
   handleChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
-  handleBlur: (name: string, raw: any) => void;
+  handleBlur: (name: string, raw: FieldValue) => void;
 }
 
 export const StandardField: React.FC<StandardFieldProps> = ({
@@ -196,7 +198,7 @@ export const StandardField: React.FC<StandardFieldProps> = ({
         size={isSmDown ? 'small' : 'medium'}
         label={field.label}
         name={field.name}
-        type={field.type !== 'select' ? (field.type as any) : undefined}
+        type={field.type !== 'select' ? field.type : undefined}
         value={val}
         required={field.required}
         onChange={handleChange}
@@ -233,7 +235,7 @@ export const StandardField: React.FC<StandardFieldProps> = ({
             <MenuItem
               key={String(opt.value)}
               value={opt.value ?? ''}
-              disabled={(opt as any).disabled ?? false}
+              disabled={opt.disabled ?? false}
             >
               {opt.label}
             </MenuItem>

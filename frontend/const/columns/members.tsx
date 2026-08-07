@@ -30,7 +30,7 @@ function buildWhatsAppUrl(member: Member, gymName: string, plan: Plan | undefine
   const phone = normalizeArPhone(member.telefono);
   const planNombre = plan?.nombre ?? member.plan_nombre ?? 'tu plan';
   const precio = plan?.precio != null ? `$${plan.precio}` : 'consultar precio';
-  const fv = (member as any).fecha_de_vencimiento ?? member.fecha_vencimiento;
+  const fv = member.fecha_de_vencimiento ?? member.fecha_vencimiento;
   const fechaVenc = fv ? formatearFecha(fv) : 'próximamente';
 
   const intro = code === 'expired'
@@ -63,7 +63,7 @@ interface RowActionsProps {
 function RowActions({ member, gymName, plan, onEdit, onDelete, onWaSent, isSent }: RowActionsProps) {
   const [anchor, setAnchor] = useState<null | HTMLElement>(null);
 
-  const fv = (member as any).fecha_de_vencimiento ?? member.fecha_vencimiento;
+  const fv = member.fecha_de_vencimiento ?? member.fecha_vencimiento;
   const { code } = estadoVencimiento(fv);
   const canNotify = code === 'expired' || code === 'expiring';
   const whatsappUrl = canNotify ? buildWhatsAppUrl(member, gymName, plan, code) : null;
@@ -245,13 +245,14 @@ export const columnsMember = (
       align: 'center',
       headerAlign: 'center',
       renderCell: (params) => {
-        const fv = (params.row as any).fecha_de_vencimiento ?? params.row.fecha_vencimiento;
-        const key = `${params.row.dni}_${fv ?? 'sin-fecha'}`;
+        const member = params.row as Member;
+        const fv = member.fecha_de_vencimiento ?? member.fecha_vencimiento;
+        const key = `${member.dni}_${fv ?? 'sin-fecha'}`;
         return (
           <RowActions
-            member={params.row}
+            member={member}
             gymName={gymName}
-            plan={byId[String(params.row.plan_id)]}
+            plan={byId[String(member.plan_id)]}
             onEdit={handleEdit}
             onDelete={handleDelete}
             onWaSent={onWaSent}

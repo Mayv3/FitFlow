@@ -49,7 +49,11 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
   const pathname = usePathname();
   const router = useRouter();
 
+  // Arranque de sesion: las cookies solo se pueden leer en el cliente, asi que el
+  // primer render sale sin usuario (loading) y se resuelve al montar. Moverlo al
+  // render romperia la hidratacion y dejaria el estado de auth inconsistente.
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setIsMounted(true);
     const idStr = Cookies.get("id") || "";
     const dni = Cookies.get("dni") || "";

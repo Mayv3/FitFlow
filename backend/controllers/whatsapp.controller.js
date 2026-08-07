@@ -1,6 +1,13 @@
 import { whatsappManager } from '../services/whatsapp/WhatsappManager.js'
-import { procesarRecordatorios, triggerAllGyms } from '../services/whatsapp/reminders.js'
+import {
+  procesarRecordatorios,
+  triggerAllGyms,
+  cancelarEnvio,
+  cancelarTodo,
+  estadoCorridas
+} from '../services/whatsapp/reminders.js'
 import { notifyWaDown } from '../services/whatsapp/notify.js'
+import { waLog } from '../services/whatsapp/logger.js'
 import { supabaseAdmin } from '../config/supabaseClient.js'
 
 function assertGymAccess(req, gymId) {
@@ -50,14 +57,23 @@ export async function getStatus(req, res) {
           .eq('id', 'creds')
           .maybeSingle()
         if (creds) {
+          waLog(gymId, 'Sesión caída pero hay credenciales guardadas — reconecto sin pedir QR', {
+            detalle: { Disparado: 'consulta de estado desde el panel' }
+          })
           whatsappManager.connect(gymId).catch((e) =>
-            console.warn(`[wa ${gymId}] auto-restore failed:`, e.message)
+            waLog(gymId, 'Falló la reconexión automática', {
+              level: 'error',
+              detalle: { Error: e.message }
+            })
           )
           return res.json({ ...current, status: 'connecting' })
         }
       }
     } catch (e) {
-      console.warn(`[wa ${gymId}] auto-restore probe error:`, e.message)
+      waLog(gymId, 'No pude verificar si hay credenciales para reconectar', {
+        level: 'warn',
+        detalle: { Error: e.message }
+      })
     }
   }
 
@@ -186,21 +202,69 @@ export async function postTriggerAllOwner(req, res) {
       sent: r.sent ?? 0,
       errors: r.errors ?? 0,
       skipped: r.skipped ?? 0,
+      cancelled: !!r.cancelled,
+      remaining: r.remaining ?? 0,
       // Solo los errores: el detalle de los enviados ya queda en whatsapp_mensajes.
       failures: (r.results || [])
         .filter((m) => m.status === 'error' || m.status === 'invalid_phone')
         .map((m) => ({ alumno_id: m.alumno_id, error: m.error || m.status })),
     }))
-    console.log(`[wa] envío real disparado por ${req.user?.email || req.user?.id}`)
+    waLog(null, 'Envío real disparado a mano desde el panel', {
+      detalle: {
+        Usuario: req.user?.email || req.user?.id || 'desconocido',
+        Enviados: gyms.reduce((s, g) => s + g.sent, 0),
+        Errores: gyms.reduce((s, g) => s + g.errors, 0)
+      }
+    })
     res.json({
       ok: true,
       total_sent: gyms.reduce((s, g) => s + g.sent, 0),
       total_errors: gyms.reduce((s, g) => s + g.errors, 0),
+      cancelled: gyms.some((g) => g.cancelled),
+      total_remaining: gyms.reduce((s, g) => s + g.remaining, 0),
       gyms,
     })
   } catch (e) {
     res.status(500).json({ error: e.message })
   }
+}
+
+// Frena el envío en curso de UN gym. No deshace lo ya enviado: corta antes del
+// próximo mensaje y despierta la espera entre envíos para que reaccione al toque.
+export async function postCancelGym(req, res) {
+  const { gymId } = req.params
+  if (!assertGymAccess(req, gymId)) return res.status(403).json({ error: 'forbidden' })
+  const quien = req.user?.email || req.user?.id || 'desconocido'
+  const r = cancelarEnvio(gymId, quien)
+  if (!r) return res.status(409).json({ error: 'no_run_in_progress', message: 'No hay ningún envío en curso para este gimnasio.' })
+  res.json({ ok: true, ...r })
+}
+
+// Owner: frena TODAS las corridas activas y evita que arranquen los gimnasios
+// que faltaban en un "enviar a todos".
+export async function postCancelAll(req, res) {
+  const quien = req.user?.email || req.user?.id || 'desconocido'
+  const frenadas = cancelarTodo(quien)
+  res.json({
+    ok: true,
+    cancelled: frenadas.length,
+    total_sent: frenadas.reduce((s, f) => s + f.sent, 0),
+    gyms: frenadas
+  })
+}
+
+// Progreso de lo que está corriendo ahora: el panel lo consulta cada pocos
+// segundos para mostrar "X de Y" y decidir si muestra el botón Cancelar.
+export async function getRuns(req, res) {
+  res.set('Cache-Control', 'no-store')
+  res.json({ ok: true, runs: estadoCorridas() })
+}
+
+export async function getGymRun(req, res) {
+  const { gymId } = req.params
+  if (!assertGymAccess(req, gymId)) return res.status(403).json({ error: 'forbidden' })
+  res.set('Cache-Control', 'no-store')
+  res.json({ ok: true, run: estadoCorridas().find((r) => r.gym_id === gymId) || null })
 }
 
 export async function getDryRunAll(req, res) {

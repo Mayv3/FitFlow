@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef } from "react"
 import {
     Box,
     Stack,
@@ -61,6 +61,14 @@ export function GymThemeEditorSimple({
     const [settings, setSettings] = useState<ThemeSettings>(value ?? DEFAULTS)
     const [loading, setLoading] = useState(false)
 
+    // Ref al ultimo onChange: el padre no lo memoiza, asi que ponerlo en las deps
+    // del efecto de abajo lo haria correr en cada render del padre.
+    const onChangeRef = useRef(onChange)
+    useEffect(() => { onChangeRef.current = onChange }, [onChange])
+
+    // Debe seguir siendo un efecto: ademas de leer sessionStorage (solo cliente)
+    // notifica al padre, y llamar a un callback del padre durante el render no
+    // esta permitido.
     useEffect(() => {
         try {
             const saved = sessionStorage.getItem("gym_settings")
@@ -83,8 +91,12 @@ export function GymThemeEditorSimple({
                             shape: parsed.shape,
                         },
                     }
+                    // Este bloque tiene que quedar en un efecto: lee sessionStorage
+                    // (solo cliente) y ademas notifica al padre, que no se puede
+                    // llamar durante el render.
+                    // eslint-disable-next-line react-hooks/set-state-in-effect
                     setSettings(adapted)
-                    onChange(adapted)
+                    onChangeRef.current(adapted)
                 }
             }
         } catch (e) {

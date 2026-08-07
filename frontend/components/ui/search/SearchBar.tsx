@@ -1,5 +1,5 @@
 'use client';
-import { useEffect, useRef, useState } from 'react';
+import { useRef, useState } from 'react';
 import { TextField, InputAdornment, IconButton, CircularProgress } from '@mui/material';
 import SearchIcon from '@mui/icons-material/Search';
 import CloseIcon from '@mui/icons-material/Close';
@@ -12,14 +12,17 @@ export function SearchBar({
     onSearch,
     placeholder = 'Buscar por DNI, nombre, email o teléfono…',
     isLoading = false,
-    autoFocus = false,
 }: SearchBarProps) {
     const inputRef = useRef<HTMLInputElement>(null);
     const [local, setLocal] = useState(value);
-
-    useEffect(() => {
+    // Resincronizar con la prop durante el render en vez de con un efecto:
+    // es el patron que documenta React para "ajustar estado cuando cambia una
+    // prop" y evita el render extra que provocaba el useEffect.
+    const [valuePrevia, setValuePrevia] = useState(value);
+    if (value !== valuePrevia) {
+        setValuePrevia(value);
         setLocal(value);
-    }, [value]);
+    }
 
     const handleCommit = () => {
         onSearch?.(local.trim());

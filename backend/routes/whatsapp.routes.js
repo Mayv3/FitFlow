@@ -12,6 +12,10 @@ import {
   postTriggerGym,
   postTriggerAll,
   postTriggerAllOwner,
+  postCancelGym,
+  postCancelAll,
+  getRuns,
+  getGymRun,
   getDryRunAll,
   getMensajes,
   getMensajesCalendar,
@@ -30,6 +34,9 @@ router.get('/dry-run-all', verifyToken, requireRole(1), getDryRunAll)
 router.get('/owner/mensajes', verifyToken, requireRole(1), getOwnerMensajes)
 // Owner: envío REAL manual de todos los gyms (el del cron usa CRON_SECRET)
 router.post('/owner/trigger-all', verifyToken, requireRole(1), postTriggerAllOwner)
+// Owner: frenar los envíos en curso y ver el progreso mientras corren.
+router.post('/owner/cancel-all', verifyToken, requireRole(1), postCancelAll)
+router.get('/owner/runs', verifyToken, requireRole(1), getRuns)
 
 // Operaciones por gym (auth requerida)
 router.post('/gyms/:gymId/connect', verifyToken, postConnect)
@@ -42,6 +49,8 @@ router.get('/gyms/:gymId/test-alert', postTestAlert)
 router.post('/gyms/:gymId/test-alert', postTestAlert)
 router.post('/gyms/:gymId/simulate', verifyToken, postSimulate)
 router.post('/gyms/:gymId/trigger', verifyToken, postTriggerGym)
+router.post('/gyms/:gymId/cancel', verifyToken, postCancelGym)
+router.get('/gyms/:gymId/run', verifyToken, getGymRun)
 router.get('/gyms/:gymId/mensajes', verifyToken, getMensajes)
 router.get('/gyms/:gymId/mensajes/calendar', verifyToken, getMensajesCalendar)
 router.get('/gyms/:gymId/config', verifyToken, getConfig)

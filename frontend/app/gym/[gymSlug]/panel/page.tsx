@@ -31,6 +31,15 @@ import AccessTimeIcon from '@mui/icons-material/AccessTime'
 import { notify } from '@/lib/toast'
 import { api } from '@/lib/api'
 import { useDarkMode } from '@/context/DarkModeContext'
+import { Gym } from '@/models/Gym/Gym'
+import {
+    PortalAlumnoInfo,
+    PortalAlumnoSession,
+    PortalPago,
+    PortalServicio,
+    PortalSesion,
+} from '@/models/Portal/PortalAlumno'
+import { getApiErrorMessage } from '@/utils/errors/apiError'
 
 export default function GymPanelPage() {
     const params = useParams()
@@ -39,15 +48,15 @@ export default function GymPanelPage() {
     const theme = useTheme()
     const { isDarkMode, toggleDarkMode } = useDarkMode()
 
-    const [alumno, setAlumno] = useState<any>(null)
+    const [alumno, setAlumno] = useState<PortalAlumnoInfo | null>(null)
     const [gymName, setGymName] = useState<string>('')
     const [gymColor, setGymColor] = useState<string>('#FF6B35')
     const [loading, setLoading] = useState(true)
-    const [selectedPago, setSelectedPago] = useState<any>(null)
+    const [selectedPago, setSelectedPago] = useState<PortalPago | null>(null)
     const [modalOpen, setModalOpen] = useState(false)
-    const [servicios, setServicios] = useState<any[]>([])
-    const [selectedServicio, setSelectedServicio] = useState<any>(null)
-    const [sesiones, setSesiones] = useState<any[]>([])
+    const [servicios, setServicios] = useState<PortalServicio[]>([])
+    const [selectedServicio, setSelectedServicio] = useState<PortalServicio | null>(null)
+    const [sesiones, setSesiones] = useState<PortalSesion[]>([])
     const [servicioModalOpen, setServicioModalOpen] = useState(false)
     const [loadingSesiones, setLoadingSesiones] = useState(false)
     const [reloadingSesiones, setReloadingSesiones] = useState(false)
@@ -58,7 +67,7 @@ export default function GymPanelPage() {
     const [cancelingSession, setCancelingSession] = useState<number | null>(null)
     const planes = alumno?.planes_disponibles || []
     const [planesModalOpen, setPlanesModalOpen] = useState(false)
-    const [loadingPlanes, setLoadingPlanes] = useState(false)
+    const [loadingPlanes] = useState(false)
 
     useEffect(() => {
         const loadData = async () => {
@@ -73,18 +82,16 @@ export default function GymPanelPage() {
             }
 
             try {
-                const alumnoBasic = JSON.parse(storedAlumno)
+                const alumnoBasic: PortalAlumnoSession = JSON.parse(storedAlumno)
 
-                const alumnoResponse = await api.get(
+                const alumnoResponse = await api.get<PortalAlumnoInfo>(
                     `/api/auth/gym-alumno/${gymId}/${alumnoBasic.dni}`
                 )
                 setAlumno(alumnoResponse.data)
 
-                console.log('[Panel] Datos del alumno:', alumnoResponse.data)
-                console.log('[Panel] Clases inscritas:', alumnoResponse.data?.clases_inscritas)
 
                 if (gymId) {
-                    const gymResponse = await api.get(
+                    const gymResponse = await api.get<Gym>(
                         `/api/gyms/${gymId}?include_settings=true`
                     )
                     setGymName(gymResponse.data.name || 'Sin Data')
@@ -92,7 +99,7 @@ export default function GymPanelPage() {
                     const primaryColor = gymResponse.data?.settings?.colors?.primary || '#2196F3'
                     setGymColor(primaryColor)
 
-                    const serviciosResponse = await api.get(
+                    const serviciosResponse = await api.get<PortalServicio[]>(
                         `/api/public/appointments/gym/${gymId}/services`
                     )
                     setServicios(serviciosResponse.data)
@@ -117,13 +124,13 @@ export default function GymPanelPage() {
         router.push(`/gym/${gymSlug}/login`)
     }
 
-    const handleOpenServicio = async (servicio: any) => {
+    const handleOpenServicio = async (servicio: PortalServicio) => {
         setSelectedServicio(servicio)
         setServicioModalOpen(true)
         setLoadingSesiones(true)
 
         try {
-            const response = await api.get(
+            const response = await api.get<PortalSesion[]>(
                 `/api/public/appointments/service/${servicio.id}/sessions`,
                 {
                     params: { alumno_id: datosPersonales?.id }
@@ -165,14 +172,14 @@ export default function GymPanelPage() {
             const gymId = localStorage.getItem('gym_id')
             const storedAlumno = localStorage.getItem('gym_alumno')
             if (gymId && storedAlumno) {
-                const alumnoBasic = JSON.parse(storedAlumno)
-                const alumnoResponse = await api.get(
+                const alumnoBasic: PortalAlumnoSession = JSON.parse(storedAlumno)
+                const alumnoResponse = await api.get<PortalAlumnoInfo>(
                     `/api/auth/gym-alumno/${gymId}/${alumnoBasic.dni}`
                 )
                 setAlumno(alumnoResponse.data)
             }
-        } catch (error: any) {
-            notify.error(error.response?.data?.error || 'Error en la inscripción')
+        } catch (error) {
+            notify.error(getApiErrorMessage(error) || 'Error en la inscripción')
         } finally {
             setEnrollingSession(null)
         }
@@ -194,14 +201,14 @@ export default function GymPanelPage() {
             const gymId = localStorage.getItem('gym_id')
             const storedAlumno = localStorage.getItem('gym_alumno')
             if (gymId && storedAlumno) {
-                const alumnoBasic = JSON.parse(storedAlumno)
-                const alumnoResponse = await api.get(
+                const alumnoBasic: PortalAlumnoSession = JSON.parse(storedAlumno)
+                const alumnoResponse = await api.get<PortalAlumnoInfo>(
                     `/api/auth/gym-alumno/${gymId}/${alumnoBasic.dni}`
                 )
                 setAlumno(alumnoResponse.data)
             }
-        } catch (error: any) {
-            notify.error(error.response?.data?.error || 'Error al cancelar')
+        } catch (error) {
+            notify.error(getApiErrorMessage(error) || 'Error al cancelar')
         } finally {
             setCancelingSession(null)
         }
@@ -212,7 +219,7 @@ export default function GymPanelPage() {
 
         setReloadingSesiones(true)
         try {
-            const response = await api.get(
+            const response = await api.get<PortalSesion[]>(
                 `/api/public/appointments/service/${selectedServicio.id}/sessions`,
                 {
                     params: { alumno_id: datosPersonales?.id }
@@ -250,8 +257,7 @@ export default function GymPanelPage() {
     const membresia = alumno?.membresia
     const clases = alumno?.clases
     const pagos = alumno?.pagos || []
-    const totales = alumno?.totales
-    const clasesInscritas = (alumno?.clases_inscritas || []).sort((a: any, b: any) => {
+    const clasesInscritas = (alumno?.clases_inscritas || []).sort((a, b) => {
         if (!a.proxima_fecha || !b.proxima_fecha) return 0
         return new Date(a.proxima_fecha).getTime() - new Date(b.proxima_fecha).getTime()
     })
@@ -572,7 +578,7 @@ export default function GymPanelPage() {
                             </Typography>
                         ) : (
                             <Stack spacing={1.5}>
-                                {clasesInscritas.map((inscripcion: any) => {
+                                {clasesInscritas.map((inscripcion) => {
                                     const diasSemana = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
                                     
                                     let fechaFormateada = 'Sin fecha';
@@ -670,7 +676,7 @@ export default function GymPanelPage() {
                                 </Typography>
                             </Stack>
                             <Stack spacing={1.5}>
-                                {servicios.map((servicio: any) => (
+                                {servicios.map((servicio) => (
                                     <Box
                                         key={servicio.id}
                                         onClick={() => handleOpenServicio(servicio)}
@@ -763,7 +769,7 @@ export default function GymPanelPage() {
                                 }}
                             >
                                 <Stack spacing={1.5}>
-                                    {pagos.map((pago: any) => (
+                                    {pagos.map((pago) => (
                                         <Box
                                             key={pago.id}
                                             onClick={() => {
@@ -873,7 +879,7 @@ export default function GymPanelPage() {
                             </Typography>
                         ) : (
                             <Stack spacing={2}>
-                                {planes.map((planItem: any) => (
+                                {planes.map((planItem) => (
                                     <Box
                                         key={planItem.id}
                                         sx={{
@@ -1170,7 +1176,7 @@ export default function GymPanelPage() {
                             </Box>
                         ) : (
                             <Stack spacing={2}>
-                                {sesiones.map((sesion: any, index: number) => {
+                                {sesiones.map((sesion, index: number) => {
                                     const diasSemana = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
                                     const diaNombre = diasSemana[sesion.dia_semana] || `Día ${sesion.dia_semana}`;
 

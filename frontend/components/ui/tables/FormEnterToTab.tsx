@@ -32,7 +32,7 @@ export const FormEnterToTab: React.FC<Props> = ({ children, ...formProps }) => {
         el instanceof HTMLButtonElement
 
       if (!isFormControl) return false
-      if ((el as any).disabled) return false
+      if (el.disabled) return false
 
       if (
         el instanceof HTMLButtonElement &&

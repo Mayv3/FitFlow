@@ -3,16 +3,19 @@
 import Image from 'next/image'
 import { Box, Button, Checkbox, Tooltip } from '@mui/material'
 import { FormModal } from '@/components/ui/modals/FormModal'
+import type { Field } from '@/models/Fields/Field'
+import type { FieldLayout } from '@/models/Fields/FieldLayout'
+import type { TurnoFormValues } from '@/models/appointments/Appointment'
 
 interface AppointmentFormModalProps {
   open: boolean
   mode: 'create' | 'edit'
-  fields: any[]
-  initialValues: any
-  layout: any
+  fields: Field[]
+  initialValues: TurnoFormValues
+  layout: Record<string, FieldLayout>
   gymId: string
   onClose: () => void
-  onSubmit: (values: any) => Promise<void>
+  onSubmit: (values: TurnoFormValues) => Promise<void>
   addToCalendar: boolean
   onAddToCalendarChange: (val: boolean) => void
   onDeleteClick: () => void

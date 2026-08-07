@@ -3,7 +3,6 @@ import {
     Dialog,
     DialogTitle,
     DialogContent,
-    DialogActions,
     Button,
     List,
     ListItem,
@@ -27,6 +26,9 @@ import BadgeIcon from '@mui/icons-material/Badge'
 import { useMemo, useState } from 'react'
 import { getDiaNombre } from '@/const/inputs/sesiones'
 import { useAlumnosSimpleService } from '@/hooks/alumnos/useAlumnosApi'
+import { Sesion } from '@/models/Sesion/Sesion'
+import { AlumnoSimple } from '@/models/Member/Member'
+import { FlushDialogActions } from '@/components/ui/modals/FlushDialogActions'
 
 // Función para formatear hora a HH:MM
 const formatHora = (hora: string): string => {
@@ -38,7 +40,7 @@ const formatHora = (hora: string): string => {
 interface InscripcionesModalProps {
     open: boolean
     onClose: () => void
-    sesion: any
+    sesion: Sesion
     gymId: string
     onInscribir: (alumnoId: number) => void
     onDesinscribir: (alumnoId: number) => void
@@ -52,12 +54,12 @@ export function InscripcionesModal({
     onInscribir,
     onDesinscribir,
 }: InscripcionesModalProps) {
-    const [selectedAlumno, setSelectedAlumno] = useState<any | null>(null)
+    const [selectedAlumno, setSelectedAlumno] = useState<AlumnoSimple | null>(null)
     const { data: alumnos = [] } = useAlumnosSimpleService(gymId)
 
-    const alumnosInscritos = sesion.alumnos_inscritos || []
+    const alumnosInscritos = useMemo(() => sesion.alumnos_inscritos || [], [sesion])
     const alumnosDisponibles = useMemo(
-        () => alumnos.filter((a: any) => !alumnosInscritos.some((ai: any) => ai.id === a.id)),
+        () => alumnos.filter((a) => !alumnosInscritos.some((ai) => ai.id === a.id)),
         [alumnos, alumnosInscritos]
     )
 
@@ -78,6 +80,7 @@ export function InscripcionesModal({
                 '& .MuiDialog-paper': {
                     m: { xs: 1, sm: 2 },
                     maxHeight: { xs: '95vh', sm: '90vh' },
+                    overflow: 'hidden',
                 },
             }}
         >
@@ -113,7 +116,7 @@ export function InscripcionesModal({
                             size="small"
                             fullWidth
                             options={alumnosDisponibles}
-                            getOptionLabel={(option: any) => `${option.nombre} (DNI: ${option.dni})`}
+                            getOptionLabel={(option) => `${option.nombre} (DNI: ${option.dni})`}
                             value={selectedAlumno}
                             onChange={(_, newValue) => setSelectedAlumno(newValue)}
                             renderInput={(params) => (
@@ -176,7 +179,7 @@ export function InscripcionesModal({
                             }}
                         >
                             <List sx={{ p: 0 }}>
-                                {alumnosInscritos.map((alumno: any, index: number) => (
+                                {alumnosInscritos.map((alumno) => (
                                     alumno ? (
                                         <Paper
                                             key={alumno.id}
@@ -280,9 +283,7 @@ export function InscripcionesModal({
                     )}
                 </Box>
             </DialogContent>
-            <DialogActions>
-                <Button onClick={onClose} variant="outlined">Cerrar</Button>
-            </DialogActions>
+            <FlushDialogActions actions={[{ label: 'Cerrar', onClick: onClose, tone: 'neutral' }]} />
         </Dialog>
     )
 }

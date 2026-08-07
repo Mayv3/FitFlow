@@ -1,6 +1,6 @@
 'use client'
 import { useQuery, useMutation, useQueryClient, keepPreviousData } from '@tanstack/react-query'
-import { Plan } from '@/models/Plan/Plan'
+import { Plan, PlanPayload } from '@/models/Plan/Plan'
 import { api } from '@/lib/api'
 
 const planesKey = (gymId: string) => ['planes-precios', gymId] as const
@@ -9,7 +9,8 @@ export const usePlanesPrecios = (gymId?: string, q = '') => {
   const query = useQuery({
     queryKey: ['planes-precios', gymId, q],
     enabled: !!gymId,
-    staleTime: 1000 * 60 * 5,
+    staleTime: 0,
+    refetchOnMount: 'always',
     placeholderData: keepPreviousData,
     queryFn: async (): Promise<{ items: Plan[]; total: number }> => {
       const { data } = await api.get(`/api/planes`, { params: { q } })
@@ -45,7 +46,7 @@ export const usePlanesPrecios = (gymId?: string, q = '') => {
 export const useAddPlan = (gymId: string) => {
   const qc = useQueryClient()
   return useMutation({
-    mutationFn: async (values: any) => {
+    mutationFn: async (values: PlanPayload & { gym_id: string }) => {
       const { data } = await api.post(
         `/api/planes`,
         values
@@ -61,7 +62,7 @@ export const useAddPlan = (gymId: string) => {
 export const useEditPlan = (gymId: string) => {
   const qc = useQueryClient()
   return useMutation({
-    mutationFn: async ({ id, values }: { id: number; values: any }) => {
+    mutationFn: async ({ id, values }: { id: number; values: Plan }) => {
       const { data } = await api.put(
         `/api/planes/${id}`,
         values

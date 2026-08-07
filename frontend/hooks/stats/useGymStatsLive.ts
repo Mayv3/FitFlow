@@ -1,25 +1,44 @@
 import { useEffect } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { getSocket } from '@/lib/socket';
+import { GymStats } from '@/models/Stats/GymStats';
+import { PlanItem } from '@/models/Stats/PlanItem';
+import { Member } from '@/models/Member/Member';
+
+/**
+ * Fila de alumno tal como vive en la cache de ['members']. El backend manda
+ * `plan_id`, pero los payloads de socket viejos usaban `planId`: el hook lee
+ * ambos, asi que el tipo admite los dos.
+ */
+type CachedMember = Member & { planId?: number | null };
+
+type MembersPage = { items: CachedMember[]; total: number };
+
+type MemberUpdatedEvent = {
+  dni: string;
+  member?: { planNombre?: string | null; plan?: { nombre?: string | null } | null } | null;
+  prev?: { planId?: number | null; activo?: boolean };
+  next?: { planId?: number | null; activo?: boolean };
+};
 
 export function useGymStatsLive(gymId?: string) {
   const qc = useQueryClient();
 
 
-  const decPlan = (dist: any[], planId?: number | null) => {
+  const decPlan = (dist: PlanItem[], planId?: number | null): PlanItem[] => {
     if (planId == null) return dist ?? [];
     const idNum = Number(planId);
     return (dist ?? [])
-      .map((x: any) => Number(x.id) === idNum ? { ...x, valor: (x.valor ?? 0) - 1 } : x)
-      .filter((x: any) => (x.valor ?? 0) > 0);
+      .map(x => Number(x.id) === idNum ? { ...x, valor: (x.valor ?? 0) - 1 } : x)
+      .filter(x => (x.valor ?? 0) > 0);
   };
 
-  const incPlan = (dist: any[], planId?: number | null, label?: string) => {
+  const incPlan = (dist: PlanItem[], planId?: number | null, label?: string): PlanItem[] => {
     if (planId == null) return dist ?? [];
     const idNum = Number(planId);
-    const idx = (dist ?? []).findIndex((x: any) => Number(x.id) === idNum);
+    const idx = (dist ?? []).findIndex(x => Number(x.id) === idNum);
     if (idx >= 0) {
-      return dist.map((x: any, i: number) =>
+      return dist.map((x, i) =>
         i === idx ? { ...x, valor: (x.valor ?? 0) + 1 } : x
       );
     }
@@ -30,9 +49,8 @@ export function useGymStatsLive(gymId?: string) {
     if (!gymId) return;
     const socket = getSocket();
 
-    socket.on('attendance:created', (data) => {
-      console.log('📡 Evento recibido: attendance:created', data);
-      qc.setQueryData(['stats', gymId], (prev: any) => {
+    socket.on('attendance:created', () => {
+      qc.setQueryData<GymStats>(['stats', gymId], prev => {
         if (!prev) return prev;
         return {
           ...prev,
@@ -42,7 +60,7 @@ export function useGymStatsLive(gymId?: string) {
     });
 
     socket.on('member:created', (p: { activo?: boolean; planId?: number | null }) => {
-      qc.setQueryData(['stats', gymId], (prev: any) => {
+      qc.setQueryData<GymStats>(['stats', gymId], prev => {
         if (!prev) return prev;
 
         const total = (prev.totalMembers ?? 0) + 1;
@@ -54,16 +72,17 @@ export function useGymStatsLive(gymId?: string) {
 
         let plansDistribution = prev.plansDistribution ?? [];
         if (p.planId) {
+          const planId = p.planId;
           let found = false;
-          plansDistribution = plansDistribution.map((item: any) => {
-            if (item.id === p.planId) {
+          plansDistribution = plansDistribution.map(item => {
+            if (item.id === planId) {
               found = true;
               return { ...item, valor: (item.valor ?? 0) + 1 };
             }
             return item;
           });
           if (!found) {
-            plansDistribution = [...plansDistribution, { id: p.planId, Plan: String(p.planId), valor: 1 }];
+            plansDistribution = [...plansDistribution, { id: planId, Plan: String(planId), valor: 1 }];
           }
         }
 
@@ -71,43 +90,27 @@ export function useGymStatsLive(gymId?: string) {
       });
     });
 
-    socket.on('member:updated', (evt: {
-      dni: string;
-      member: any;
-      prev?: { planId?: number | null; activo?: boolean };
-      next?: { planId?: number | null; activo?: boolean };
-    }) => {
-      qc.setQueryData(['stats', gymId], (prevStats: any) => {
+    socket.on('member:updated', (evt: MemberUpdatedEvent) => {
+      qc.setQueryData<GymStats>(['stats', gymId], prevStats => {
         if (!prevStats) return prevStats;
 
-        const dist: any[] = Array.isArray(prevStats.plansDistribution)
-          ? prevStats.plansDistribution.map((x: any) => ({ ...x }))
+        const dist: PlanItem[] = Array.isArray(prevStats.plansDistribution)
+          ? prevStats.plansDistribution.map(x => ({ ...x }))
           : [];
 
-        const findPlanName = (id: number | null | undefined) => {
-          if (id == null) return 'No tiene plan';
-          const it = dist.find((p) => Number(p.id) === Number(id));
-          return it?.Plan ?? String(id);
-        };
-
-        let prevPlanId = evt.prev?.planId;
+        // `plan_id` de la cache puede venir como string, de ahi la union.
+        let prevPlanId: number | string | null | undefined = evt.prev?.planId;
         const nextPlanId = evt.next?.planId ?? null;
 
         if (prevPlanId === undefined) {
-          const memberQueries = qc.getQueriesData<{ items: any[] }>({ queryKey: ['members', gymId] });
-          let m: any;
+          const memberQueries = qc.getQueriesData<MembersPage>({ queryKey: ['members', gymId] });
+          let m: CachedMember | undefined;
           for (const [, d] of memberQueries) {
-            m = d?.items?.find((x: any) => x?.dni === evt.dni);
+            m = d?.items?.find(x => x?.dni === evt.dni);
             if (m) break;
           }
           prevPlanId = m?.plan_id ?? m?.planId ?? null;
         }
-
-        console.log(
-          '📊 Cambio de plan:',
-          'Anterior →', prevPlanId, `(${findPlanName(prevPlanId as any)})`,
-          '| Nuevo →', nextPlanId, `(${findPlanName(nextPlanId as any)})`
-        );
 
         let plansDistribution = dist;
 
@@ -147,17 +150,16 @@ export function useGymStatsLive(gymId?: string) {
     });
 
     const clamp0 = (n: number) => Math.max(0, n);
-    const sumDist = (dist: any[]) =>
-      (dist ?? []).reduce((acc, it) => acc + (it?.valor ?? it?.value ?? it?.count ?? 0), 0);
+    const sumDist = (dist: PlanItem[]) =>
+      (dist ?? []).reduce((acc, it) => acc + (it?.valor ?? 0), 0);
 
     socket.on('member:deleted', (evt: {
       dni: string;
       alumno_id: number;
       prev?: { planId?: number | null; activo?: boolean };
     }) => {
-      console.log('🗑️ member:deleted', evt);
 
-      qc.setQueryData(['stats', gymId], (prev: any) => {
+      qc.setQueryData<GymStats>(['stats', gymId], prev => {
         if (!prev) return prev;
 
         const totalMembers = clamp0((prev.totalMembers ?? 0) - 1);
@@ -165,19 +167,19 @@ export function useGymStatsLive(gymId?: string) {
         let activeMembers = prev.activeMembers ?? 0;
         if (evt.prev?.activo === true) activeMembers = clamp0(activeMembers - 1);
 
-        let plansDistribution: any[] = Array.isArray(prev.plansDistribution)
-          ? prev.plansDistribution.map((x: any) => ({ ...x }))
+        let plansDistribution: PlanItem[] = Array.isArray(prev.plansDistribution)
+          ? prev.plansDistribution.map(x => ({ ...x }))
           : [];
 
         if (evt.prev?.planId != null) {
           const planIdNum = Number(evt.prev.planId);
           plansDistribution = plansDistribution
-            .map((x: any) =>
+            .map(x =>
               Number(x.id) === planIdNum
                 ? { ...x, valor: clamp0((x.valor ?? 0) - 1) }
                 : x
             )
-            .filter((x: any) => (x.valor ?? 0) > 0);
+            .filter(x => (x.valor ?? 0) > 0);
         }
 
         const withPlanCount = sumDist(plansDistribution);
@@ -186,11 +188,11 @@ export function useGymStatsLive(gymId?: string) {
         return { ...prev, totalMembers, activeMembers, plansDistribution, withPlanPct };
       });
 
-      const memberQueries = qc.getQueriesData<{ items: any[]; total: number }>({ queryKey: ['members', gymId] });
+      const memberQueries = qc.getQueriesData<MembersPage>({ queryKey: ['members', gymId] });
       memberQueries.forEach(([key, prevData]) => {
         if (!prevData) return;
         const items = Array.isArray(prevData.items) ? prevData.items : [];
-        const nextItems = items.filter((m: any) => m?.dni !== evt.dni);
+        const nextItems = items.filter(m => m?.dni !== evt.dni);
         qc.setQueryData(key, {
           ...prevData,
           items: nextItems,

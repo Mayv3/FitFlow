@@ -1,6 +1,7 @@
 "use client"
 
-import { useEffect, useMemo, useState } from "react"
+import { useMemo, useState } from "react"
+import { useQuery } from "@tanstack/react-query"
 import {
     Box,
     Paper,
@@ -52,33 +53,24 @@ export function WhatsappHistory({ gymId }: { gymId: string }) {
     const today = new Date()
     const [year, setYear] = useState(today.getFullYear())
     const [month, setMonth] = useState(today.getMonth())
-    const [byDay, setByDay] = useState<Record<string, number>>({})
-    const [loading, setLoading] = useState(true)
     const [selectedDay, setSelectedDay] = useState<{ y: number; m: number; d: number } | null>(null)
     const [dayMsgs, setDayMsgs] = useState<Mensaje[] | null>(null)
     const [loadingDay, setLoadingDay] = useState(false)
 
-    useEffect(() => {
-        if (!gymId) return
-        loadCalendar()
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [gymId, year, month])
-
-    async function loadCalendar() {
-        setLoading(true)
-        try {
+    // useQuery en vez de useEffect + estado manual: se refetchea solo al cambiar
+    // gymId/year/month y cachea cada mes ya visitado.
+    const { data: byDay = {}, isFetching: loading } = useQuery({
+        queryKey: ["whatsappCalendar", gymId, year, month],
+        enabled: Boolean(gymId),
+        queryFn: async (): Promise<Record<string, number>> => {
             const from = new Date(year, month, 1, 0, 0, 0).toISOString()
             const to = new Date(year, month + 1, 1, 0, 0, 0).toISOString()
             const { data } = await api.get(`/api/whatsapp/gyms/${gymId}/mensajes/calendar`, {
                 params: { from, to },
             })
-            setByDay((prev) => ({ ...prev, ...(data.byDay || {}) }))
-        } catch {
-            // keep previous data
-        } finally {
-            setLoading(false)
-        }
-    }
+            return data.byDay || {}
+        },
+    })
 
     async function selectDay(y: number, m: number, d: number) {
         setSelectedDay({ y, m, d })

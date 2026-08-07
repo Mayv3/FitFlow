@@ -1,0 +1,51 @@
+name: Frontend Quality
+
+# Gate de calidad del frontend: typecheck + lint + tests unitarios.
+# Corre en push/PR solo cuando cambia algo dentro de frontend/.
+#
+# Estado: typecheck y lint en 0 errores. Quedan ~520 warnings (any,
+# unused-vars, exhaustive-deps) que no bloquean. Ver Fase 4 del plan.
+
+on:
+  push:
+    branches: [main, master]
+    paths: ['frontend/**', '.github/workflows/frontend-quality.yml']
+  pull_request:
+    paths: ['frontend/**', '.github/workflows/frontend-quality.yml']
+  workflow_dispatch: {}
+
+concurrency:
+  group: frontend-quality-${{ github.ref }}
+  cancel-in-progress: true
+
+defaults:
+  run:
+    working-directory: frontend
+
+jobs:
+  quality:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install
+        run: npm ci --no-audit --no-fund
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Lint
+        # Los warnings (any, unused-vars, exhaustive-deps) no rompen; los errores si.
+        run: npm run lint
+        if: always()
+
+      - name: Tests
+        run: npm test -- --ci
+        if: always()

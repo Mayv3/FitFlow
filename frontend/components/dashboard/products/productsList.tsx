@@ -1,6 +1,6 @@
 'use client'
 
-import { Box, Button, Stack, CircularProgress, Typography } from '@mui/material'
+import { Box, Button, Stack, Typography } from '@mui/material'
 import AddIcon from '@mui/icons-material/Add'
 import { useCallback, useMemo, useState } from 'react'
 import { debounce } from '@/utils/debounce/debounce'
@@ -20,14 +20,15 @@ import {
 import { GenericModal } from '@/components/ui/modals/GenericModal'
 import { notify } from '@/lib/toast'
 import tableSize from '@/const/tables/tableSize'
+import { Product, ProductPayload } from '@/models/Product/Product'
 
 export default function ProductsList() {
-  const { user, loading: userLoading } = useUser()
+  const { user } = useUser()
   const gymId = user?.gym_id ?? ''
 
   const [openAdd, setOpenAdd] = useState(false)
   const [openEdit, setOpenEdit] = useState(false)
-  const [editingProduct, setEditingProduct] = useState<any | null>(null)
+  const [editingProduct, setEditingProduct] = useState<Product | null>(null)
   const [openDelete, setOpenDelete] = useState(false)
   const [deletingId, setDeletingId] = useState<string | null>(null)
 
@@ -36,7 +37,6 @@ export default function ProductsList() {
 
   const {
     data,
-    isLoading,
     isFetching,
   } = useProducts(gymId, page, tableSize, q)
 
@@ -57,7 +57,7 @@ export default function ProductsList() {
     []
   )
 
-  const handleAddProduct = async (values: any) => {
+  const handleAddProduct = async (values: ProductPayload) => {
     try {
       await addProduct.mutateAsync({ ...values, gym_id: gymId })
       setOpenAdd(false)
@@ -68,7 +68,7 @@ export default function ProductsList() {
     }
   }
 
-  const handleOpenEdit = useCallback((product: any) => {
+  const handleOpenEdit = useCallback((product: Product) => {
     setEditingProduct(product)
     setOpenEdit(true)
   }, [])
@@ -78,7 +78,7 @@ export default function ProductsList() {
     setEditingProduct(null)
   }, [])
 
-  const handleEditProduct = async (values: any) => {
+  const handleEditProduct = async (values: Product) => {
     try {
       const id = editingProduct?.id
       if (!id) throw new Error('No hay id para editar el producto')

@@ -1,4 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
+import { FacturacionPunto } from "@/models/Stats/Facturacion";
 
 export type RangoFacturacion = "12m" | "30d" | "7w" | "24h";
 
@@ -37,7 +38,7 @@ export function useFacturacionChart(
                 throw new Error(`Error Facturación: ${res.status}`);
             }
 
-            return res.json();
+            return res.json() as Promise<{ items: FacturacionPunto[] }>;
         },
         staleTime: 2 * 60 * 1000,
     });

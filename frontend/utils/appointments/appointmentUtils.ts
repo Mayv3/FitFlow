@@ -1,3 +1,5 @@
+import type { TurnoFormValues } from '@/models/appointments/Appointment'
+
 export function toLocalInputValue(date: Date | string | null): string {
   if (!date) return ''
   const d = new Date(date)
@@ -17,7 +19,7 @@ export function toLocalISOString(date: Date): string {
   return tzDate.toISOString().slice(0, 16)
 }
 
-export function generarLinkGoogleCalendar(turno: any): string {
+export function generarLinkGoogleCalendar(turno: TurnoFormValues): string {
   if (!turno?.inicio_at || !turno?.titulo) return ''
   const inicio = new Date(turno.inicio_at)
   if (isNaN(inicio.getTime())) return ''

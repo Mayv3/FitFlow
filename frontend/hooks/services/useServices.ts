@@ -1,3 +1,4 @@
+import { Service, ServicePayload } from '@/models/Services/Service';
 import { useQuery, useMutation, useQueryClient, keepPreviousData } from '@tanstack/react-query';
 import axios from 'axios';
 import Cookies from 'js-cookie';
@@ -11,16 +12,6 @@ axiosInstance.interceptors.request.use((config) => {
   if (token) config.headers.Authorization = `Bearer ${token}`;
   return config;
 });
-
-type Service = {
-  id: string;
-  nombre: string;
-  descripcion?: string;
-  duracion_minutos?: number;
-  precio?: number;
-  color?: string;
-  gym_id: string;
-};
 
 type GetServicesResponse<T = Service> = {
   items: T[];
@@ -51,11 +42,11 @@ export function useServices(gymId: string, page = 1, limit = 20, q = '') {
 export function useAddService(gymId: string) {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async (values: Partial<Service>) => {
+    mutationFn: async (values: ServicePayload & { gym_id: string }) => {
       const { data } = await axiosInstance.post('/api/servicios', values);
       return data as Service;
     },
-    onSuccess: (nuevo) => {
+    onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['services', gymId] });
     },
   });
@@ -68,7 +59,7 @@ export function useEditService(gymId: string) {
       const { data } = await axiosInstance.put(`/api/servicios/${id}`, values);
       return data as Service;
     },
-    onSuccess: (updated) => {
+    onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['services', gymId] });
     },
   });

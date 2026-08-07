@@ -1,42 +1,36 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { getApiErrorMessage } from '@/utils/errors/apiError'
 import { api } from '@/lib/api'
 import { notify } from '@/lib/toast'
 
-interface GymPlan {
-  id: number
-  name: string
-  max_alumnos: number
+/**
+ * Feature flags de un plan. `products` faltaba aca aunque ya existe en la tabla:
+ * ManageGymPlans la escribe y mailing.brevo lee `gym_plans.products`.
+ */
+interface GymPlanFeatures {
   stats: boolean
   classes: boolean
   services: boolean
   appointments: boolean
   portal: boolean
   settings: boolean
+  products: boolean
+}
+
+export interface GymPlan extends GymPlanFeatures {
+  id: number
+  name: string
+  max_alumnos: number
   created_at: string
   updated_at: string
 }
 
-interface CreatePlanData {
+interface CreatePlanData extends GymPlanFeatures {
   name: string
   max_alumnos: number
-  stats: boolean
-  classes: boolean
-  services: boolean
-  appointments: boolean
-  portal: boolean
-  settings: boolean
 }
 
-interface UpdatePlanData {
-  name?: string
-  max_alumnos?: number
-  stats?: boolean
-  classes?: boolean
-  services?: boolean
-  appointments?: boolean
-  portal?: boolean
-  settings?: boolean
-}
+type UpdatePlanData = Partial<CreatePlanData>
 
 // Fetch todos los gym plans
 export const useGymPlans = () => {
@@ -62,8 +56,8 @@ export const useCreateGymPlan = () => {
       queryClient.invalidateQueries({ queryKey: ['gymPlans'] })
       notify.success('Plan creado exitosamente')
     },
-    onError: (error: any) => {
-      notify.error(error.response?.data?.error || 'Error al crear el plan')
+    onError: (error: unknown) => {
+      notify.error(getApiErrorMessage(error) || 'Error al crear el plan')
     },
   })
 }
@@ -81,8 +75,8 @@ export const useUpdateGymPlan = () => {
       queryClient.invalidateQueries({ queryKey: ['gymPlans'] })
       notify.success('Plan actualizado exitosamente')
     },
-    onError: (error: any) => {
-      notify.error(error.response?.data?.error || 'Error al actualizar el plan')
+    onError: (error: unknown) => {
+      notify.error(getApiErrorMessage(error) || 'Error al actualizar el plan')
     },
   })
 }
@@ -99,8 +93,8 @@ export const useDeleteGymPlan = () => {
       queryClient.invalidateQueries({ queryKey: ['gymPlans'] })
       notify.success('Plan eliminado exitosamente')
     },
-    onError: (error: any) => {
-      notify.error(error.response?.data?.error || 'Error al eliminar el plan')
+    onError: (error: unknown) => {
+      notify.error(getApiErrorMessage(error) || 'Error al eliminar el plan')
     },
   })
 }

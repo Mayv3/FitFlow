@@ -1,7 +1,8 @@
 import React from 'react';
-import { Field } from '@/models/Fields/Field';
+import { Field, FieldValue, FormValues } from '@/models/Fields/Field';
+import { FieldLayout } from '@/models/Fields/FieldLayout';
 
-export function validateField(field: Field, val: any): string | null {
+export function validateField(field: Field, val: FieldValue): string | null {
   if (field.required && (val === undefined || val === null || val === '')) {
     return `El campo "${field.label}" es obligatorio.`;
   }
@@ -29,9 +30,9 @@ export function validateField(field: Field, val: any): string | null {
   return null;
 }
 
-export function validateAllFields<T extends Record<string, any>>(
+export function validateAllFields(
   fields: Field[],
-  values: T
+  values: FormValues
 ): string | null {
   for (const field of fields) {
     const msg = validateField(field, values[field.name]);
@@ -42,7 +43,7 @@ export function validateAllFields<T extends Record<string, any>>(
 
 export function getFieldValidationState(
   field: Field,
-  val: any,
+  val: FieldValue,
   externalError: string | undefined
 ): { isError: boolean; helperText: string } {
   const trimmedVal = typeof val === 'string' ? val.trim() : val;
@@ -76,7 +77,7 @@ export function getFieldValidationState(
 
 export function computeCellStyle(
   fieldName: string,
-  layout: Record<string, any>,
+  layout: Record<string, FieldLayout>,
   isMdUp: boolean,
   metodo: string,
   origen?: string

@@ -1,5 +1,6 @@
 import { initAuthCreds, BufferJSON, proto } from '@whiskeysockets/baileys'
 import { supabaseAdmin } from '../../config/supabaseClient.js'
+import { waLog } from './logger.js'
 
 const TABLE = 'whatsapp_session'
 
@@ -15,14 +16,20 @@ async function readRow(gymId, id) {
     .eq('id', id)
     .maybeSingle()
   if (error) {
-    console.warn(`[wa-auth ${gymId}] read ${id} error:`, error.message)
+    waLog(gymId, `No pude leer "${id}" de la sesión guardada`, {
+      level: 'warn',
+      detalle: { Error: error.message, 'Qué implica': 'Se arranca con credenciales nuevas y va a pedir QR.' }
+    })
     return null
   }
   if (!data?.data?.value) return null
   try {
     return JSON.parse(data.data.value, BufferJSON.reviver)
   } catch (e) {
-    console.warn(`[wa-auth ${gymId}] parse ${id} error:`, e.message)
+    waLog(gymId, `La fila "${id}" de la sesión está corrupta`, {
+      level: 'error',
+      detalle: { Error: e.message, 'Qué implica': 'Se ignora esa fila; si es "creds", va a pedir QR.' }
+    })
     return null
   }
 }
@@ -32,7 +39,17 @@ async function writeRow(gymId, id, value) {
   const { error } = await supabaseAdmin
     .from(TABLE)
     .upsert({ gym_id: gymId, id, data: payload }, { onConflict: 'gym_id,id' })
-  if (error) console.warn(`[wa-auth ${gymId}] write ${id} error:`, error.message)
+  if (error) {
+    waLog(gymId, `No pude guardar "${id}" en la sesión`, {
+      level: 'error',
+      detalle: {
+        Error: error.message,
+        'Qué implica': id === 'creds'
+          ? 'Si el server se reinicia, la sesión se pierde y hay que re-escanear el QR.'
+          : 'Pueden fallar mensajes cifrados con esa clave.'
+      }
+    })
+  }
 }
 
 function chunk(arr, size) {
@@ -51,7 +68,12 @@ async function writeMany(gymId, rows) {
     const { error } = await supabaseAdmin
       .from(TABLE)
       .upsert(part, { onConflict: 'gym_id,id' })
-    if (error) console.warn(`[wa-auth ${gymId}] writeMany error:`, error.message)
+    if (error) {
+      waLog(gymId, `No pude guardar un lote de ${part.length} claves de sesión`, {
+        level: 'error',
+        detalle: { Error: error.message, 'Qué implica': 'Puede fallar el cifrado de mensajes con esos contactos.' }
+      })
+    }
   }
 }
 
@@ -62,7 +84,12 @@ async function deleteMany(gymId, ids) {
       .delete()
       .eq('gym_id', gymId)
       .in('id', part)
-    if (error) console.warn(`[wa-auth ${gymId}] deleteMany error:`, error.message)
+    if (error) {
+      waLog(gymId, `No pude borrar un lote de ${part.length} claves viejas de sesión`, {
+        level: 'warn',
+        detalle: { Error: error.message, 'Qué implica': 'Solo deja filas de más en la tabla.' }
+      })
+    }
   }
 }
 
@@ -74,7 +101,10 @@ async function readManyKeys(gymId, type, ids) {
     .eq('gym_id', gymId)
     .in('id', fullIds)
   if (error) {
-    console.warn(`[wa-auth ${gymId}] readMany ${type} error:`, error.message)
+    waLog(gymId, `No pude leer ${ids.length} claves de tipo "${type}"`, {
+      level: 'warn',
+      detalle: { Error: error.message }
+    })
     return {}
   }
   const out = {}
@@ -144,9 +174,17 @@ export async function deleteSession(gymId, { reason } = {}) {
   if (!DELETE_REASONS.has(reason)) {
     throw new Error(`Refusing to delete WhatsApp session: invalid reason "${reason}"`)
   }
-  const { error } = await supabaseAdmin
+  const { error, count } = await supabaseAdmin
     .from(TABLE)
-    .delete()
+    .delete({ count: 'exact' })
     .eq('gym_id', gymId)
   if (error) throw error
+  waLog(gymId, 'Sesión de WhatsApp borrada de la base', {
+    level: 'warn',
+    detalle: {
+      Motivo: reason,
+      'Filas borradas': count ?? '?',
+      'Qué hacer': 'Escanear un QR nuevo desde el panel del gym para volver a enviar.'
+    }
+  })
 }

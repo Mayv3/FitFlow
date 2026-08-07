@@ -1,6 +1,9 @@
 'use client';
 
-import { useState, useMemo, useEffect } from 'react';
+import { useState } from 'react';
+import { getApiErrorStatus } from '@/utils/errors/apiError';
+import type { Theme } from '@mui/material/styles';
+import { useGymThemeSettings } from '@/hooks/useGymThemeSettings';
 import {
     Box,
     Typography,
@@ -20,7 +23,6 @@ import {
     DialogContent,
     IconButton,
 } from '@mui/material';
-import Grid from '@mui/material/Grid';
 import CloseIcon from '@mui/icons-material/Close';
 import { useNovedadesPaginadas } from '@/hooks/novedades/useNovedadesApi';
 import AnnouncementIcon from '@mui/icons-material/Announcement';
@@ -33,15 +35,7 @@ import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { useDarkMode } from '@/context/DarkModeContext';
 
-interface Novedad {
-    id: number;
-    titulo: string;
-    descripcion?: string;
-    tipo: 'novedad' | 'feature' | 'promocion' | 'evento' | 'error' | 'fix';
-    activo: boolean;
-    fecha_publicacion: string;
-    imagen_url?: string;
-}
+import type { Novedad } from '@/models/Novedad';
 
 const getTipoIcon = (tipo: string) => {
     const icons = {
@@ -67,7 +61,7 @@ const getTipoLabel = (tipo: string) => {
     return labels[tipo as keyof typeof labels] || tipo;
 };
 
-const getTipoColor = (tipo: string, theme: any) => {
+const getTipoColor = (tipo: string, theme: Theme) => {
     const colors = {
         novedad: theme.palette.info.main,
         feature: theme.palette.secondary.main,
@@ -101,26 +95,13 @@ function markAsRead(id: number) {
 export default function NovedadesList() {
     const theme = useTheme();
     const { isDarkMode } = useDarkMode();
-    const [gymPrimaryColor, setGymPrimaryColor] = useState<string | null>(null);
+    // Reutiliza el hook de tema en vez de releer y parsear gym_settings a mano.
+    const { primaryColor: gymPrimaryColor } = useGymThemeSettings();
     const [openModal, setOpenModal] = useState(false);
     const [selectedNovedad, setSelectedNovedad] = useState<Novedad | null>(null);
     const [page, setPage] = useState(1);
     const [acumuladas, setAcumuladas] = useState<Novedad[]>([]);
     const [readIds, setReadIds] = useState<Set<number>>(getReadIds);
-
-    useEffect(() => {
-        if (typeof window !== 'undefined') {
-            const raw = sessionStorage.getItem('gym_settings');
-            if (raw) {
-                try {
-                    const settings = JSON.parse(raw);
-                    if (settings?.colors?.primary) {
-                        setGymPrimaryColor(settings.colors.primary);
-                    }
-                } catch { }
-            }
-        }
-    }, []);
 
     const PAGE_SIZE = 4;
     const { data, isLoading, isError, error, isFetching } = useNovedadesPaginadas(page, PAGE_SIZE);
@@ -128,15 +109,16 @@ export default function NovedadesList() {
     const total = data?.total ?? 0;
     const hayMas = acumuladas.length < total;
 
-    useEffect(() => {
-        if (!data?.items || isFetching) return;
-        setAcumuladas(prev => {
-            const ids = new Set(prev.map(n => n.id));
-            const nuevas = data.items.filter((n: Novedad) => !ids.has(n.id));
-            if (nuevas.length === 0) return prev;
-            return [...prev, ...nuevas];
-        });
-    }, [data, isFetching]);
+    // Acumular las paginas ya cargadas, ajustando durante el render en vez de con
+    // un efecto: cada pagina nueva se agrega en la misma pasada en que llega, sin
+    // el render intermedio en que la lista todavia no la incluia.
+    const [dataAcumulada, setDataAcumulada] = useState(data);
+    if (data?.items && !isFetching && data !== dataAcumulada) {
+        setDataAcumulada(data);
+        const ids = new Set(acumuladas.map(n => n.id));
+        const nuevas = data.items.filter((n: Novedad) => !ids.has(n.id));
+        if (nuevas.length > 0) setAcumuladas([...acumuladas, ...nuevas]);
+    }
 
     const novedadesOrdenadas = acumuladas;
 
@@ -159,7 +141,7 @@ export default function NovedadesList() {
     };
 
     if (isError && acumuladas.length === 0) {
-        const is403 = (error as any)?.response?.status === 403
+        const is403 = getApiErrorStatus(error) === 403
         return (
             <Typography color="error" align="center">
                 {is403
@@ -231,9 +213,18 @@ export default function NovedadesList() {
                             <Card
                                 key={novedad.id}
                                 sx={{
-                                    animation: index >= novedadesOrdenadas.length - PAGE_SIZE
-                                        ? 'fadeSlideIn 0.4s ease forwards'
-                                        : undefined,
+                                    // `animation` estaba declarada dos veces en este mismo sx:
+                                    // la segunda pisaba a la primera y fadeSlideIn nunca corria.
+                                    // Ahora van juntas en la shorthand (animan props distintas:
+                                    // opacity/transform vs box-shadow, no se solapan).
+                                    animation: [
+                                        index >= novedadesOrdenadas.length - PAGE_SIZE
+                                            ? 'fadeSlideIn 0.4s ease forwards'
+                                            : null,
+                                        isUnread ? 'pulseGlow 3s ease-in-out infinite' : null,
+                                    ]
+                                        .filter(Boolean)
+                                        .join(', ') || undefined,
                                     '@keyframes fadeSlideIn': {
                                         from: { opacity: 0, transform: 'translateY(16px)' },
                                         to: { opacity: 1, transform: 'translateY(0)' },
@@ -248,7 +239,6 @@ export default function NovedadesList() {
                                     backgroundColor: isUnread
                                         ? alpha(primaryColor, 0.06)
                                         : isDarkMode ? theme.palette.background.paper : '#fff',
-                                    animation: isUnread ? 'pulseGlow 3s ease-in-out infinite' : undefined,
                                     '@keyframes pulseGlow': {
                                         '0%, 100%': { boxShadow: `0 0 0 0 ${alpha(primaryColor, 0)}` },
                                         '50%': { boxShadow: `0 0 20px 2px ${alpha(primaryColor, 0.15)}` },

@@ -1,6 +1,7 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useState } from "react"
+import { useQuery, useQueryClient } from "@tanstack/react-query"
 import { api } from "@/lib/api"
 import Cookies from "js-cookie"
 import {
@@ -26,6 +27,7 @@ import {
 import DeleteIcon from "@mui/icons-material/Delete"
 import { getInputFieldsGymUsers } from "@/const/inputs/gymUsers"
 import { GenericModal } from "@/components/ui/modals/GenericModal"
+import { getApiErrorMessage } from "@/utils/errors/apiError"
 
 type UserRow = {
     id: number
@@ -41,9 +43,10 @@ const ROLE_OPTIONS = [
     { id: 3, label: "Recepcionista" },
 ]
 
+const usersKey = (gymId: string) => ["gymUsers", gymId] as const
+
 export function MyGymUsers() {
-    const [users, setUsers] = useState<UserRow[]>([])
-    const [loadingUsers, setLoadingUsers] = useState(false)
+    const queryClient = useQueryClient()
     const [error, setError] = useState("")
     const currentUserId = Cookies.get("id") || ""
     const [openDeleteModal, setOpenDeleteModal] = useState(false)
@@ -59,6 +62,21 @@ export function MyGymUsers() {
 
     const [roleId, setRoleId] = useState<number>(3)
     const gymId = Cookies.get("gym_id") || ""
+
+    // useQuery reemplaza al par useState + useEffect de carga. Las mutaciones de
+    // abajo siguen actualizando la lista en el momento, pero via setQueryData.
+    const {
+        data: users = [],
+        isFetching: loadingUsers,
+        refetch: refetchUsers,
+    } = useQuery({
+        queryKey: usersKey(gymId),
+        enabled: Boolean(gymId),
+        queryFn: async (): Promise<UserRow[]> => {
+            const { data } = await api.get(`/api/users?gym_id=${gymId}`)
+            return Array.isArray(data) ? data : data?.items ?? []
+        },
+    })
 
     const handleChange = (fieldName: string, value: string, maxLength?: number) => {
         setFormValues(prev => ({
@@ -76,20 +94,7 @@ export function MyGymUsers() {
         return true
     })
 
-    const fetchUsers = async () => {
-        if (!gymId) return
-        setLoadingUsers(true)
-        setError("")
-        try {
-            const { data } = await api.get(`/api/users?gym_id=${gymId}`)
-            const items: UserRow[] = Array.isArray(data) ? data : data?.items ?? []
-            setUsers(items)
-        } catch (e: any) {
-            setError(e?.response?.data?.error || "No se pudieron cargar los usuarios")
-        } finally {
-            setLoadingUsers(false)
-        }
-    }
+    const fetchUsers = async () => { await refetchUsers() }
 
     const onCreateUser = async () => {
         setError("")
@@ -111,28 +116,30 @@ export function MyGymUsers() {
             )
             await fetchUsers()
             setFormValues({ name: "", dni: "", email: "", password: "" })
-        } catch (e: any) {
-            setError(e?.response?.data?.error || "No se pudo crear el usuario")
+        } catch (e: unknown) {
+            setError(getApiErrorMessage(e) || "No se pudo crear el usuario")
         }
     }
 
     const onChangeRole = async (userId: number, newRoleId: number) => {
         try {
             await api.put(`/api/users/${userId}`, { role_id: newRoleId })
-            setUsers(prev =>
-                prev.map(u => (u.id === userId ? { ...u, role_id: newRoleId } : u))
+            queryClient.setQueryData<UserRow[]>(usersKey(gymId), prev =>
+                (prev ?? []).map(u => (u.id === userId ? { ...u, role_id: newRoleId } : u))
             )
-        } catch (e: any) {
-            setError(e?.response?.data?.error || "No se pudo actualizar el rol")
+        } catch (e: unknown) {
+            setError(getApiErrorMessage(e) || "No se pudo actualizar el rol")
         }
     }
 
     const onDeleteUser = async (userId: number) => {
         try {
             await api.delete(`/api/users/${userId}`)
-            setUsers(prev => prev.filter(u => u.id !== userId))
-        } catch (e: any) {
-            setError(e?.response?.data?.error || "No se pudo eliminar el usuario")
+            queryClient.setQueryData<UserRow[]>(usersKey(gymId), prev =>
+                (prev ?? []).filter(u => u.id !== userId)
+            )
+        } catch (e: unknown) {
+            setError(getApiErrorMessage(e) || "No se pudo eliminar el usuario")
         }
     }
 
@@ -152,10 +159,6 @@ export function MyGymUsers() {
         }
         handleCloseDelete()
     }
-
-    useEffect(() => {
-        fetchUsers()
-    }, [gymId])
 
     return (
         <Paper sx={{ p: 3 }}>

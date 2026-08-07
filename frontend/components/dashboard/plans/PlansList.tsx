@@ -1,7 +1,7 @@
 
 
 'use client'
-import { Box, Button, Stack, CircularProgress, Typography } from '@mui/material'
+import { Box, Button, Stack, Typography } from '@mui/material'
 import AddIcon from '@mui/icons-material/Add'
 import { useCallback, useMemo, useState } from 'react'
 import { debounce } from '@/utils/debounce/debounce'
@@ -20,15 +20,15 @@ import {
 } from '@/hooks/plans/usePlanesPrecios'
 import { GenericModal } from '@/components/ui/modals/GenericModal'
 import { notify } from '@/lib/toast'
-import tableSize from '@/const/tables/tableSize'
+import { Plan, PlanPayload } from '@/models/Plan/Plan'
 
 export default function PlansList() {
-    const { user, loading: userLoading } = useUser()
+    const { user } = useUser()
     const gymId = user?.gym_id ?? ''
 
     const [openAdd, setOpenAdd] = useState(false)
     const [openEdit, setOpenEdit] = useState(false)
-    const [editingPlan, setEditingPlan] = useState<any | null>(null)
+    const [editingPlan, setEditingPlan] = useState<Plan | null>(null)
     const [openDelete, setOpenDelete] = useState(false)
     const [deletingId, setDeletingId] = useState<number | null>(null)
 
@@ -37,7 +37,6 @@ export default function PlansList() {
     const {
         rows: planes,
         total,
-        isLoading,
         isFetching,
     } = usePlanesPrecios(gymId, q)
 
@@ -54,7 +53,7 @@ export default function PlansList() {
         []
     )
 
-    const handleAddPlan = async (values: any) => {
+    const handleAddPlan = async (values: PlanPayload) => {
         try {
             await addPlan.mutateAsync({ ...values, gym_id: gymId })
             setOpenAdd(false)
@@ -65,7 +64,7 @@ export default function PlansList() {
         }
     }
 
-    const handleOpenEdit = useCallback((plan: any) => {
+    const handleOpenEdit = useCallback((plan: Plan) => {
         setEditingPlan(plan)
         setOpenEdit(true)
     }, [])
@@ -75,7 +74,7 @@ export default function PlansList() {
         setEditingPlan(null)
     }
 
-    const handleEditPlan = async (values: any) => {
+    const handleEditPlan = async (values: Plan) => {
         try {
             const id = editingPlan?.id
             if (!id) throw new Error('No hay id para editar el plan')

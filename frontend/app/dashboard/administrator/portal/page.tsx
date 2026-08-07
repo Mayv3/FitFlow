@@ -40,7 +40,6 @@ export default function PortalPage() {
                 const gymName = getCookie('gym_name')
                 const gymColor = getCookie('gym_primary_color')
 
-                console.log('[loadGymInfo] gym_name desde cookies:', gymName)
 
                 if (!gymName) {
                     console.error('[loadGymInfo] No se pudo obtener el nombre del gimnasio')
@@ -49,7 +48,6 @@ export default function PortalPage() {
                     return
                 }
 
-                console.log('[loadGymInfo] Gym name final:', gymName)
                 setGymName(gymName)
 
                 if (gymColor) {
@@ -58,7 +56,6 @@ export default function PortalPage() {
 
                 const slug = slugify(gymName)
                 const url = `${window.location.origin}/gym/${slug}/login`
-                console.log('[loadGymInfo] Portal URL:', url)
                 setPortalUrl(url)
             } catch (error) {
                 console.error('[loadGymInfo] Error:', error)

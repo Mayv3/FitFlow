@@ -1,6 +1,6 @@
-import { Field } from '@/models/Fields/Field';
+import { Field, FieldValue, FormValues } from '@/models/Fields/Field';
 
-export function resolveMetodoPago(raw: any): string {
+export function resolveMetodoPago(raw: FieldValue): string {
   if (raw === 1 || raw === '1' || raw === 'Efectivo') return 'Efectivo';
   if (raw === 2 || raw === '2' || raw === 'Tarjeta') return 'Tarjeta';
   if (raw === 3 || raw === '3' || raw === 'MP') return 'MP';
@@ -43,10 +43,10 @@ export function extractPrecioFromLabel(label: string | undefined, pattern: RegEx
 }
 
 export function applyPrecioToMontos(
-  state: Record<string, any>,
+  state: FormValues,
   precio: number,
   metodo: string
-): Record<string, any> {
+): FormValues {
   if (precio <= 0) return state;
   const next = { ...state };
   if (metodo === 'Efectivo') next['monto_efectivo'] = String(precio);
@@ -61,12 +61,12 @@ export function applyPrecioToMontos(
 }
 
 export function applyPlanChangeEffects(
-  state: Record<string, any>,
+  state: FormValues,
   fields: Field[],
   metodo: string
-): Record<string, any> {
+): FormValues {
   const planField = fields.find(f => f.name === 'plan_id');
-  const selectedPlan = planField?.options?.find(opt => opt.value === state['plan_id']) as any;
+  const selectedPlan = planField?.options?.find(opt => opt.value === state['plan_id']);
   let next = { ...state };
 
   if (selectedPlan) {
@@ -83,10 +83,10 @@ export function applyPlanChangeEffects(
 }
 
 export function applyServicioChangeEffects(
-  state: Record<string, any>,
+  state: FormValues,
   fields: Field[],
   metodo: string
-): Record<string, any> {
+): FormValues {
   const selectedService = fields
     .find(f => f.name === 'servicio_id')
     ?.options?.find(opt => opt.value === state['servicio_id']);
@@ -95,11 +95,11 @@ export function applyServicioChangeEffects(
 }
 
 export function applyProductoChangeEffects(
-  state: Record<string, any>,
+  state: FormValues,
   fields: Field[],
   metodo: string,
   resetCantidad = false
-): Record<string, any> {
+): FormValues {
   const selectedProduct = fields
     .find(f => f.name === 'producto_id')
     ?.options?.find(opt => opt.value === state['producto_id']);
@@ -111,9 +111,9 @@ export function applyProductoChangeEffects(
 }
 
 export function applyMetodoPagoChangeEffects(
-  state: Record<string, any>,
+  state: FormValues,
   newMetodo: string
-): Record<string, any> {
+): FormValues {
   const next = { ...state };
   const total =
     Number(next['monto_efectivo'] || 0) +

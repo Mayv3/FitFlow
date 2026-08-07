@@ -3,8 +3,6 @@ import {
     Dialog,
     DialogTitle,
     DialogContent,
-    DialogActions,
-    Button,
     Box,
     Typography,
     Stack,
@@ -39,12 +37,16 @@ import Tooltip from '@mui/material/Tooltip'
 import { getDiaNombre } from '@/const/inputs/sesiones'
 import { useSesionesByClase } from '@/hooks/sesiones/useSesiones'
 import { InscripcionesModal } from './InscripcionesModal'
+import { FlushDialogActions } from '@/components/ui/modals/FlushDialogActions'
 import {
     useInscribirAlumno,
     useDesinscribirAlumno,
     useToggleEsFija,
 } from '@/hooks/sesiones/useSesiones'
 import { notify } from '@/lib/toast'
+import { Clase } from '@/models/Clase/Clase'
+import { Sesion } from '@/models/Sesion/Sesion'
+import { getApiErrorMessage } from '@/utils/errors/apiError'
 
 const formatHora = (hora: string): string => {
     if (!hora) return ''
@@ -66,14 +68,14 @@ const formatFecha = (fecha: string): string => {
 interface ClaseDetalleModalProps {
     open: boolean
     onClose: () => void
-    clase: any
+    clase: Clase
     gymId: string
 }
 
 export function ClaseDetalleModal({ open, onClose, clase, gymId }: ClaseDetalleModalProps) {
     const [expandedSesion, setExpandedSesion] = useState<number | null>(null)
     const [openInscripciones, setOpenInscripciones] = useState(false)
-    const [selectedSesion, setSelectedSesion] = useState<any | null>(null)
+    const [selectedSesion, setSelectedSesion] = useState<Sesion | null>(null)
 
     const { data: sesiones = [], isLoading, refetch } = useSesionesByClase(clase?.id)
     const inscribirAlumno = useInscribirAlumno(clase?.id)
@@ -87,20 +89,21 @@ export function ClaseDetalleModal({ open, onClose, clase, gymId }: ClaseDetalleM
         }
     }, [open, clase?.id, refetch])
 
-    sesiones.forEach((sesion, index) => {
-        console.log(`[ClaseDetalleModal] Alumnos inscritos en sesión ${index}:`, sesion.alumnos_inscritos)
-    })
-
-    useEffect(() => {
+    // Cuando se recargan las sesiones, reapuntar la seleccionada a la version
+    // nueva. Ajuste durante el render: con useEffect el modal mostraba un frame
+    // con los inscriptos desactualizados.
+    const [sesionesPrevias, setSesionesPrevias] = useState(sesiones)
+    if (sesiones !== sesionesPrevias) {
+        setSesionesPrevias(sesiones)
         if (selectedSesion && sesiones.length > 0) {
             const sesionActualizada = sesiones.find(s => s.id === selectedSesion.id)
             if (sesionActualizada) {
                 setSelectedSesion(sesionActualizada)
             }
         }
-    }, [sesiones])
+    }
 
-    const handleOpenInscripciones = (sesion: any) => {
+    const handleOpenInscripciones = (sesion: Sesion) => {
         setSelectedSesion(sesion)
         setOpenInscripciones(true)
     }
@@ -114,9 +117,9 @@ export function ClaseDetalleModal({ open, onClose, clase, gymId }: ClaseDetalleM
                 gym_id: gymId,
             })
             notify.success('Alumno inscrito correctamente')
-        } catch (error: any) {
+        } catch (error) {
             console.error('Error al inscribir:', error)
-            notify.error(error.response?.data?.error || 'Error al inscribir')
+            notify.error(getApiErrorMessage(error) || 'Error al inscribir')
         }
     }
 
@@ -129,9 +132,9 @@ export function ClaseDetalleModal({ open, onClose, clase, gymId }: ClaseDetalleM
                 gym_id: gymId,
             })
             notify.success('Alumno eliminado correctamente')
-        } catch (error: any) {
+        } catch (error) {
             console.error('Error al eliminar:', error)
-            notify.error(error.response?.data?.error || 'Error al eliminar')
+            notify.error(getApiErrorMessage(error) || 'Error al eliminar')
         }
     }
 
@@ -143,8 +146,8 @@ export function ClaseDetalleModal({ open, onClose, clase, gymId }: ClaseDetalleM
                 gym_id: gymId,
             })
             notify.success('Alumno eliminado correctamente')
-        } catch (error: any) {
-            notify.error(error.response?.data?.error || 'Error al eliminar')
+        } catch (error) {
+            notify.error(getApiErrorMessage(error) || 'Error al eliminar')
         }
     }
 
@@ -157,8 +160,8 @@ export function ClaseDetalleModal({ open, onClose, clase, gymId }: ClaseDetalleM
                 gym_id: gymId,
             })
             notify.success(esFijaActual ? 'Cambiado a temporal' : 'Cambiado a fija')
-        } catch (error: any) {
-            notify.error(error.response?.data?.error || 'Error al cambiar tipo')
+        } catch (error) {
+            notify.error(getApiErrorMessage(error) || 'Error al cambiar tipo')
         }
     }
 
@@ -174,6 +177,7 @@ export function ClaseDetalleModal({ open, onClose, clase, gymId }: ClaseDetalleM
                     '& .MuiDialog-paper': {
                         m: { xs: 1, sm: 2 },
                         maxHeight: { xs: '95vh', sm: '90vh' },
+                        overflow: 'hidden',
                     },
                 }}
             >
@@ -258,7 +262,7 @@ export function ClaseDetalleModal({ open, onClose, clase, gymId }: ClaseDetalleM
                                                             </Typography>
                                                         </Stack>
                                                         <Typography variant="caption" color="text.secondary" sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-                                                            📅 {formatFecha((sesion as any).fecha_proxima)}
+                                                            📅 {formatFecha(sesion.fecha_proxima ?? '')}
                                                         </Typography>
                                                     </Stack>
                                                     <IconButton
@@ -323,7 +327,7 @@ export function ClaseDetalleModal({ open, onClose, clase, gymId }: ClaseDetalleM
                                                                     </Typography>
                                                                 ) : (
                                                                     <List sx={{ p: 0 }}>
-                                                                        {sesion.alumnos_inscritos?.map((alumno: any) => (
+                                                                        {sesion.alumnos_inscritos?.map(alumno => (
                                                                             alumno ? (
                                                                                 <Paper
                                                                                     key={alumno.id}
@@ -346,7 +350,7 @@ export function ClaseDetalleModal({ open, onClose, clase, gymId }: ClaseDetalleM
                                                                                                         color={alumno.es_fija ? 'primary' : 'default'}
                                                                                                         onClick={(e) => {
                                                                                                             e.stopPropagation()
-                                                                                                            handleToggleFija(sesion.id, alumno.id, alumno.es_fija)
+                                                                                                            handleToggleFija(sesion.id, alumno.id, Boolean(alumno.es_fija))
                                                                                                         }}
                                                                                                     >
                                                                                                         {alumno.es_fija
@@ -482,7 +486,7 @@ export function ClaseDetalleModal({ open, onClose, clase, gymId }: ClaseDetalleM
                                                 </TableCell>
                                                 <TableCell>
                                                     <Typography variant="body2">
-                                                        {formatFecha((sesion as any).fecha_proxima)}
+                                                        {formatFecha(sesion.fecha_proxima ?? '')}
                                                     </Typography>
                                                 </TableCell>
                                                 <TableCell>
@@ -565,7 +569,7 @@ export function ClaseDetalleModal({ open, onClose, clase, gymId }: ClaseDetalleM
                                                                     }}
                                                                 >
                                                                     <List sx={{ p: 0 }}>
-                                                                        {sesion.alumnos_inscritos?.map((alumno: any) => (
+                                                                        {sesion.alumnos_inscritos?.map(alumno => (
                                                                             alumno ? (
                                                                                 <Paper
                                                                                     key={alumno.id}
@@ -593,7 +597,7 @@ export function ClaseDetalleModal({ open, onClose, clase, gymId }: ClaseDetalleM
                                                                                                         color={alumno.es_fija ? 'primary' : 'default'}
                                                                                                         onClick={(e) => {
                                                                                                             e.stopPropagation()
-                                                                                                            handleToggleFija(sesion.id, alumno.id, alumno.es_fija)
+                                                                                                            handleToggleFija(sesion.id, alumno.id, Boolean(alumno.es_fija))
                                                                                                         }}
                                                                                                     >
                                                                                                         {alumno.es_fija
@@ -687,9 +691,7 @@ export function ClaseDetalleModal({ open, onClose, clase, gymId }: ClaseDetalleM
                         </>
                     )}
                 </DialogContent>
-                <DialogActions>
-                    <Button onClick={onClose}>Cerrar</Button>
-                </DialogActions>
+                <FlushDialogActions actions={[{ label: 'Cerrar', onClick: onClose, tone: 'neutral' }]} />
             </Dialog>
 
             {openInscripciones && selectedSesion && (

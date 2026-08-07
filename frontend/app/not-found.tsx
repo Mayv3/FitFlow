@@ -1,3 +1,5 @@
+import Link from 'next/link'
+
 export default function NotFound() {
   return (
     <div className="min-h-screen flex flex-col items-center justify-center text-white text-center bg-gradient-to-br from-orange-500 via-orange-600 to-orange-700 px-6">
@@ -8,12 +10,12 @@ export default function NotFound() {
       <p className="text-md mb-6 max-w-md text-orange-100">
         La dirección que ingresaste no existe o fue eliminada. Por favor verificá la URL o volvé a la página principal.
       </p>
-      <a
+      <Link
         href="/"
         className="inline-block px-6 py-3 bg-white text-orange-700 font-bold rounded-lg shadow hover:bg-orange-100 transition"
       >
         Volver al inicio
-      </a>
+      </Link>
     </div>
   )
 }

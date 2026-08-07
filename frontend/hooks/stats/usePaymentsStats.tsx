@@ -1,5 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import { api } from '@/lib/api';
+import { PaymentsStats } from '@/models/Stats/PaymentsStats';
 
 export function usePaymentsStats(
   gymId?: string,
@@ -7,7 +8,7 @@ export function usePaymentsStats(
 ) {
   return useQuery({
     queryKey: ['paymentsStats', gymId, filters?.fromDate ?? null, filters?.toDate ?? null],
-    queryFn: async () => {
+    queryFn: async (): Promise<PaymentsStats | null> => {
       if (!gymId) return null;
       const { data } = await api.get('/api/stats/payments', {
         params: {

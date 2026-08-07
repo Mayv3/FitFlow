@@ -1,7 +1,6 @@
 'use client'
-import { Box, Button, Stack, CircularProgress, Typography, IconButton } from '@mui/material'
+import { Box, Button, Stack, Typography } from '@mui/material'
 import AddIcon from '@mui/icons-material/Add'
-import VisibilityIcon from '@mui/icons-material/Visibility'
 import { useCallback, useMemo, useState } from 'react'
 import { debounce } from '@/utils/debounce/debounce'
 import { CustomBreadcrumbs } from '@/components/ui/breadcrums/CustomBreadcrumbs'
@@ -22,9 +21,11 @@ import { ClaseDetalleModal } from './ClaseDetalleModal'
 import { api } from '@/lib/api'
 import { useQueryClient } from '@tanstack/react-query'
 import tableSize from '@/const/tables/tableSize'
+import { Clase, ClaseConSesiones, ClasePayload } from '@/models/Clase/Clase'
+import { getApiErrorDetail, getApiErrorMessage } from '@/utils/errors/apiError'
 
 export default function ClasesList() {
-    const { user, loading: userLoading } = useUser()
+    const { user } = useUser()
     const gymId = user?.gym_id ?? ''
     const queryClient = useQueryClient()
     
@@ -33,11 +34,11 @@ export default function ClasesList() {
 
     const [openAdd, setOpenAdd] = useState(false)
     const [openEdit, setOpenEdit] = useState(false)
-    const [editingClase, setEditingClase] = useState<any | null>(null)
+    const [editingClase, setEditingClase] = useState<ClaseConSesiones | null>(null)
     const [openDelete, setOpenDelete] = useState(false)
     const [deletingId, setDeletingId] = useState<number | null>(null)
     const [openDetalle, setOpenDetalle] = useState(false)
-    const [claseDetalle, setClaseDetalle] = useState<any | null>(null)
+    const [claseDetalle, setClaseDetalle] = useState<Clase | null>(null)
 
     const [page, setPage] = useState(1)
 
@@ -46,7 +47,6 @@ export default function ClasesList() {
     const {
         rows: clases,
         total,
-        isLoading,
         isFetching,
     } = useClases(gymId, page, tableSize, q)
 
@@ -64,12 +64,12 @@ export default function ClasesList() {
         []
     )
 
-    const handleAddClase = async (values: any) => {
+    const handleAddClase = async (values: ClasePayload) => {
         try {
             const { sesiones, ...claseData } = values
-            
-            // Crear la clase
-            const nuevaClase = await addClase.mutateAsync({ ...claseData, gym_id: gymId })
+
+            // Crear la clase (useAddClase ya agrega gym_id)
+            const nuevaClase = await addClase.mutateAsync(claseData)
 
             // Crear las sesiones
             let fallidas = 0
@@ -81,9 +81,9 @@ export default function ClasesList() {
                             clase_id: nuevaClase.id,
                             gym_id: gymId,
                         })
-                    } catch (err: any) {
+                    } catch (err) {
                         fallidas++
-                        console.error('Error creando sesión:', err.response?.data || err.message)
+                        console.error('Error creando sesión:', getApiErrorDetail(err))
                     }
                 }
                 // Invalidar queries para refrescar
@@ -96,13 +96,13 @@ export default function ClasesList() {
             } else {
                 notify.success('Clase y sesiones creadas correctamente')
             }
-        } catch (error: any) {
+        } catch (error) {
             console.error('Error al añadir clase:', error)
-            notify.error(error.response?.data?.error || 'Error al añadir la clase')
+            notify.error(getApiErrorMessage(error) || 'Error al añadir la clase')
         }
     }
 
-    const handleOpenEdit = useCallback(async (clase: any) => {
+    const handleOpenEdit = useCallback(async (clase: Clase) => {
         try {
             const response = await api.get(`/api/sesiones/clase/${clase.id}`)
             setEditingClase({ ...clase, sesiones: response.data || [] })
@@ -112,33 +112,32 @@ export default function ClasesList() {
             setEditingClase(clase)
             setOpenEdit(true)
         }
-    }, [gymId])
+    }, [])
 
     const handleCloseEdit = () => {
         setOpenEdit(false)
         setEditingClase(null)
     }
 
-    const handleEditClase = async (values: any) => {
+    const handleEditClase = async (values: ClasePayload) => {
         try {
             const { sesiones, ...claseData } = values
             const id = editingClase?.id
             if (!id) throw new Error('No hay id para editar la clase')
-            
+
             // Actualizar la clase
             await editClase.mutateAsync({ id, values: claseData })
 
             // Crear nuevas sesiones (las que tienen ID temporal con Date.now())
             if (sesiones && sesiones.length > 0) {
                 const sesionesBD = editingClase?.sesiones || []
-                const idsSesionesBD = sesionesBD.map((s: any) => s.id)
-                const diasSesionesBD = sesionesBD.map((s: any) => s.dia_semana)
+                const diasSesionesBD = sesionesBD.map(s => s.dia_semana)
 
-                const sesionesNuevas = sesiones.filter((s: any) => {
-                    const esNueva = !idsSesionesBD.includes(s.id)
-                    const diaNoOcupado = !diasSesionesBD.includes(s.dia_semana)
-                    return esNueva && diaNoOcupado
-                })
+                // ClaseFormModal descarta el id al armar el payload, asi que el unico
+                // criterio disponible es el dia: se crean las sesiones de dias libres.
+                const sesionesNuevas = sesiones.filter(
+                    s => !diasSesionesBD.includes(s.dia_semana)
+                )
 
                 for (const sesion of sesionesNuevas) {
                     try {
@@ -147,20 +146,20 @@ export default function ClasesList() {
                             clase_id: id,
                             gym_id: gymId,
                         })
-                    } catch (err: any) {
-                        console.error('[handleEditClase] Error creando sesión:', err.response?.data || err.message)
+                    } catch (err) {
+                        console.error('[handleEditClase] Error creando sesión:', getApiErrorDetail(err))
                     }
                 }
-                
+
                 // Invalidar queries para refrescar
                 queryClient.invalidateQueries({ queryKey: ['sesiones', id] })
             }
-            
+
             handleCloseEdit()
             notify.success('Clase editada correctamente')
-        } catch (error: any) {
+        } catch (error) {
             console.error('Error al editar clase:', error)
-            notify.error(error.response?.data?.error || 'Error al editar la clase')
+            notify.error(getApiErrorMessage(error) || 'Error al editar la clase')
         }
     }
 
@@ -176,13 +175,13 @@ export default function ClasesList() {
             await deleteClase.mutateAsync(deletingId)
             setDeletingId(null)
             notify.success('Clase eliminada correctamente')
-        } catch (error: any) {
+        } catch (error) {
             console.error('Error al eliminar clase:', error)
-            notify.error(error.response?.data?.error || 'Error al eliminar la clase')
+            notify.error(getApiErrorMessage(error) || 'Error al eliminar la clase')
         }
     }
 
-    const handleVerDetalle = useCallback((clase: any) => {
+    const handleVerDetalle = useCallback((clase: Clase) => {
         setClaseDetalle(clase)
         setOpenDetalle(true)
     }, [])

@@ -1,6 +1,7 @@
 "use client"
 
 import { useEffect, useState } from "react"
+import { useQuery } from "@tanstack/react-query"
 import { api } from "@/lib/api"
 import {
   Box,
@@ -23,10 +24,11 @@ import {
   Dialog,
   DialogTitle,
   DialogContent,
-  DialogActions,
 } from "@mui/material"
 import EditIcon from "@mui/icons-material/Edit"
 import DeleteIcon from "@mui/icons-material/Delete"
+import { getApiErrorMessage } from "@/utils/errors/apiError"
+import { FlushDialogActions } from "@/components/ui/modals/FlushDialogActions"
 
 type Gym = { id: string; name: string; logo_url?: string }
 type UserRow = { id: number; name: string; email: string; dni: number; role_id: number; auth_user_id: string }
@@ -38,10 +40,8 @@ const ROLE_OPTIONS = [
 
 export function ManageGymUsers() {
   const [gyms, setGyms] = useState<Gym[]>([])
-  const [gymId, setGymId] = useState<string>("")
-  const [users, setUsers] = useState<UserRow[]>([])
+  const [gymIdElegido, setGymId] = useState<string>("")
   const [loadingGyms, setLoadingGyms] = useState(false)
-  const [loadingUsers, setLoadingUsers] = useState(false)
   const [error, setError] = useState("")
 
   const [name, setName] = useState("")
@@ -55,6 +55,11 @@ export function ManageGymUsers() {
   const [selectedUser, setSelectedUser] = useState<UserRow | null>(null)
   const [editingRoleId, setEditingRoleId] = useState<number>(3)
 
+  // Default derivado durante el render: el primer gimnasio hasta que el usuario
+  // elija otro. Antes se seteaba dentro del efecto de carga, que por eso
+  // dependia de gymId y se recargaba de mas.
+  const gymId = gymIdElegido || gyms[0]?.id || ""
+
   useEffect(() => {
     (async () => {
       setLoadingGyms(true)
@@ -63,33 +68,30 @@ export function ManageGymUsers() {
         const res = await api.get(`/api/gyms`)
         const items: Gym[] = Array.isArray(res.data) ? res.data : (res.data?.items ?? [])
         setGyms(items)
-        if (!gymId && items.length) setGymId(items[0].id)
-      } catch (e: any) {
-        setError(e?.response?.data?.error || "No se pudieron cargar los gimnasios")
+      } catch (e: unknown) {
+        setError(getApiErrorMessage(e) || "No se pudieron cargar los gimnasios")
       } finally {
         setLoadingGyms(false)
       }
     })()
   }, [])
 
-  const fetchUsers = async (gid: string) => {
-    if (!gid) return
-    setLoadingUsers(true)
-    setError("")
-    try {
-      const { data } = await api.get(`/api/users?gym_id=${gid}`)
-      const items: UserRow[] = Array.isArray(data) ? data : (data?.items ?? [])
-      setUsers(items)
-    } catch (e: any) {
-      setError(e?.response?.data?.error || "No se pudieron cargar los usuarios")
-    } finally {
-      setLoadingUsers(false)
-    }
-  }
+  // useQuery en vez de useState + useEffect: se refetchea solo al cambiar gymId
+  // y las mutaciones de abajo lo invalidan con `refetch()`.
+  const {
+    data: users = [],
+    isFetching: loadingUsers,
+    refetch: refetchUsers,
+  } = useQuery({
+    queryKey: ["owner", "gymUsers", gymId],
+    enabled: Boolean(gymId),
+    queryFn: async (): Promise<UserRow[]> => {
+      const { data } = await api.get(`/api/users?gym_id=${gymId}`)
+      return Array.isArray(data) ? data : (data?.items ?? [])
+    },
+  })
 
-  useEffect(() => {
-    if (gymId) fetchUsers(gymId)
-  }, [gymId])
+  const fetchUsers = async (_gid: string) => { await refetchUsers() }
 
   const onCreateUser = async () => {
     setError("")
@@ -107,8 +109,8 @@ export function ManageGymUsers() {
       setDni("")
       setEmail("")
       setPassword("")
-    } catch (e: any) {
-      setError(e?.response?.data?.error || "No se pudo crear el usuario")
+    } catch (e: unknown) {
+      setError(getApiErrorMessage(e) || "No se pudo crear el usuario")
     }
   }
 
@@ -126,8 +128,8 @@ export function ManageGymUsers() {
       await fetchUsers(gymId)
       setEditDialogOpen(false)
       setSelectedUser(null)
-    } catch (e: any) {
-      setError(e?.response?.data?.error || "No se pudo actualizar el rol")
+    } catch (e: unknown) {
+      setError(getApiErrorMessage(e) || "No se pudo actualizar el rol")
     }
   }
 
@@ -144,8 +146,8 @@ export function ManageGymUsers() {
       await fetchUsers(gymId)
       setDeleteDialogOpen(false)
       setSelectedUser(null)
-    } catch (e: any) {
-      setError(e?.response?.data?.error || "No se pudo eliminar el usuario")
+    } catch (e: unknown) {
+      setError(getApiErrorMessage(e) || "No se pudo eliminar el usuario")
     }
   }
 
@@ -266,7 +268,13 @@ export function ManageGymUsers() {
       )}
 
       {/* Dialog Editar Rol */}
-      <Dialog open={editDialogOpen} onClose={() => setEditDialogOpen(false)} maxWidth="xs" fullWidth>
+      <Dialog
+        open={editDialogOpen}
+        onClose={() => setEditDialogOpen(false)}
+        maxWidth="xs"
+        fullWidth
+        PaperProps={{ sx: { overflow: "hidden" } }}
+      >
         <DialogTitle>Editar Rol de Usuario</DialogTitle>
         <DialogContent>
           {selectedUser && (
@@ -293,16 +301,22 @@ export function ManageGymUsers() {
             </Stack>
           )}
         </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setEditDialogOpen(false)}>Cancelar</Button>
-          <Button variant="contained" onClick={handleUpdateRole}>
-            Actualizar
-          </Button>
-        </DialogActions>
+        <FlushDialogActions
+          actions={[
+            { label: "Cancelar", onClick: () => setEditDialogOpen(false), tone: "neutral" },
+            { label: "Actualizar", onClick: handleUpdateRole, tone: "confirm" },
+          ]}
+        />
       </Dialog>
 
       {/* Dialog Confirmar Eliminación */}
-      <Dialog open={deleteDialogOpen} onClose={() => setDeleteDialogOpen(false)} maxWidth="xs" fullWidth>
+      <Dialog
+        open={deleteDialogOpen}
+        onClose={() => setDeleteDialogOpen(false)}
+        maxWidth="xs"
+        fullWidth
+        PaperProps={{ sx: { overflow: "hidden" } }}
+      >
         <DialogTitle>¿Eliminar Usuario?</DialogTitle>
         <DialogContent>
           {selectedUser && (
@@ -313,12 +327,12 @@ export function ManageGymUsers() {
             </Typography>
           )}
         </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setDeleteDialogOpen(false)}>Cancelar</Button>
-          <Button variant="contained" color="error" onClick={handleDeleteUser}>
-            Eliminar
-          </Button>
-        </DialogActions>
+        <FlushDialogActions
+          actions={[
+            { label: "Cancelar", onClick: () => setDeleteDialogOpen(false), tone: "neutral" },
+            { label: "Eliminar", onClick: handleDeleteUser, tone: "danger" },
+          ]}
+        />
       </Dialog>
     </Box>
   )

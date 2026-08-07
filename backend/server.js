@@ -135,7 +135,18 @@ export function emitToGym(gymId, event, payload) {
 
 server.listen(PORT, () => {
   console.log(`Servidor corriendo en http://localhost:${PORT}`);
-  ensureConnectedGyms().catch((e) =>
-    console.warn('[wa boot] ensureConnectedGyms failed:', e.message)
-  );
+
+  // Solo UN proceso puede tener el socket de WhatsApp abierto por gym: dos
+  // procesos con las mismas credenciales (ej. este server local + Render)
+  // provocan un loop de reconexión 440 que tira abajo los envíos reales.
+  // WHATSAPP_WORKER=true va SOLO en Render (o en quien sea la instancia
+  // designada) — nunca en .env.local, así levantar el backend en la
+  // compu no le pelea la sesión al servidor de producción.
+  if (process.env.WHATSAPP_WORKER === 'true') {
+    ensureConnectedGyms().catch((e) =>
+      console.warn('[wa boot] ensureConnectedGyms failed:', e.message)
+    );
+  } else {
+    console.log('[wa boot] WHATSAPP_WORKER != "true" — no conecto WhatsApp desde este proceso.');
+  }
 });

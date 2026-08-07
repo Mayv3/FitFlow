@@ -13,6 +13,7 @@ import {
 import SendIcon from "@mui/icons-material/Send"
 
 import { notify } from "@/lib/toast"
+import { getApiErrorMessage } from "@/utils/errors/apiError"
 
 export default function ForgotPasswordPage() {
   const [email, setEmail] = useState("")
@@ -47,9 +48,9 @@ export default function ForgotPasswordPage() {
           "Si el correo existe, te llegará un link de recuperación"
       )
       setCooldown(30) // ⏳ inicia cooldown de 30s
-    } catch (err: any) {
+    } catch (err: unknown) {
       notify.error(
-        err.response?.data?.error || "Error al enviar el correo de recuperación"
+        getApiErrorMessage(err) || "Error al enviar el correo de recuperación"
       )
     } finally {
       setLoading(false)

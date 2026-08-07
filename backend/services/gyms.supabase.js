@@ -279,10 +279,35 @@ export const getOwnerGymStats = async (gymId, month) => {
 
   const sel = series[N - 1]; // mes seleccionado = último de la serie
 
+  // Planificaciones (planes_precios): detalle + precio promedio, excluyendo el más alto y el más bajo
+  const { data: planesPrecios } = await supabaseAdmin
+    .from('planes_precios')
+    .select('id, nombre, precio')
+    .eq('gym_id', gymId)
+    .is('deleted_at', null)
+    .order('precio', { ascending: true });
+  const items = (planesPrecios || [])
+    .map((p) => ({ id: p.id, nombre: p.nombre, precio: Number(p.precio) || 0 }));
+  const excludedIds = new Set();
+  if (items.length > 2) {
+    excludedIds.add(items[0].id); // más bajo
+    excludedIds.add(items[items.length - 1].id); // más alto
+  }
+  const included = items.filter((p) => !excludedIds.has(p.id));
+  const precioPromedio = included.length
+    ? included.reduce((sum, p) => sum + p.precio, 0) / included.length
+    : 0;
+
   return {
     month: `${y}-${String(m).padStart(2, '0')}`,
     alumnos: { total, activos, vencidos, altas_mes: sel.altas },
     facturacion: { total: sel.facturacion, cantidad: sel.pagos },
+    planes: {
+      total: items.length,
+      items,
+      excluded_ids: Array.from(excludedIds),
+      precio_promedio: precioPromedio,
+    },
     series,
   };
 };

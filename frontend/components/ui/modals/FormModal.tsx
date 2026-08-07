@@ -1,13 +1,14 @@
 import React, { useState, useEffect, useRef } from 'react';
 import {
-  Dialog, DialogTitle, DialogContent, DialogActions,
-  Button, Box, useMediaQuery, CircularProgress,
+  Dialog, DialogTitle, DialogContent,
+  Box, useMediaQuery,
 } from '@mui/material';
 import { useTheme } from '@mui/material/styles';
-import { Field, FormModalProps } from '@/models/Fields/Field';
+import { Field, FieldValue, FormModalProps, FormValues } from '@/models/Fields/Field';
 import { debounce } from '@/utils/debounce/debounce';
 import { notify } from '@/lib/toast';
 import { FormEnterToTab } from "@/components/ui/tables/FormEnterToTab"
+import { FlushDialogActions } from './FlushDialogActions';
 
 import {
   resolveMetodoPago,
@@ -29,7 +30,7 @@ import {
   StandardField,
 } from './formModal.fields';
 
-export const FormModal = <T extends Record<string, any>>({
+export const FormModal = <T extends object>({
   open,
   title,
   fields,
@@ -50,7 +51,7 @@ export const FormModal = <T extends Record<string, any>>({
   extraActions,
   onValuesChange,
 }: FormModalProps<T>) => {
-  const [values, setValues] = useState<T>({} as T);
+  const [values, setValues] = useState<FormValues>({});
   const [externalErrors, setExternalErrors] = useState<Record<string, string | undefined>>({});
   const [searchTerms, setSearchTerms] = useState<Record<string, string>>({});
   const [submitting, setSubmitting] = useState(false);
@@ -58,7 +59,9 @@ export const FormModal = <T extends Record<string, any>>({
   const wasOpenRef = useRef(false);
 
   const metodoSeleccionado = resolveMetodoPago(values['metodo_pago']);
-  const visibleFields = getVisibleFields(fields, values['origen_pago'], metodoSeleccionado);
+  // `origen_pago` es siempre un select de strings; el resto de FieldValue no aplica.
+  const origenPago = typeof values['origen_pago'] === 'string' ? values['origen_pago'] : undefined;
+  const visibleFields = getVisibleFields(fields, origenPago, metodoSeleccionado);
 
   const theme = useTheme();
   const isSmDown = useMediaQuery(theme.breakpoints.down('sm'));
@@ -78,20 +81,22 @@ export const FormModal = <T extends Record<string, any>>({
     }
     if (wasOpenRef.current) return; // already open — don't re-init on field option updates
     wasOpenRef.current = true;
+    // T es la forma que expone el consumidor; adentro el form se maneja indexado por nombre.
+    const initialsByName = (initialValues ?? {}) as FormValues;
     const combined = fields.reduce((acc, f) => {
-      let initial: any;
+      let initial: FieldValue;
       if (f.type === 'select' && Array.isArray(f.options) && f.options.length > 0) {
-        initial = initialValues?.[f.name] ?? '';
+        initial = initialsByName[f.name] ?? '';
       } else {
-        initial = initialValues?.[f.name] ?? f.defaultValue ?? '';
+        initial = initialsByName[f.name] ?? f.defaultValue ?? '';
       }
       if (typeof initial === 'string' && f.maxLength != null) {
         initial = initial.slice(0, f.maxLength);
       }
       acc[f.name] = initial;
       return acc;
-    }, {} as Record<string, any>);
-    setValues(combined as T);
+    }, {} as FormValues);
+    setValues(combined);
     setExternalErrors({});
   }, [open, initialValues, fields]);
 
@@ -108,18 +113,23 @@ export const FormModal = <T extends Record<string, any>>({
     return () => clearTimeout(t);
   }, [open]);
 
+  // Ref al ultimo onValuesChange: si el padre no lo memoiza, ponerlo en deps
+  // haria que el efecto corriera en cada render del padre.
+  const onValuesChangeRef = React.useRef(onValuesChange);
+  useEffect(() => { onValuesChangeRef.current = onValuesChange; }, [onValuesChange]);
+
   useEffect(() => {
-    if (onValuesChange) onValuesChange(values);
+    onValuesChangeRef.current?.(values as unknown as T);
   }, [values]);
 
   const runAsyncValidation = React.useMemo(
     () =>
-      debounce(async (name: string, value: any, allValues: T) => {
+      debounce(async (name: string, value: FieldValue, allValues: FormValues) => {
         const fn = asyncValidators?.[name];
         if (!fn) return;
         const current = String(value);
-        const msg = await fn(value, allValues);
-        if (String((allValues as any)[name]) === current) {
+        const msg = await fn(value, allValues as unknown as T);
+        if (String(allValues[name]) === current) {
           setFieldError(name, msg ?? undefined);
         }
       }, asyncDebounceMs),
@@ -132,9 +142,9 @@ export const FormModal = <T extends Record<string, any>>({
     if (!f) return;
     if (isLockedField(name)) return;
 
-    let newVal: any = value;
-    if (f.regex && !f.regex.test(newVal)) return;
-    if (f.type === 'string' && f.maxLength != null) newVal = newVal.slice(0, f.maxLength);
+    let newVal: FieldValue = value;
+    if (f.regex && !f.regex.test(value)) return;
+    if (f.type === 'string' && f.maxLength != null) newVal = value.slice(0, f.maxLength);
     if (f.type === 'select' && Array.isArray(f.options) && typeof f.options[0]?.value === 'number') {
       newVal = Number(newVal);
     }
@@ -143,21 +153,21 @@ export const FormModal = <T extends Record<string, any>>({
     }
 
     setValues(prev => {
-      let next = { ...prev, [name]: newVal } as Record<string, any>;
+      let next: FormValues = { ...prev, [name]: newVal };
 
-      if (name === 'plan_id') return applyPlanChangeEffects(next, fields, metodoSeleccionado) as T;
-      if (name === 'metodo_pago') return applyMetodoPagoChangeEffects(next, resolveMetodoPago(newVal)) as T;
+      if (name === 'plan_id') return applyPlanChangeEffects(next, fields, metodoSeleccionado);
+      if (name === 'metodo_pago') return applyMetodoPagoChangeEffects(next, resolveMetodoPago(newVal));
 
       if (name === 'servicio_id') next = applyServicioChangeEffects(next, fields, metodoSeleccionado);
       if (name === 'producto_id') next = applyProductoChangeEffects(next, fields, metodoSeleccionado, true);
       if (name === 'cantidad_producto') next = applyProductoChangeEffects(next, fields, metodoSeleccionado, false);
 
-      if (asyncTrigger === 'change') runAsyncValidation(name, newVal, next as T);
-      return next as T;
+      if (asyncTrigger === 'change') runAsyncValidation(name, newVal, next);
+      return next;
     });
   };
 
-  const handleBlur = (name: string, raw: any) => {
+  const handleBlur = (name: string, raw: FieldValue) => {
     if (isLockedField(name)) return;
     const f = fields.find(x => x.name === name);
     f?.onBlur?.(String(raw));
@@ -167,9 +177,9 @@ export const FormModal = <T extends Record<string, any>>({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     const trimmedValues = Object.entries(values).reduce((acc, [key, val]) => {
-      acc[key as keyof T] = typeof val === 'string' ? val.trim() : val;
+      acc[key] = typeof val === 'string' ? val.trim() : val;
       return acc;
-    }, {} as T);
+    }, {} as FormValues);
 
     const fieldError = validateAllFields(fields, trimmedValues);
     if (fieldError) { notify.error(fieldError); return; }
@@ -179,21 +189,21 @@ export const FormModal = <T extends Record<string, any>>({
 
     try {
       setSubmitting(true);
-      await onSubmit(trimmedValues);
+      await onSubmit(trimmedValues as unknown as T);
     } finally {
       setSubmitting(false);
     }
   };
 
-  const isEmpty = (f: Field, v: any) =>
-    v === undefined || v === null || (typeof v === 'string' ? v.trim() === '' : v === '');
+  const isEmpty = (v: FieldValue) =>
+    v === undefined || v === null || (typeof v === 'string' && v.trim() === '');
 
   const hasErrors = Object.values(externalErrors).some(Boolean);
-  const hasEmptyRequired = fields.some(f => f.required && isEmpty(f, values[f.name]));
+  const hasEmptyRequired = fields.some(f => f.required && isEmpty(values[f.name]));
 
   const renderField = (field: Field, index: number) => {
     const val = values[field.name] ?? '';
-    const style = computeCellStyle(field.name, layout as Record<string, any>, isMdUp, metodoSeleccionado, values['origen_pago']);
+    const style = computeCellStyle(field.name, layout, isMdUp, metodoSeleccionado, origenPago);
     const locked = isLockedField(field.name);
     const { isError, helperText } = getFieldValidationState(field, val, externalErrors[field.name]);
 
@@ -234,7 +244,7 @@ export const FormModal = <T extends Record<string, any>>({
       fullWidth
       maxWidth={false}
       scroll="paper"
-      PaperProps={{ sx: { width: paperWidth, m: { xs: 2, sm: 3 }, borderRadius: 2 } }}
+      PaperProps={{ sx: { width: paperWidth, m: { xs: 2, sm: 3 }, borderRadius: 2, overflow: 'hidden' } }}
     >
       <FormEnterToTab onSubmit={handleSubmit}>
         <DialogTitle sx={{
@@ -267,28 +277,33 @@ export const FormModal = <T extends Record<string, any>>({
           </Box>
         </DialogContent>
 
-        <DialogActions
-          sx={{
-            position: 'sticky',
-            bottom: 0,
-            zIndex: 1,
-            px: { xs: 2, sm: 3 },
-            py: { xs: 1.5, sm: 2 },
-            gap: 1.5,
-            bgcolor: theme.palette.background.paper,
-            borderTop: `1px solid ${theme.palette.divider}`,
-            flexDirection: { xs: 'column-reverse', sm: 'row' },
-            '& > :is(button, .MuiBox-root)': {
-              width: { xs: '100%', sm: 'auto' },
-            },
-          }}
-        >
-          {extraActions}
-          <Button onClick={onClose} variant="outlined" disabled={submitting}>{cancelText}</Button>
-          <Button type="submit" variant="contained" disabled={hasErrors || hasEmptyRequired || submitting}>
-            {submitting ? <CircularProgress size={22} color="inherit" /> : confirmText}
-          </Button>
-        </DialogActions>
+        <Box sx={{ position: 'sticky', bottom: 0, zIndex: 1, bgcolor: theme.palette.background.paper }}>
+          {extraActions && (
+            <Box
+              sx={{
+                px: { xs: 2, sm: 3 },
+                py: 1.5,
+                display: 'flex',
+                justifyContent: 'flex-end',
+                borderTop: `1px solid ${theme.palette.divider}`,
+              }}
+            >
+              {extraActions}
+            </Box>
+          )}
+          <FlushDialogActions
+            actions={[
+              { label: cancelText, onClick: onClose, disabled: submitting, tone: 'neutral' },
+              {
+                label: confirmText,
+                type: 'submit',
+                tone: 'confirm',
+                disabled: hasErrors || hasEmptyRequired || submitting,
+                loading: submitting,
+              },
+            ]}
+          />
+        </Box>
       </FormEnterToTab>
     </Dialog>
   );

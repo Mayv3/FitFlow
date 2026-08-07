@@ -22,6 +22,7 @@ import BadgeIcon from "@mui/icons-material/Badge"
 import { Visibility, VisibilityOff } from "@mui/icons-material"
 import { useState } from "react"
 import { notify } from "@/lib/toast"
+import { getErrorMessage } from "@/utils/errors/apiError"
 
 export function ProfileSection() {
   const user = {
@@ -80,10 +81,11 @@ export function ProfileSection() {
       notify.success("Contraseña cambiada correctamente")
 
       setTimeout(() => {
+        // eslint-disable-next-line @next/next/no-location-assign-relative-destination -- recarga dura a proposito: limpia el estado de cliente tras cambiar la contrasena.
         window.location.href = "/login"
       }, 1500)
-    } catch (error: any) {
-      notify.error(error.message || "Error al cambiar la contraseña")
+    } catch (error: unknown) {
+      notify.error(getErrorMessage(error) || "Error al cambiar la contraseña")
     } finally {
       setLoadingPass(false)
     }

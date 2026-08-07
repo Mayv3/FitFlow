@@ -1,6 +1,7 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState } from "react"
+import { useQuery, useQueryClient } from "@tanstack/react-query"
 import { api } from "@/lib/api"
 import {
   Box,
@@ -13,7 +14,6 @@ import {
   Select,
   Stack,
   Chip,
-  Divider,
   TextField,
   Table,
   TableHead,
@@ -26,7 +26,6 @@ import {
   Dialog,
   DialogTitle,
   DialogContent,
-  DialogActions,
   List,
   ListItem,
   ListItemText,
@@ -34,18 +33,20 @@ import {
 } from "@mui/material"
 import CheckCircleIcon from "@mui/icons-material/CheckCircle"
 import BusinessIcon from "@mui/icons-material/Business"
-import EditIcon from "@mui/icons-material/Edit"
 import WarningIcon from "@mui/icons-material/Warning"
 import DeleteOutlineIcon from "@mui/icons-material/DeleteOutline"
 import RestoreIcon from "@mui/icons-material/Restore"
 import { useSoftDeleteGym, useDeletedGyms, useRestoreGym } from "@/hooks/gyms/useGyms"
 import { useGymPlans } from "@/hooks/gymPlans/useGymPlans"
+import { useNow } from "@/hooks/useNow"
 import {
   useSuscriptions,
   useCreateSuscription,
   useUpdateSuscription,
   Suscription,
 } from "@/hooks/gymSubscriptions/useSuscriptions"
+import { getApiErrorMessage } from "@/utils/errors/apiError"
+import { FlushDialogActions } from "@/components/ui/modals/FlushDialogActions"
 
 interface Gym {
   id: string
@@ -65,15 +66,14 @@ interface GymPlan {
 }
 
 export function AssignPlanToGym() {
-  const [gyms, setGyms] = useState<Gym[]>([])
+  const now = useNow()
+  const queryClient = useQueryClient()
   const [selectedGymId, setSelectedGymId] = useState("")
   const [selectedPlanId, setSelectedPlanId] = useState<number | null>(null)
   const [startDate, setStartDate] = useState<string>("")
   const [endDate, setEndDate] = useState<string>("")
-  const [loadingGyms, setLoadingGyms] = useState(true)
-  const [error, setError] = useState("")
+  const [errorLocal, setErrorLocal] = useState("")
   const [success, setSuccess] = useState("")
-  const [alumnosCounts, setAlumnosCounts] = useState<Record<string, number>>({})
 
   const [deletedModalOpen, setDeletedModalOpen] = useState(false)
   const [deletingId, setDeletingId] = useState<string | null>(null)
@@ -86,40 +86,47 @@ export function AssignPlanToGym() {
   const { data: deletedGyms = [], isLoading: loadingDeleted } = useDeletedGyms()
   const restoreGym = useRestoreGym()
 
-  const fetchGyms = async () => {
-    try {
+  // Gimnasios y conteos via useQuery: sin efecto de carga y con cache compartida.
+  const {
+    data: gymsData = [],
+    isPending: loadingGyms,
+    error: gymsError,
+    refetch: refetchGyms,
+  } = useQuery({
+    queryKey: ["owner", "gyms", "assignPlan"],
+    queryFn: async (): Promise<Gym[]> => {
       const res = await api.get(`/api/gyms`)
-      setGyms(Array.isArray(res.data) ? res.data : [])
-    } catch (err: any) {
-      setError(err.response?.data?.error || "Error al cargar gimnasios")
-    } finally {
-      setLoadingGyms(false)
-    }
-  }
+      return Array.isArray(res.data) ? res.data : []
+    },
+  })
 
-  // Cargar gimnasios y conteo de alumnos activos
-  useEffect(() => {
+  const { data: alumnosCounts = {} } = useQuery({
+    queryKey: ["owner", "alumnosActiveCount"],
+    // No es critico: si falla, la tabla se muestra sin conteos.
+    queryFn: async (): Promise<Record<string, number>> => {
+      const res = await api.get(`/api/alumnos/active-count`)
+      return res.data ?? {}
+    },
+  })
 
-    const fetchCounts = async () => {
-      try {
-        const res = await api.get(`/api/alumnos/active-count`)
-        setAlumnosCounts(res.data ?? {})
-      } catch {
-        // no crítico, la tabla sigue funcionando sin conteos
-      }
-    }
-
-    fetchGyms()
-    fetchCounts()
-  }, [])
+  const gyms = gymsData
+  // Errores de carga y de las acciones del formulario en una sola variable.
+  const error = errorLocal || (gymsError ? "Error al cargar gimnasios" : "")
+  const setError = setErrorLocal
+  const fetchGyms = async () => { await refetchGyms() }
 
   // Obtener la suscripción activa del gimnasio seleccionado
   const currentSuscription = suscriptions.find(
     (s: Suscription) => s.gym_id === selectedGymId && s.is_active
   )
 
-  // Cuando cambia el gimnasio, actualizar los campos con la suscripción actual
-  useEffect(() => {
+  // Cuando cambia el gimnasio, actualizar los campos con la suscripción actual.
+  // Ajuste durante el render en vez de useEffect: los inputs nunca llegan a
+  // pintarse con los datos del gimnasio anterior.
+  const suscripcionKey = `${selectedGymId}:${currentSuscription?.id ?? ""}`
+  const [suscripcionKeyPrevia, setSuscripcionKeyPrevia] = useState(suscripcionKey)
+  if (suscripcionKey !== suscripcionKeyPrevia) {
+    setSuscripcionKeyPrevia(suscripcionKey)
     if (currentSuscription) {
       setSelectedPlanId(currentSuscription.plan_id)
       setStartDate(currentSuscription.start_at ? currentSuscription.start_at.split("T")[0] : "")
@@ -129,7 +136,7 @@ export function AssignPlanToGym() {
       setStartDate(new Date().toISOString().split("T")[0])
       setEndDate("")
     }
-  }, [selectedGymId, currentSuscription])
+  }
 
   const handleSelectGym = (gymId: string) => {
     setSelectedGymId(gymId)
@@ -141,7 +148,9 @@ export function AssignPlanToGym() {
     setDeletingId(gymId)
     try {
       await softDeleteGym.mutateAsync(gymId)
-      setGyms(prev => prev.filter(g => g.id !== gymId))
+      queryClient.setQueryData<Gym[]>(["owner", "gyms", "assignPlan"], prev =>
+        (prev ?? []).filter(g => g.id !== gymId)
+      )
       if (selectedGymId === gymId) setSelectedGymId("")
     } finally {
       setDeletingId(null)
@@ -181,8 +190,8 @@ export function AssignPlanToGym() {
         })
       }
       setSuccess(currentSuscription ? "Plan actualizado exitosamente" : "Plan asignado exitosamente")
-    } catch (err: any) {
-      setError(err.response?.data?.error || "Error al asignar el plan")
+    } catch (err: unknown) {
+      setError(getApiErrorMessage(err) || "Error al asignar el plan")
     }
   }
 
@@ -196,14 +205,6 @@ export function AssignPlanToGym() {
   }
 
   // Helper para obtener el color del badge según el plan
-  const getPlanBadgeColor = (planName: string | undefined) => {
-    if (!planName) return "default"
-    const name = planName.toLowerCase()
-    if (name.includes("enterprise")) return "secondary" // morado
-    if (name.includes("premium")) return "warning" // amarillo
-    return "primary"
-  }
-
   const getPlanBadgeSx = (planName: string | undefined) => {
     if (!planName) return {}
     const name = planName.toLowerCase()
@@ -235,7 +236,7 @@ export function AssignPlanToGym() {
           Gestión de Suscripciones
         </Typography>
         <Typography color="text.secondary">
-          No hay gimnasios creados aún. Crea uno primero en la pestaña "Gimnasios".
+          No hay gimnasios creados aún. Crea uno primero en la pestaña &quot;Gimnasios&quot;.
         </Typography>
       </Box>
     )
@@ -248,7 +249,7 @@ export function AssignPlanToGym() {
           Gestión de Suscripciones
         </Typography>
         <Typography color="text.secondary">
-          No hay planes de suscripción creados. Crea uno primero en la pestaña "Planes".
+          No hay planes de suscripción creados. Crea uno primero en la pestaña &quot;Planes&quot;.
         </Typography>
       </Box>
     )
@@ -295,9 +296,9 @@ export function AssignPlanToGym() {
               {gyms.map((gym) => {
                 const suscription = getGymSuscription(gym.id)
                 const isSelected = selectedGymId === gym.id
-                const isExpired = suscription?.end_at && new Date(suscription.end_at) < new Date()
+                const isExpired = suscription?.end_at && new Date(suscription.end_at).getTime() < now
                 const isExpiringSoon = !isExpired && suscription?.end_at &&
-                  new Date(suscription.end_at) <= new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)
+                  new Date(suscription.end_at).getTime() <= now + 7 * 24 * 60 * 60 * 1000
 
                 return (
                   <TableRow
@@ -523,7 +524,7 @@ export function AssignPlanToGym() {
       </Box>
 
       {/* Modal de gimnasios eliminados */}
-      <Dialog open={deletedModalOpen} onClose={() => setDeletedModalOpen(false)} maxWidth="sm" fullWidth PaperProps={{ sx: { borderRadius: 2 } }}>
+      <Dialog open={deletedModalOpen} onClose={() => setDeletedModalOpen(false)} maxWidth="sm" fullWidth PaperProps={{ sx: { borderRadius: 2, overflow: "hidden" } }}>
         <DialogTitle sx={{ fontWeight: 700 }}>Gimnasios eliminados</DialogTitle>
         <DialogContent dividers sx={{ p: 0 }}>
           {loadingDeleted ? (
@@ -563,11 +564,7 @@ export function AssignPlanToGym() {
             </List>
           )}
         </DialogContent>
-        <DialogActions sx={{ px: 3, py: 2 }}>
-          <Button onClick={() => setDeletedModalOpen(false)} sx={{ textTransform: "none" }}>
-            Cerrar
-          </Button>
-        </DialogActions>
+        <FlushDialogActions actions={[{ label: "Cerrar", onClick: () => setDeletedModalOpen(false), tone: "neutral" }]} />
       </Dialog>
 
     </Box>

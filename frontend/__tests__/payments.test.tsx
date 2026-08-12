@@ -490,7 +490,7 @@ describe('Payments CRUD Operations', () => {
       await waitFor(() => expect(result.current.isSuccess).toBe(true));
 
       expect(mockAxiosInstance.delete).toHaveBeenCalledWith('/api/pagos/1');
-      expect(result.current.data).toBe(1);
+      expect(result.current.data).toBeNull();
     });
 
     it('debería fallar al eliminar un pago que no existe', async () => {

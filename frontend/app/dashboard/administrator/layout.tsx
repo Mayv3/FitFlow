@@ -7,6 +7,7 @@ import { useAuthRole } from "@/hooks/auth/useAuthRole";
 import { ADMINISTRADOR } from "@/const/roles/roles";
 import { useMediaQuery, useTheme } from '@mui/material';
 import NovedadesModal from "@/components/dashboard/novedades/NovedadesBanner";
+import { WhatsappDisconnectedBanner } from "@/components/dashboard/settings/WhatsappDisconnectedBanner";
 export default function AdminLayout({
   children,
 }: {
@@ -32,6 +33,7 @@ export default function AdminLayout({
         width: isDesktop ? 'auto' : '100%'
       }}>
         <NovedadesModal />
+        <WhatsappDisconnectedBanner />
         {children}
       </main>
     </div>

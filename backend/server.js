@@ -41,6 +41,11 @@ dotenv.config({ path: '.env.local' }); // development (local Supabase)
 
 const app = express();
 
+// Render termina la conexión TLS en su proxy y reenvía la IP del cliente en
+// X-Forwarded-For. Confiar en ese único proxy permite que express-rate-limit
+// identifique correctamente a cada visitante.
+app.set('trust proxy', 1);
+
 const allowedOrigins = [
   "http://localhost:3000",
   "https://fit-flow-rouge.vercel.app",

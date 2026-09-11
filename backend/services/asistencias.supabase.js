@@ -1,6 +1,4 @@
 import { supabase, supabaseAdmin } from '../config/supabaseClient.js'
-import { fechaArgentina, horaArgentina } from '../utilities/moment.js'
-import moment from 'moment-timezone'
 
 export async function getAllAsistencias(gymId) {
   const { data, error } = await supabaseAdmin
@@ -18,102 +16,25 @@ export async function createAsistencia(supa, asistencia, gymId) {
   if (!dniRaw) throw new Error('Falta DNI')
   const dni = String(dniRaw).trim()
 
-  const { data: alumno, error: errAlumno } = await supa
-    .from('alumnos')
-    .select('id, nombre, email, plan_id, clases_realizadas, clases_pagadas, fecha_de_vencimiento, gym_id')
-    .eq('dni', dni)
-    .eq('gym_id', gymId)
-    .maybeSingle()
+  const { data, error } = await supa.rpc('registrar_asistencia', {
+    p_dni: dni,
+    p_gym_id: gymId,
+  })
 
-  if (errAlumno) throw errAlumno
-  if (!alumno) throw new Error(`No existe un alumno con ese DNI en este gimnasio`)
-
-  let planNombre = null
-  if (alumno.plan_id) {
-    const { data: plan } = await supa
-      .from('planes_precios')
-      .select('id, nombre, numero_clases')
-      .eq('id', alumno.plan_id)
-      .maybeSingle()
-    planNombre = plan?.nombre ?? null
-  }
-
-  const { data: asistenciaHoy } = await supa
-    .from('asistencias')
-    .select('id, hora')
-    .eq('alumno_id', alumno.id)
-    .eq('fecha', fechaArgentina())
-    .eq('gym_id', gymId)
-    .maybeSingle()
-  if (asistenciaHoy) {
-    const err = new Error('El alumno ya registró asistencia hoy')
-    err.code = 'ALREADY_CHECKED_IN'
-    err.hora = (asistenciaHoy.hora ?? '').slice(0, 5)
-    err.nombre = alumno.nombre
-    throw err
-  }
-
-  const pag = alumno.clases_pagadas ?? 0
-  const rea = alumno.clases_realizadas ?? 0
-  if (pag > 0 && rea >= pag) {
-    throw new Error('El alumno ya llegó al límite de clases de su plan')
-  }
-
-  if (alumno.fecha_de_vencimiento) {
-    const hoyArg = moment().tz('America/Argentina/Buenos_Aires').format('YYYY-MM-DD')
-    const venc = alumno.fecha_de_vencimiento
-
-    if (venc < hoyArg) {
-      throw new Error(`El alumno tiene el plan vencido (venció el ${venc})`)
+  if (error) {
+    if (error.code === 'GYM02') {
+      let detail = {}
+      try { detail = JSON.parse(error.details) } catch { /* noop */ }
+      const err = new Error('El alumno ya registró asistencia hoy')
+      err.code = 'ALREADY_CHECKED_IN'
+      err.hora = detail.hora
+      err.nombre = detail.nombre
+      throw err
     }
-    if (venc === hoyArg) {
-      throw new Error(`El plan vence hoy (${venc}). No se permite registrar asistencia.`)
-    }
+    throw new Error(error.message)
   }
 
-  const payload = {
-    fecha: fechaArgentina(),
-    hora: horaArgentina(),
-    alumno_id: alumno.id,
-    plan_id: alumno.plan_id,
-    gym_id: gymId,
-  }
-
-  const { data: nueva, error } = await supa
-    .from('asistencias')
-    .insert(payload)
-    .select()
-    .single()
-  if (error) throw error
-
-  await supa.from('alumnos')
-    .update({ clases_realizadas: rea + 1 })
-    .eq('id', alumno.id)
-
-  const realizadas = rea + 1
-  const restantes = Math.max((pag ?? 0) - realizadas, 0)
-  const percent = pag > 0 ? Math.min(Math.round((realizadas * 100) / pag), 100) : 0
-
-  const summary = {
-    alumno: {
-      id: alumno.id,
-      nombre: alumno.nombre ?? '—',
-      email: alumno.email ?? '—',
-      dni,
-    },
-    plan: {
-      id: alumno.plan_id ?? null,
-      nombre: planNombre ?? '—',
-      clases_pagadas: pag,
-      clases_realizadas: realizadas,
-      clases_restantes: restantes,
-      progreso_pct: percent,
-    },
-    vencimiento: alumno.fecha_de_vencimiento ?? null,
-    gym_id: gymId,
-  }
-
-  return { asistencia: nueva, summary }
+  return data
 }
 
 export async function getAsistenciaById(id, gymId) {

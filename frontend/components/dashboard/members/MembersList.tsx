@@ -407,7 +407,7 @@ export default function MembersList() {
         cancelText="Cancelar"
       />
 
-      <MemberStats gymId={gymId} />
+      <MemberStats gymId={gymId} onOpenInactivos={() => setOpenExpired(true)} />
 
       {openAdd && (
         <FormModal

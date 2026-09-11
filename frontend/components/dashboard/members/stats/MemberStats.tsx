@@ -14,7 +14,12 @@ import { useState } from 'react'
 import { AsistenciasHoyModal } from '../../assists/AsistenciasModal'
 import { RenovacionesModal } from './RenovacionesModal'
 
-export const MemberStats = ({ gymId }: { gymId?: string }) => {
+type Props = {
+  gymId?: string;
+  onOpenInactivos?: () => void;
+};
+
+export const MemberStats = ({ gymId, onOpenInactivos }: Props) => {
   const theme = useTheme()
   const iconStyle = { color: theme.palette.primary.main, fontSize: 40 }
   const { data, isLoading } = useGymStats(gymId)
@@ -52,13 +57,26 @@ export const MemberStats = ({ gymId }: { gymId?: string }) => {
       gridTemplateColumns={{ xs: '1fr', sm: 'repeat(2, 1fr)', md: 'repeat(4, 1fr)' }}
       sx={{ height: 'auto', gap: 2 }}
     >
-      <StatCard
-        title="Miembros activos"
-        value={isLoading ? '—' : `${active} / ${total} (${percentActive}%)`}
-        icon={<PeopleIcon sx={iconStyle} />}
-        chart={<ProgressChart percentage={percentActive} />}
-        tooltip="Alumnos con la cuenta sin vencer"
-      />
+      <Box
+        onClick={onOpenInactivos}
+        sx={{
+          cursor: onOpenInactivos ? 'pointer' : 'default',
+          borderRadius: 2,
+          transition: 'transform .15s ease, box-shadow .15s ease',
+          '&:hover': onOpenInactivos ? {
+            transform: 'translateY(-2px)',
+            boxShadow: 3,
+          } : undefined,
+        }}
+      >
+        <StatCard
+          title="Miembros activos"
+          value={isLoading ? '—' : `${active} / ${total} (${percentActive}%)`}
+          icon={<PeopleIcon sx={iconStyle} />}
+          chart={<ProgressChart percentage={percentActive} />}
+          tooltip="Alumnos con la cuenta sin vencer. Click para ver los que no están activos"
+        />
+      </Box>
 
       <Box
         onClick={handleOpenAsistencias}

@@ -35,7 +35,9 @@ jobs:
         run: |
           STAMP=$(date -u +%Y-%m-%d_%H%M)
           echo "STAMP=$STAMP" >> "$GITHUB_ENV"
-          pg_dump "$DB_URL" --no-owner --no-acl -Fc -f "fitflow-$STAMP.dump"
+          # El runner trae pg_dump 16 preinstalado y adelante en el PATH;
+          # invocamos el binario 17 por ruta para no depender de cual gane.
+          /usr/lib/postgresql/17/bin/pg_dump "$DB_URL" --no-owner --no-acl -Fc -f "fitflow-$STAMP.dump"
           ls -lh "fitflow-$STAMP.dump"
 
       - name: Encrypt (AES256)

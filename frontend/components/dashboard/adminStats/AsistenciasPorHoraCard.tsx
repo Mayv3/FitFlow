@@ -91,6 +91,35 @@ export function AsistenciasHoyPorHoraCard({ fecha }: Props) {
       cantidad: d.total,
     })) ?? [];
 
+  // El Area y la Line comparten dataKey="cantidad" (la primera es solo el
+  // relleno decorativo debajo de la línea) — el tooltip por defecto de
+  // recharts suma una fila por cada serie, así que sin este content
+  // custom se ve la cantidad duplicada.
+  const renderTooltip = ({ active, payload, label }: any) => {
+    if (!active || !payload || payload.length === 0) return null;
+    const cantidad = payload[0]?.value ?? 0;
+
+    return (
+      <Box
+        sx={{
+          borderRadius: '12px',
+          border: `1px solid ${alpha(t.palette.text.primary, 0.08)}`,
+          boxShadow: t.shadows[3],
+          bgcolor: t.palette.mode === 'dark' ? '#1a1a1a' : t.palette.background.paper,
+          px: 1.5,
+          py: 1,
+        }}
+      >
+        <Typography variant="caption" fontWeight={600} color="text.primary">
+          {label} hs
+        </Typography>
+        <Typography variant="body2" color="text.secondary">
+          Asistencias: {cantidad}
+        </Typography>
+      </Box>
+    );
+  };
+
   const totales = data?.total ?? 0;
 
   return (
@@ -197,17 +226,7 @@ export function AsistenciasHoyPorHoraCard({ fecha }: Props) {
                     </linearGradient>
                   </defs>
 
-                  <Tooltip
-                    contentStyle={{
-                      borderRadius: 12,
-                      border: `1px solid ${alpha(t.palette.text.primary, 0.08)}`,
-                      boxShadow: t.shadows[3],
-                      backgroundColor: t.palette.mode === 'dark' ? '#1a1a1a' : t.palette.background.paper,
-                      color: t.palette.text.primary,
-                    }}
-                    labelStyle={{ fontWeight: 600, color: t.palette.text.primary }}
-                    itemStyle={{ color: t.palette.text.secondary }}
-                  />
+                  <Tooltip content={renderTooltip} />
 
                   <Area
                     type="monotone"

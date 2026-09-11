@@ -5,7 +5,8 @@ name: Supabase Daily Backup
 # - pg_dump (formato custom, ya comprimido) -> cifrado GPG AES256 -> guardado como artifact en GitHub.
 # - GitHub guarda cada backup 90 dias y despues lo borra solo.
 #
-# Proyecto: FitFlow  ref=ilxnmxunzpugdredtixa  region=us-east-2  PostgreSQL 15
+# Proyecto: FitFlow (BR)  ref=fosagltpitatuzfbbyxv  region=sa-east-1  PostgreSQL 15
+# Migrado de USA (ref=ilxnmxunzpugdredtixa) el 2026-09-10.
 #
 # Secrets necesarios (Settings -> Secrets and variables -> Actions):
 #   SUPABASE_DB_URL    string de conexion (session pooler, puerto 5432)

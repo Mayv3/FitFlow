@@ -38,24 +38,29 @@ function clearSession() {
  * nuevo o null si no se pudo renovar (sesión vencida de verdad -> hay que
  * volver a loguearse). Las llamadas concurrentes comparten el mismo pedido.
  */
+async function doRefresh(): Promise<string | null> {
+  const refresh_token = Cookies.get('refresh_token')
+  if (!refresh_token) return null
+
+  try {
+    const { data } = await axios.post(REFRESH_URL, { refresh_token })
+    persistSession(data.session)
+    return data.session.access_token as string
+  } catch {
+    clearSession()
+    return null
+  }
+}
+
 export function refreshAccessToken(): Promise<string | null> {
   if (pendingRefresh) return pendingRefresh
 
-  pendingRefresh = (async () => {
-    const refresh_token = Cookies.get('refresh_token')
-    if (!refresh_token) return null
-
-    try {
-      const { data } = await axios.post(REFRESH_URL, { refresh_token })
-      persistSession(data.session)
-      return data.session.access_token as string
-    } catch {
-      clearSession()
-      return null
-    } finally {
-      pendingRefresh = null
-    }
-  })()
+  // .finally() se ejecuta siempre como microtask, incluso si doRefresh()
+  // ya resolvió de forma sincrónica (sin refresh_token) — así se evita que
+  // este reset pise la asignación de abajo y deje pendingRefresh trabado.
+  pendingRefresh = doRefresh().finally(() => {
+    pendingRefresh = null
+  })
 
   return pendingRefresh
 }

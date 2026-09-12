@@ -120,6 +120,16 @@ export async function loginUser({ email, password }) {
   return { session, profile }
 }
 
+export async function refreshTokenService(refresh_token) {
+  const { data, error } = await supabase.auth.refreshSession({ refresh_token })
+
+  if (error || !data.session) {
+    throw new Error("Sesión inválida o vencida. Iniciá sesión de nuevo.")
+  }
+
+  return { session: data.session }
+}
+
 export async function logoutUser() {
   const { error } = await supabase.auth.signOut()
   if (error) throw error

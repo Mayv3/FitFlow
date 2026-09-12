@@ -50,6 +50,7 @@ const LoginPage = () => {
       const { session, profile } = res.data
       Cookies.set("id", String(profile.id))
       Cookies.set("token", session.access_token)
+      Cookies.set("refresh_token", session.refresh_token)
       Cookies.set("dni", String(profile.dni))
       Cookies.set("rol", String(profile.role_id))
       if (profile.gym_id) Cookies.set("gym_id", profile.gym_id)

@@ -1,5 +1,5 @@
 'use client'
-import { createContext, useContext, useEffect, useState, ReactNode } from "react";
+import { createContext, useContext, useEffect, useRef, useState, ReactNode } from "react";
 import Cookies from "js-cookie";
 import UserData from "@/models/User/User";
 import { usePathname, useRouter } from "next/navigation";
@@ -8,6 +8,14 @@ import Typography from "@mui/material/Typography";
 import Button from "@mui/material/Button";
 import { WarningAmber } from "@mui/icons-material";
 import { CircularProgress } from "@mui/material";
+import { getJwtExpiryMs, refreshAccessToken } from "@/lib/auth/tokenRefresh";
+
+// Margen antes del vencimiento para renovar el access_token sin que el
+// usuario llegue a ver un 401/403 en medio de un request.
+const REFRESH_MARGIN_MS = 60_000
+// setTimeout tiene un límite práctico (~24.8 días); nunca deberíamos
+// necesitar esperar tanto para un access_token, pero por las dudas se acota.
+const MAX_TIMEOUT_MS = 24 * 60 * 60 * 1000
 
 async function fetchAndApplyGymSettings(gymId: string) {
   try {
@@ -48,6 +56,37 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
   const [isMounted, setIsMounted] = useState(false);
   const pathname = usePathname();
   const router = useRouter();
+  const refreshTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Renueva el access_token un poco antes de que venza y reprograma el
+  // siguiente refresh en base al token nuevo. Si el refresh falla (refresh_token
+  // también vencido/revocado), no fuerza el logout acá: el próximo request
+  // real va a fallar con 401/403 y ahí se maneja el redirect a /login.
+  useEffect(() => {
+    if (!user) return
+
+    const scheduleRefresh = (token: string) => {
+      const expiryMs = getJwtExpiryMs(token)
+      if (!expiryMs) return
+
+      const delay = Math.min(
+        Math.max(expiryMs - Date.now() - REFRESH_MARGIN_MS, 0),
+        MAX_TIMEOUT_MS
+      )
+
+      refreshTimeoutRef.current = setTimeout(async () => {
+        const newToken = await refreshAccessToken()
+        if (newToken) scheduleRefresh(newToken)
+      }, delay)
+    }
+
+    const currentToken = Cookies.get('token')
+    if (currentToken) scheduleRefresh(currentToken)
+
+    return () => {
+      if (refreshTimeoutRef.current) clearTimeout(refreshTimeoutRef.current)
+    }
+  }, [user]);
 
   // Arranque de sesion: las cookies solo se pueden leer en el cliente, asi que el
   // primer render sale sin usuario (loading) y se resuelve al montar. Moverlo al

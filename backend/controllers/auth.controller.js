@@ -1,4 +1,4 @@
-import { registerUser, loginUser, logoutUser, forgotPasswordService, resetPasswordService } from '../services/auth.supabase.js'
+import { registerUser, loginUser, logoutUser, refreshTokenService, forgotPasswordService, resetPasswordService } from '../services/auth.supabase.js'
 import { supabaseAdmin } from '../config/supabaseClient.js'
 
 export async function handleRegisterUser(req, res) {
@@ -51,6 +51,21 @@ export async function handleLoginUser(req, res) {
     res.json({ session, profile })
   } catch (err) {
     console.error('Error en login:', err)
+    res.status(401).json({ error: err.message })
+  }
+}
+
+export async function handleRefreshToken(req, res) {
+  try {
+    const { refresh_token } = req.body
+    if (!refresh_token) {
+      return res.status(400).json({ error: 'Falta el refresh_token' })
+    }
+
+    const { session } = await refreshTokenService(refresh_token)
+    res.json({ session })
+  } catch (err) {
+    console.error('Error al refrescar token:', err)
     res.status(401).json({ error: err.message })
   }
 }

@@ -51,7 +51,10 @@ function describirEstado(status) {
 function silenciarCierreSesion(metodo) {
   const original = console[metodo]
   console[metodo] = (...args) => {
-    if (typeof args[0] === 'string' && args[0].includes('Closing session')) return
+    if (typeof args[0] === 'string' && (
+      args[0].includes('Closing session') ||
+      args[0].includes('Decrypted message with closed session')
+    )) return
     original(...args)
   }
 }

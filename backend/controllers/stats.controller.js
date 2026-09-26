@@ -3,9 +3,7 @@ import * as cache from '../utilities/cache.js'
 import { fetchAllPaged } from '../utilities/fetchAllPaged.js';
 import { getPaymentsStatsService } from '../services/paymentsStats.supabase.js';
 import {
-  getDashboardData,
   getDashboardDataByYear,
-  getDemografiaStatsService,
   getDemografiaByYear,
   getGymStatsService,
   getPlanesStatsByPeriodo,
@@ -83,29 +81,25 @@ export async function getKpis(req, res) {
 
     const currentYear = new Date().getFullYear();
     const year = req.query.year ? Number(req.query.year) : currentYear;
-    const month = req.query.month ? Number(req.query.month) : null;
+    const requestedMonth = req.query.month ? Number(req.query.month) : null;
+    // Sin mes (o inválido): el mes actual, para que activos/altas/bajas siempre vengan.
+    const month = requestedMonth >= 1 && requestedMonth <= 12 ? requestedMonth : new Date().getMonth() + 1;
 
-    const key = `stats:kpis:${gymId}:${year}:${month ?? 'all'}`
+    const key = `stats:kpis:${gymId}:${year}:${month}`
     const cached = await cache.get(key)
     if (cached) return res.json(cached)
 
-    const dashboardData = !month || year === currentYear
-      ? await getDashboardData({ gymId })
-      : await getDashboardDataByYear({ gymId, year });
-
-    if (month && month >= 1 && month <= 12) {
-      const [activosPorPago, abandonos, altas] = await Promise.all([
-        countActiveMembersByMonthPayment({ gymId, year, month }),
-        countAbandonosByMonth({ gymId, year, month }),
-        countAltasByMonth({ gymId, year, month }),
-      ]);
-      dashboardData.charts = {
-        ...dashboardData.charts,
-        activos: activosPorPago,
-        bajas: abandonos,
-        altas_mes: altas,
-      };
-    }
+    const [dashboardData, activosPorPago, abandonos, altas] = await Promise.all([
+      getDashboardDataByYear({ gymId, year }),
+      countActiveMembersByMonthPayment({ gymId, year, month }),
+      countAbandonosByMonth({ gymId, year, month }),
+      countAltasByMonth({ gymId, year, month }),
+    ]);
+    dashboardData.charts = {
+      activos: activosPorPago,
+      bajas: abandonos,
+      altas_mes: altas,
+    };
 
     await cache.set(key, dashboardData, 600)
     return res.json(dashboardData);
@@ -189,9 +183,7 @@ export async function getDemografiaStatsController(req, res) {
     const cached = await cache.get(key)
     if (cached) return res.json(cached)
 
-    const rawData = year
-      ? await getDemografiaByYear({ gymId, year }) || []
-      : await getDemografiaStatsService({ gymId }) || [];
+    const rawData = await getDemografiaByYear({ gymId, year });
 
     const porSexo = rawData.reduce((acc, item) => {
       const existing = acc.find((s) => s.sexo === item.sexo);

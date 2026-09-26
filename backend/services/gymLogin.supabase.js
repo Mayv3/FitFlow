@@ -1,3 +1,4 @@
+import { fechaArgentina } from '../utilities/moment.js'
 import { supabaseAdmin } from '../config/supabaseClient.js';
 
 export const loginByDniAndGym = async (dni, gymId) => {
@@ -88,6 +89,7 @@ export const getAlumnoCompleteInfo = async (dni, gymId) => {
         id,
         dia_semana,
         hora_inicio,
+        fecha_proxima,
         capacidad,
         clase_id,
         clases (
@@ -160,29 +162,17 @@ export const getAlumnoCompleteInfo = async (dni, gymId) => {
     }
 
     // Filtrar inscripciones fijas vencidas
-    const today = new Date().toISOString().slice(0, 10);
+    const today = fechaArgentina();
     const clasesInscritasActivas = (clasesInscritas || []).filter(inscripcion =>
         !inscripcion.es_fija || (alumno.fecha_de_vencimiento ?? '') >= today
     );
 
     // Formatear las clases inscritas
     const clasesFormateadas = clasesInscritasActivas.map(inscripcion => {
-        // Calcular la próxima fecha de la clase
-        let proxima_fecha = null;
-        if (inscripcion.clases_sesiones?.dia_semana !== null && inscripcion.clases_sesiones?.dia_semana !== undefined) {
-            const hoy = new Date();
-            const diaClase = inscripcion.clases_sesiones.dia_semana;
-            const diaActual = hoy.getDay();
-            
-            let diasHastaClase = diaClase - diaActual;
-            if (diasHastaClase <= 0) {
-                diasHastaClase += 7;
-            }
-            
-            const fechaProxima = new Date(hoy);
-            fechaProxima.setDate(hoy.getDate() + diasHastaClase);
-            proxima_fecha = fechaProxima.toISOString().split('T')[0];
-        }
+        // Próxima fecha de la clase: la mantiene el cron mantenimiento_clases_sesiones
+        // en hora de Argentina (antes se calculaba con el día del servidor, en UTC,
+        // y una clase de hoy que todavía no empezó salía para la semana siguiente).
+        const proxima_fecha = inscripcion.clases_sesiones?.fecha_proxima ?? null;
 
         return {
             id: inscripcion.id,

@@ -1,3 +1,4 @@
+import { fechaArgentina } from '../utilities/moment.js'
 import {
   getAsistenciasPaged,
   createAsistencia,
@@ -76,7 +77,7 @@ export const getAsistenciasByGym = async (req, res) => {
   const { fecha } = req.query;
 
   // si no viene fecha → hoy
-  const fechaFiltro = fecha ?? new Date().toISOString().slice(0, 10);
+  const fechaFiltro = fecha ?? fechaArgentina();
 
   try {
     const key = `asistencias:${gym_id}:fecha:${fechaFiltro}`
@@ -103,7 +104,7 @@ export const getAsistenciasByHora = async (req, res) => {
   const gym_id = req.gymId;
   const { fecha } = req.query;
 
-  const fechaFiltro = fecha ?? new Date().toISOString().slice(0, 10);
+  const fechaFiltro = fecha ?? fechaArgentina();
 
   try {
     const key = `asistencias:${gym_id}:hora:${fechaFiltro}`

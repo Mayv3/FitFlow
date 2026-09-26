@@ -1,3 +1,4 @@
+import { fechaArgentina } from '../utilities/moment.js'
 import { uploadNovedadImageSvc } from '../services/novedades.upload.service.js';
 
 export const getNovedadesSvc = async ({ supa, gymId, page, pageSize, q, tipo, activo }) => {
@@ -124,7 +125,7 @@ export const getNovedadesActivasSvc = async ({ supa, gymId, tipo }) => {
   }
 
   // Filtrar por fecha si hay fecha_fin
-  const today = new Date().toISOString().split('T')[0]
+  const today = fechaArgentina()
   query = query.or(`fecha_fin.is.null,fecha_fin.gte.${today}`)
 
   const { data, error } = await query

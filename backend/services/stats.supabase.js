@@ -377,7 +377,7 @@ function getMonthRange(year, month) {
   return { startDate: start, endDate: end };
 }
 
-const todayStr = () => new Date().toISOString().split('T')[0];
+const todayStr = () => getTodayArgentina();
 
 export async function countAbandonosByMonth({ gymId, year, month }) {
   const { startDate, endDate } = getMonthRange(year, month);

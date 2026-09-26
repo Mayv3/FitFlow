@@ -1,3 +1,4 @@
+import { fechaArgentina } from '../utilities/moment.js'
 import {
   getAlumnoByDNI,
   createAlumno,
@@ -17,7 +18,7 @@ function isActiveByDate(dateLike) {
   if (!dateLike) return false;
 
   const s = typeof dateLike === 'string' ? dateLike.slice(0, 10) : new Date(dateLike).toISOString().slice(0, 10);
-  const today = new Date().toISOString().slice(0, 10);
+  const today = fechaArgentina();
   return s >= today;
 }
 
@@ -59,7 +60,7 @@ export const addAlumno = async (req, res) => {
 
     const nuevo = await createAlumno(payload, req.supa);
 
-    const hoy = new Date().toISOString().slice(0, 10);
+    const hoy = fechaArgentina();
     const activo = !!(nuevo?.fecha_de_vencimiento && nuevo.fecha_de_vencimiento >= hoy);
 
     await cache.delPattern(`alumnos:${nuevo.gym_id}:*`)

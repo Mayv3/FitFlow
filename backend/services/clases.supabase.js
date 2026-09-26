@@ -1,3 +1,4 @@
+import { fechaArgentina } from '../utilities/moment.js'
 import { supabaseAdmin } from '../config/supabaseClient.js';
 
 // El backend es la capa confiable: usa service_role y saltea el RLS (que es un
@@ -50,7 +51,7 @@ export async function getClasesService({ gymId, page, limit, q = '' }) {
       .select('sesion_id, alumno:alumnos(fecha_de_vencimiento)')
       .in('sesion_id', sesionIds)
       .eq('es_fija', true);
-    const today = new Date().toISOString().slice(0, 10);
+    const today = fechaArgentina();
     (inscripciones ?? [])
       .filter(i => (i.alumno?.fecha_de_vencimiento ?? '') >= today)
       .forEach(i => sesionesConFijas.add(i.sesion_id));
@@ -100,7 +101,7 @@ export async function getClaseById(id) {
   if (error) throw error;
   
   if (data && data.sesiones) {
-    const today = new Date().toISOString().slice(0, 10);
+    const today = fechaArgentina();
     const isActive = (i) => !i.es_fija || (i.alumno?.fecha_de_vencimiento ?? '') >= today;
     data.sesiones = data.sesiones
       .filter(s => !s.deleted_at)

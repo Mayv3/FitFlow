@@ -8,6 +8,7 @@ import {
   getGymEmailLogs,
   backfillBrevoLogs
 } from '../services/mailing.brevo.fitnessflow.js'
+import { workerEnvios } from '../services/cola/worker.js'
 
 const router = express.Router()
 
@@ -33,17 +34,20 @@ router.post('/preview-vencimientos', async (req, res) => {
 
 /**
  * POST /api/emails/enviar-vencimientos
- * Envía emails reales a todos los alumnos con planes vencidos
+ * Encola los emails reales de vencimiento (hoy y en 3 días); el worker de la
+ * cola los envía de a uno por segundo. Responde en segundos.
  * Body (opcional): { gymIds: ['gym-id-1', 'gym-id-2'] }
  * CUIDADO: Esto realmente envía correos
  */
 router.post('/enviar-vencimientos', async (req, res) => {
   try {
     const gymIds = (req.body && req.body.gymIds) ? req.body.gymIds : []
-    await enviarEmailsPorVencer({ previewOnly: false, gymIds })
-    res.json({ 
-      success: true, 
-      message: 'Emails enviados correctamente'
+    const resultado = await enviarEmailsPorVencer({ previewOnly: false, gymIds })
+    workerEnvios.revisarAhora()
+    res.json({
+      success: true,
+      message: 'Emails encolados: se envían en segundo plano',
+      data: resultado
     })
   } catch (error) {
     console.error('❌ Error al enviar vencimientos:', error)

@@ -9,6 +9,26 @@ import {
 import { notifyWaDown } from '../services/whatsapp/notify.js'
 import { waLog } from '../services/whatsapp/logger.js'
 import { supabaseAdmin } from '../config/supabaseClient.js'
+import { workerEnvios } from '../services/cola/worker.js'
+
+// Resumen de lo encolado por gym (respuesta de los triggers).
+function resumenEncolado(result) {
+  const gyms = result.map((r) => ({
+    gym_id: r.gym_id,
+    gym_name: r.gym_name ?? null,
+    status: r.status,
+    queued: r.queued ?? 0,
+    skipped: r.skipped ?? 0,
+    errors: r.errors ?? 0,
+    error: r.error,
+  }))
+  return {
+    ok: true,
+    total_queued: gyms.reduce((s, g) => s + g.queued, 0),
+    total_errors: gyms.reduce((s, g) => s + g.errors, 0),
+    gyms,
+  }
+}
 
 function assertGymAccess(req, gymId) {
   const userGym = req.gymId
@@ -165,11 +185,13 @@ export async function postSimulate(req, res) {
   }
 }
 
+// Los triggers ENCOLAN y responden en segundos; el worker de la cola envía.
 export async function postTriggerGym(req, res) {
   const { gymId } = req.params
   if (!assertGymAccess(req, gymId)) return res.status(403).json({ error: 'forbidden' })
   try {
     const result = await procesarRecordatorios(gymId, { simulate: false })
+    workerEnvios.revisarAhora()
     res.json(result)
   } catch (e) {
     res.status(500).json({ error: e.message })
@@ -183,7 +205,8 @@ export async function postTriggerAll(req, res) {
   }
   try {
     const result = await triggerAllGyms({ simulate: false })
-    res.json({ ok: true, gyms: result })
+    workerEnvios.revisarAhora()
+    res.json(resumenEncolado(result))
   } catch (e) {
     res.status(500).json({ error: e.message })
   }
@@ -195,76 +218,75 @@ export async function postTriggerAll(req, res) {
 export async function postTriggerAllOwner(req, res) {
   try {
     const result = await triggerAllGyms({ simulate: false })
-    const gyms = result.map((r) => ({
-      gym_id: r.gym_id,
-      gym_name: r.gym_name ?? null,
-      status: r.status,
-      sent: r.sent ?? 0,
-      errors: r.errors ?? 0,
-      skipped: r.skipped ?? 0,
-      cancelled: !!r.cancelled,
-      remaining: r.remaining ?? 0,
-      // Solo los errores: el detalle de los enviados ya queda en whatsapp_mensajes.
-      failures: (r.results || [])
-        .filter((m) => m.status === 'error' || m.status === 'invalid_phone')
-        .map((m) => ({ alumno_id: m.alumno_id, error: m.error || m.status })),
-    }))
+    workerEnvios.revisarAhora()
+    const resumen = resumenEncolado(result)
     waLog(null, 'Envío real disparado a mano desde el panel', {
       detalle: {
         Usuario: req.user?.email || req.user?.id || 'desconocido',
-        Enviados: gyms.reduce((s, g) => s + g.sent, 0),
-        Errores: gyms.reduce((s, g) => s + g.errors, 0)
+        Encolados: resumen.total_queued,
+        'Teléfonos inválidos': resumen.total_errors || undefined
       }
     })
+    res.json(resumen)
+  } catch (e) {
+    res.status(500).json({ error: e.message })
+  }
+}
+
+// Cancela los pendientes de UN gym. No deshace lo ya enviado; despierta la
+// espera entre envíos para que el worker reaccione al toque.
+export async function postCancelGym(req, res) {
+  const { gymId } = req.params
+  if (!assertGymAccess(req, gymId)) return res.status(403).json({ error: 'forbidden' })
+  const quien = req.user?.email || req.user?.id || 'desconocido'
+  try {
+    const r = await cancelarEnvio(gymId, quien)
+    if (!r) return res.status(409).json({ error: 'no_run_in_progress', message: 'No hay ningún envío pendiente para este gimnasio.' })
+    workerEnvios.despertar(gymId)
+    res.json({ ok: true, ...r })
+  } catch (e) {
+    res.status(500).json({ error: e.message })
+  }
+}
+
+// Owner: cancela TODOS los pendientes de la cola de WhatsApp.
+export async function postCancelAll(req, res) {
+  const quien = req.user?.email || req.user?.id || 'desconocido'
+  try {
+    const frenadas = await cancelarTodo(quien)
+    workerEnvios.despertar()
     res.json({
       ok: true,
-      total_sent: gyms.reduce((s, g) => s + g.sent, 0),
-      total_errors: gyms.reduce((s, g) => s + g.errors, 0),
-      cancelled: gyms.some((g) => g.cancelled),
-      total_remaining: gyms.reduce((s, g) => s + g.remaining, 0),
-      gyms,
+      cancelled: frenadas.length,
+      total_sent: frenadas.reduce((s, f) => s + f.sent, 0),
+      gyms: frenadas
     })
   } catch (e) {
     res.status(500).json({ error: e.message })
   }
 }
 
-// Frena el envío en curso de UN gym. No deshace lo ya enviado: corta antes del
-// próximo mensaje y despierta la espera entre envíos para que reaccione al toque.
-export async function postCancelGym(req, res) {
-  const { gymId } = req.params
-  if (!assertGymAccess(req, gymId)) return res.status(403).json({ error: 'forbidden' })
-  const quien = req.user?.email || req.user?.id || 'desconocido'
-  const r = cancelarEnvio(gymId, quien)
-  if (!r) return res.status(409).json({ error: 'no_run_in_progress', message: 'No hay ningún envío en curso para este gimnasio.' })
-  res.json({ ok: true, ...r })
-}
-
-// Owner: frena TODAS las corridas activas y evita que arranquen los gimnasios
-// que faltaban en un "enviar a todos".
-export async function postCancelAll(req, res) {
-  const quien = req.user?.email || req.user?.id || 'desconocido'
-  const frenadas = cancelarTodo(quien)
-  res.json({
-    ok: true,
-    cancelled: frenadas.length,
-    total_sent: frenadas.reduce((s, f) => s + f.sent, 0),
-    gyms: frenadas
-  })
-}
-
-// Progreso de lo que está corriendo ahora: el panel lo consulta cada pocos
+// Envíos de hoy por gym (leídos de la cola): el panel lo consulta cada pocos
 // segundos para mostrar "X de Y" y decidir si muestra el botón Cancelar.
 export async function getRuns(req, res) {
   res.set('Cache-Control', 'no-store')
-  res.json({ ok: true, runs: estadoCorridas() })
+  try {
+    res.json({ ok: true, runs: await estadoCorridas() })
+  } catch (e) {
+    res.status(500).json({ error: e.message })
+  }
 }
 
 export async function getGymRun(req, res) {
   const { gymId } = req.params
   if (!assertGymAccess(req, gymId)) return res.status(403).json({ error: 'forbidden' })
   res.set('Cache-Control', 'no-store')
-  res.json({ ok: true, run: estadoCorridas().find((r) => r.gym_id === gymId) || null })
+  try {
+    const [run] = await estadoCorridas({ gymId })
+    res.json({ ok: true, run: run || null })
+  } catch (e) {
+    res.status(500).json({ error: e.message })
+  }
 }
 
 export async function getDryRunAll(req, res) {

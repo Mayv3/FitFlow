@@ -57,38 +57,37 @@ interface DryRunResult {
   gyms: DryRunGym[]
 }
 
-interface SendGym {
+// Respuesta de /owner/trigger-all: los mensajes se ENCOLAN y el backend los
+// envía en segundo plano; el avance se sigue con /owner/runs.
+interface QueueGym {
   gym_id: string
   gym_name: string | null
   status: string
-  sent: number
-  errors: number
+  queued: number
   skipped: number
-  cancelled: boolean
-  remaining: number
-  failures: { alumno_id: string; error: string }[]
+  errors: number
+  error?: string
 }
 
-interface SendResult {
+interface QueueResult {
   ok: boolean
-  total_sent: number
+  total_queued: number
   total_errors: number
-  cancelled: boolean
-  total_remaining: number
-  gyms: SendGym[]
+  gyms: QueueGym[]
 }
 
-// Progreso de un envío en curso, que el backend expone en /owner/runs.
+// Envíos de WhatsApp de hoy por gym, leídos de la cola (/owner/runs).
 interface RunProgress {
   gym_id: string
   gym_name: string | null
-  simulate: boolean
   total: number
   sent: number
   errors: number
-  skipped: number
+  cancelados: number
+  vencidos: number
   restantes: number
   cancelada: boolean
+  activo: boolean
   segundos: number
 }
 
@@ -173,17 +172,37 @@ export function WaDryRun() {
   const [error, setError] = useState<string | null>(null)
   const [showJson, setShowJson] = useState(false)
   const [confirmOpen, setConfirmOpen] = useState(false)
-  const [sending, setSending] = useState(false)
-  const [sendResult, setSendResult] = useState<SendResult | null>(null)
+  const [encolando, setEncolando] = useState(false)
+  const [queueResult, setQueueResult] = useState<QueueResult | null>(null)
   const [runs, setRuns] = useState<RunProgress[]>([])
+  // Seguir el progreso mientras haya algún gym con mensajes pendientes.
+  const [siguiendo, setSiguiendo] = useState(false)
   const [cancelling, setCancelling] = useState(false)
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null)
 
-  // Mientras el envío está en curso, el request de /owner/trigger-all queda
-  // abierto (una corrida de 150 alumnos tarda ~20 min). El progreso se consulta
-  // aparte, así se ve avanzar y se puede frenar sin esperar a que termine.
+  const enCurso = runs.some((r) => r.activo)
+
+  // Al abrir: si hay envíos en curso (ej. los encoló el cron), mostrarlos.
   useEffect(() => {
-    if (!sending) {
+    let vivo = true
+    api
+      .get("/api/whatsapp/owner/runs")
+      .then(({ data }) => {
+        if (!vivo) return
+        const r: RunProgress[] = data.runs ?? []
+        setRuns(r)
+        if (r.some((x) => x.activo)) setSiguiendo(true)
+      })
+      .catch(() => {})
+    return () => {
+      vivo = false
+    }
+  }, [])
+
+  // El envío corre en el backend (cola): acá solo se consulta el avance cada 3s
+  // hasta que no quede nada pendiente. Se puede cerrar la pantalla sin cortarlo.
+  useEffect(() => {
+    if (!siguiendo) {
       if (pollRef.current) clearInterval(pollRef.current)
       pollRef.current = null
       return
@@ -192,7 +211,10 @@ export function WaDryRun() {
     const tick = async () => {
       try {
         const { data } = await api.get("/api/whatsapp/owner/runs")
-        if (vivo) setRuns(data.runs ?? [])
+        if (!vivo) return
+        const r: RunProgress[] = data.runs ?? []
+        setRuns(r)
+        if (!r.some((x) => x.activo)) setSiguiendo(false)
       } catch {
         // El progreso es informativo: si falla una consulta no se corta el envío.
       }
@@ -204,7 +226,7 @@ export function WaDryRun() {
       if (pollRef.current) clearInterval(pollRef.current)
       pollRef.current = null
     }
-  }, [sending])
+  }, [siguiendo])
 
   // Frena lo que falta. Los mensajes ya enviados no se pueden deshacer.
   async function cancelar() {
@@ -222,7 +244,7 @@ export function WaDryRun() {
     setLoading(true)
     setError(null)
     setResult(null)
-    setSendResult(null)
+    setQueueResult(null)
     try {
       const { data } = await api.get("/api/whatsapp/dry-run-all")
       setResult(data)
@@ -234,24 +256,23 @@ export function WaDryRun() {
   }
 
   // Envío REAL. Solo se llega acá desde el diálogo de confirmación.
-  // El modal cierra apenas se confirma: el envío tarda ~20min (jitter entre
-  // mensajes) y el progreso/cancelación se ven en el panel de abajo, no tiene
-  // sentido dejar al usuario mirando el modal todo ese rato.
+  // El backend encola los mensajes y responde enseguida; el envío (5-13s entre
+  // mensajes) sigue en segundo plano y su avance se ve en el panel de abajo.
   async function send() {
     setConfirmOpen(false)
-    setSending(true)
+    setEncolando(true)
     setError(null)
-    setSendResult(null)
-    setRuns([])
+    setQueueResult(null)
     try {
       const { data } = await api.post("/api/whatsapp/owner/trigger-all")
-      setSendResult(data)
-      // La simulación ya no refleja la realidad: lo enviado pasa a estar deduplicado.
+      setQueueResult(data)
+      // La simulación ya no refleja la realidad: lo encolado queda deduplicado.
       setResult(null)
+      setSiguiendo(true)
     } catch (e: unknown) {
       setError(getApiErrorMessage(e) ?? getErrorMessage(e) ?? null)
     } finally {
-      setSending(false)
+      setEncolando(false)
     }
   }
 
@@ -272,7 +293,7 @@ export function WaDryRun() {
             variant="contained"
             startIcon={loading ? <CircularProgress size={16} color="inherit" /> : <PlayArrowIcon />}
             onClick={run}
-            disabled={loading || sending}
+            disabled={loading || encolando}
             sx={{ bgcolor: GREEN, "&:hover": { bgcolor: "#128C7E" }, whiteSpace: "nowrap" }}
           >
             {loading ? "Consultando…" : "Ejecutar simulación"}
@@ -280,12 +301,12 @@ export function WaDryRun() {
           <Button
             variant="outlined"
             color="error"
-            startIcon={sending ? <CircularProgress size={16} color="inherit" /> : <SendIcon />}
+            startIcon={encolando || enCurso ? <CircularProgress size={16} color="inherit" /> : <SendIcon />}
             onClick={() => setConfirmOpen(true)}
-            disabled={loading || sending}
+            disabled={loading || encolando || enCurso}
             sx={{ whiteSpace: "nowrap" }}
           >
-            {sending ? "Enviando…" : "Enviar reales"}
+            {encolando ? "Encolando…" : enCurso ? "Enviando…" : "Enviar reales"}
           </Button>
         </Stack>
       </Box>
@@ -296,41 +317,41 @@ export function WaDryRun() {
         </Alert>
       )}
 
-      {sending && (
+      {runs.length > 0 && (
         <Paper variant="outlined" sx={{ p: 2, mb: 2, borderRadius: 1.5 }}>
           <Box sx={{ display: "flex", alignItems: "center", gap: 1.5, mb: 1.5, flexWrap: "wrap" }}>
-            <CircularProgress size={18} sx={{ color: GREEN }} />
+            {enCurso && <CircularProgress size={18} sx={{ color: GREEN }} />}
             <Typography variant="subtitle2" fontWeight={700} sx={{ flex: 1 }}>
-              Enviando WhatsApps…
+              {enCurso ? "Enviando WhatsApps…" : "Envíos de hoy"}
             </Typography>
-            <Button
-              variant="contained"
-              color="error"
-              size="small"
-              startIcon={
-                cancelling ? <CircularProgress size={16} color="inherit" /> : <StopCircleIcon />
-              }
-              onClick={cancelar}
-              disabled={cancelling || (runs.length > 0 && runs.every((r) => r.cancelada))}
-              sx={{ whiteSpace: "nowrap" }}
-            >
-              {cancelling
-                ? "Cancelando…"
-                : runs.length > 0 && runs.every((r) => r.cancelada)
-                ? "Cancelado"
-                : "Cancelar envío"}
-            </Button>
+            {enCurso && (
+              <Button
+                variant="contained"
+                color="error"
+                size="small"
+                startIcon={
+                  cancelling ? <CircularProgress size={16} color="inherit" /> : <StopCircleIcon />
+                }
+                onClick={cancelar}
+                disabled={cancelling}
+                sx={{ whiteSpace: "nowrap" }}
+              >
+                {cancelling ? "Cancelando…" : "Cancelar envío"}
+              </Button>
+            )}
           </Box>
 
-          <Typography variant="caption" color="text.secondary">
-            Hay entre 5 y 13 segundos entre mensaje y mensaje. Cancelar frena los que faltan; los
-            que ya salieron no se pueden deshacer.
-          </Typography>
+          {enCurso && (
+            <Typography variant="caption" color="text.secondary">
+              El envío sigue en el servidor aunque cierres esta pantalla. Hay entre 5 y 13 segundos
+              entre mensaje y mensaje. Cancelar frena los que faltan; los que ya salieron no se
+              pueden deshacer.
+            </Typography>
+          )}
 
           <Stack spacing={1.5} sx={{ mt: 2 }}>
-            {runs.length === 0 && <LinearProgress sx={{ borderRadius: 1 }} />}
             {runs.map((r) => {
-              const hechos = r.sent + r.errors + r.skipped
+              const hechos = r.sent + r.errors + r.cancelados + r.vencidos
               const pct = r.total > 0 ? Math.round((hechos / r.total) * 100) : 0
               return (
                 <Box key={r.gym_id}>
@@ -338,10 +359,12 @@ export function WaDryRun() {
                     <Typography variant="body2" fontWeight={600} sx={{ flex: 1 }}>
                       {r.gym_name ?? r.gym_id}
                     </Typography>
-                    {r.cancelada && <Chip label="cancelando…" size="small" color="warning" />}
+                    {r.cancelada && <Chip label="cancelado" size="small" color="warning" />}
                     <Typography variant="caption" color="text.secondary">
                       {r.sent} enviados · {r.restantes} restantes
                       {r.errors > 0 && ` · ${r.errors} errores`}
+                      {r.cancelados > 0 && ` · ${r.cancelados} cancelados`}
+                      {r.vencidos > 0 && ` · ${r.vencidos} vencidos sin enviar`}
                     </Typography>
                   </Box>
                   <LinearProgress
@@ -360,31 +383,25 @@ export function WaDryRun() {
         </Paper>
       )}
 
-      {sendResult && (
+      {queueResult && (
         <Alert
-          severity={sendResult.cancelled || sendResult.total_errors > 0 ? "warning" : "success"}
-          onClose={() => setSendResult(null)}
+          severity={queueResult.total_errors > 0 ? "warning" : "success"}
+          onClose={() => setQueueResult(null)}
           sx={{ mb: 2 }}
         >
           <AlertTitle>
-            {sendResult.cancelled && "Envío cancelado — "}
-            {sendResult.total_sent} mensaje{sendResult.total_sent !== 1 ? "s" : ""} enviado
-            {sendResult.total_sent !== 1 ? "s" : ""}
-            {sendResult.total_errors > 0 && ` · ${sendResult.total_errors} con error`}
-            {sendResult.cancelled && ` · ${sendResult.total_remaining} sin enviar`}
+            {queueResult.total_queued} mensaje{queueResult.total_queued !== 1 ? "s" : ""} encolado
+            {queueResult.total_queued !== 1 ? "s" : ""}
+            {queueResult.total_errors > 0 && ` · ${queueResult.total_errors} con teléfono inválido`}
           </AlertTitle>
           <Stack spacing={0.5} sx={{ mt: 1 }}>
-            {sendResult.gyms.map((g) => (
+            {queueResult.gyms.map((g) => (
               <Typography key={g.gym_id} variant="body2">
-                <strong>{g.gym_name ?? g.gym_id}</strong> — {g.status} · {g.sent} enviados
-                {g.errors > 0 && ` · ${g.errors} errores`}
-                {g.skipped > 0 && ` · ${g.skipped} ya enviados antes`}
-                {g.cancelled && ` · ${g.remaining} quedaron sin enviar`}
-                {g.failures.length > 0 && (
-                  <Typography component="span" variant="caption" color="error" sx={{ display: "block", pl: 2 }}>
-                    {g.failures.map((f) => f.error).join(" · ")}
-                  </Typography>
-                )}
+                <strong>{g.gym_name ?? g.gym_id}</strong> — {g.queued} encolados
+                {g.skipped > 0 && ` · ${g.skipped} ya avisados antes`}
+                {g.errors > 0 && ` · ${g.errors} teléfonos inválidos`}
+                {g.status === "queued_not_connected" && " · WhatsApp desconectado: salen cuando se reconecte"}
+                {g.status === "error" && ` · error: ${g.error ?? "desconocido"}`}
               </Typography>
             ))}
           </Stack>
@@ -448,7 +465,7 @@ export function WaDryRun() {
 
       <Dialog
         open={confirmOpen}
-        onClose={() => !sending && setConfirmOpen(false)}
+        onClose={() => !encolando && setConfirmOpen(false)}
         maxWidth="xs"
         fullWidth
         PaperProps={{ sx: { overflow: "hidden" } }}
@@ -459,9 +476,9 @@ export function WaDryRun() {
         </DialogTitle>
         <DialogContent>
           <DialogContentText component="div">
-            Se envían los recordatorios de vencimiento a los alumnos de{" "}
-            <strong>todos los gimnasios</strong> con WhatsApp conectado. Los mensajes llegan a los
-            teléfonos de verdad y no se pueden deshacer.
+            Se encolan los recordatorios de vencimiento de los alumnos de{" "}
+            <strong>todos los gimnasios</strong> con WhatsApp activado y el servidor los envía de a
+            uno. Los mensajes llegan a los teléfonos de verdad y no se pueden deshacer.
             {result && (
               <Box sx={{ mt: 2 }}>
                 <Chip
@@ -482,8 +499,8 @@ export function WaDryRun() {
         </DialogContent>
         <FlushDialogActions
           actions={[
-            { label: "Cancelar", onClick: () => setConfirmOpen(false), disabled: sending, tone: "neutral" },
-            { label: "Sí, enviar", onClick: send, tone: "danger", disabled: sending, loading: sending },
+            { label: "Cancelar", onClick: () => setConfirmOpen(false), disabled: encolando, tone: "neutral" },
+            { label: "Sí, enviar", onClick: send, tone: "danger", disabled: encolando, loading: encolando },
           ]}
         />
       </Dialog>

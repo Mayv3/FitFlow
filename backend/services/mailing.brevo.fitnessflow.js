@@ -4,6 +4,8 @@ import { createClient } from '@supabase/supabase-js'
 import dayjs from 'dayjs'
 import utc from 'dayjs/plugin/utc.js'
 import timezone from 'dayjs/plugin/timezone.js'
+import { fetchAllPaged } from '../utilities/fetchAllPaged.js'
+import { encolar } from './cola/colaEnvios.js'
 dayjs.extend(utc)
 dayjs.extend(timezone)
 
@@ -36,7 +38,7 @@ function isValidEmail(email = '') {
   return e && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e)
 }
 
-async function sendBrevoEmail({ to, subject, text, html }) {
+export async function sendBrevoEmail({ to, subject, text, html }) {
   // Validar que el email exista
   if (!to || typeof to !== 'string') {
     return
@@ -133,12 +135,11 @@ function plantillaVenceEnTres(nombre, gymLogo, gymColor, gymName) {
   `
 }
 
-const delay = (ms) => new Promise(res => setTimeout(res, ms))
 
 /**
  * Guarda un registro de email enviado/intentado para un gimnasio
  */
-async function logGymEmail({
+export async function logGymEmail({
   gymId,
   emailDestino,
   asunto,
@@ -188,14 +189,14 @@ export async function enviarEmailsPorVencer({ previewOnly = true, gymIds = [] } 
     return
   }
 
-  let query = supabase
-    .from('alumnos')
-    .select('id,nombre,email,fecha_de_vencimiento,gym_id')
-    .is('deleted_at', null)
-    .in('fecha_de_vencimiento', [hoyStr, tresDiasStr])
-
-  const { data, error } = await query
-  if (error) throw error
+  const data = await fetchAllPaged(() =>
+    supabase
+      .from('alumnos')
+      .select('id,nombre,email,fecha_de_vencimiento,gym_id')
+      .is('deleted_at', null)
+      .in('fecha_de_vencimiento', [hoyStr, tresDiasStr])
+      .order('id')
+  )
 
   const alumnosFiltrados = data?.filter(a => !EMAILS_IGNORADOS.includes(a.email?.toLowerCase())) || []
 
@@ -274,61 +275,49 @@ export async function enviarEmailsPorVencer({ previewOnly = true, gymIds = [] } 
     return resultado
   }
 
+  // Ya no se envía acá: cada mail se ENCOLA en cola_envios y el worker
+  // (services/cola/worker.js) los manda de a uno por segundo. El endpoint
+  // responde en segundos y, si el cron dispara dos veces, nadie recibe el
+  // mail repetido (dedupe por alumno + vencimiento + tipo).
+  const filas = []
+  let sinEmail = 0
   for (const alumno of alumnosFiltrados) {
-    const { email, nombre, fecha_de_vencimiento, gym_id } = alumno
-    
-    // Validar que el alumno tenga email
-    if (!email) {
+    const { id, email, nombre, fecha_de_vencimiento, gym_id } = alumno
+    // Con gymIds, solo esos gyms (antes el preview filtraba pero el envío real no)
+    if (!alumnosPorGym[gym_id]) continue
+    const emailLower = String(email ?? '').trim().toLowerCase()
+
+    // Sin email válido no se encola (antes se registraba "enviado" aunque Brevo no recibiera nada)
+    if (!isValidEmail(emailLower) || EMAILS_IGNORADOS.includes(emailLower)) {
+      sinEmail++
       continue
     }
-    
-    // Validar que tenga nombre (usar fallback si no existe)
+
     const nombreFinal = nombre?.trim() || 'Atleta'
-    
-    // Obtener datos del gimnasio
     const gymData = alumnosPorGym[gym_id] || {}
-    const gymLogo = gymData.logo
-    const gymColor = gymData.color
     const gymName = gymData.nombre
-    
+
     const venceHoy = fecha_de_vencimiento === hoyStr
+    const tipo = venceHoy ? 'vencimiento_alumno_hoy' : 'vencimiento_alumno_3d'
     const subject = venceHoy ? '📅 ¡Tu plan vence hoy!' : '⚠️ Tu plan vence en 3 días'
-    const html = venceHoy 
-      ? plantillaVenceHoy(nombreFinal, gymLogo, gymColor, gymName) 
-      : plantillaVenceEnTres(nombreFinal, gymLogo, gymColor, gymName)
+    const html = venceHoy
+      ? plantillaVenceHoy(nombreFinal, gymData.logo, gymData.color, gymName)
+      : plantillaVenceEnTres(nombreFinal, gymData.logo, gymData.color, gymName)
     const text = `${subject}\n\nRenová tu plan en https://fitnessflow.com.ar\n\n— ${gymName || BRAND_NAME}`
 
-    try {
-      await sendBrevoEmail({ to: email, subject, text, html })
-      await logGymEmail({
-        gymId: gym_id,
-        emailDestino: email,
-        asunto: subject,
-        tipo: venceHoy ? 'vencimiento_alumno_hoy' : 'vencimiento_alumno_3d',
-        estado: 'enviado',
-        endAt: fecha_de_vencimiento,
-      })
-      await delay(1000)
-    } catch (error) {
-      console.error(`❌ Error al enviar email a ${email}:`, error.message)
-      await logGymEmail({
-        gymId: gym_id,
-        emailDestino: email,
-        asunto: subject,
-        tipo: venceHoy ? 'vencimiento_alumno_hoy' : 'vencimiento_alumno_3d',
-        estado: 'error',
-        errorMsg: error.message,
-        endAt: fecha_de_vencimiento,
-      })
-    }
+    filas.push({
+      canal: 'email',
+      gym_id,
+      alumno_id: id,
+      destinatario: emailLower,
+      dedupe_key: `email|${id}|${fecha_de_vencimiento}|${tipo}`,
+      payload: { subject, text, html, tipo, vencimiento: fecha_de_vencimiento },
+    })
   }
 
-  // Reconcilia con Brevo por si algún logGymEmail falló o Brevo aceptó algo no logueado
-  try {
-    await backfillBrevoLogs({})
-  } catch (e) {
-    console.error('⚠️ Backfill post-envío falló:', e.message)
-  }
+  const { encolados, repetidos } = await encolar(filas)
+  console.log(`📬 Emails de vencimiento encolados: ${encolados} (ya encolados antes: ${repetidos}, sin email válido: ${sinEmail})`)
+  return { encolados, ya_encolados: repetidos, sin_email: sinEmail }
 }
 
 export async function enviarPruebaPlantillas() {
@@ -761,13 +750,15 @@ export async function backfillBrevoLogs({ fecha = null } = {}) {
   const ZONE = 'America/Argentina/Cordoba'
   const dia = fecha || dayjs.tz(dayjs(), ZONE).format('YYYY-MM-DD')
 
-  // Mapa email -> gym_id desde alumnos
-  const { data: alumnos, error: alErr } = await supabase
-    .from('alumnos')
-    .select('email,gym_id')
-    .is('deleted_at', null)
-    .not('email', 'is', null)
-  if (alErr) throw alErr
+  // Mapa email -> gym_id desde alumnos (paginado: son más de 1000)
+  const alumnos = await fetchAllPaged(() =>
+    supabase
+      .from('alumnos')
+      .select('email,gym_id')
+      .is('deleted_at', null)
+      .not('email', 'is', null)
+      .order('id')
+  )
 
   const gymIdByEmail = {}
   for (const a of alumnos || []) {

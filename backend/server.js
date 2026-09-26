@@ -27,6 +27,7 @@ import emailsRoutes from "./routes/emails.routes.js"
 import novedadesRoutes from "./routes/novedades.routes.js"
 import whatsappRoutes from "./routes/whatsapp.routes.js"
 import { ensureConnectedGyms } from './services/whatsapp/reminders.js'
+import { workerEnvios } from './services/cola/worker.js'
 
 import { supabaseAdmin } from './config/supabaseClient.js'
 import { verifyToken } from '../backend/middleware/auth.js'
@@ -151,7 +152,11 @@ server.listen(PORT, () => {
     ensureConnectedGyms().catch((e) =>
       console.warn('[wa boot] ensureConnectedGyms failed:', e.message)
     );
+    // La cola de envíos (WhatsApp + emails) se procesa en este mismo proceso,
+    // que es el que tiene los sockets de WhatsApp. Retoma lo pendiente.
+    workerEnvios.iniciar();
+    console.log('[cola] worker de envíos iniciado.');
   } else {
-    console.log('[wa boot] WHATSAPP_WORKER != "true" — no conecto WhatsApp desde este proceso.');
+    console.log('[wa boot] WHATSAPP_WORKER != "true" — no conecto WhatsApp ni proceso la cola de envíos desde este proceso.');
   }
 });

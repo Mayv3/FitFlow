@@ -3,11 +3,13 @@ import { fechaHoyArgentinaISO } from "@/utils/date/dateUtils"
 
 export const getInputFieldsTurnos = ({
     serviceOptions,
-    searchFromCache,
+    searchAlumnos,
+    resolveAlumno,
 }: {
     // useServicesByGym emite value: String(s.id), no number.
     serviceOptions: SelectOption[]
-    searchFromCache: (gymId: string, q: string) => SelectOption[]
+    searchAlumnos: NonNullable<Field['searchRemote']>
+    resolveAlumno: NonNullable<Field['resolveOption']>
 }): Field[] => [
         {
             label: "Título (obligatorio)",
@@ -47,7 +49,8 @@ export const getInputFieldsTurnos = ({
             type: "search-select",
             required: true,
             placeholder: "Busca un alumno por nombre o DNI",
-            searchFromCache,
+            searchRemote: searchAlumnos,
+            resolveOption: resolveAlumno,
         },
         {
             label: "Fecha y hora de inicio (obligatorio)",

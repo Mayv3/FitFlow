@@ -635,7 +635,7 @@ describe('Members CRUD Operations', () => {
       await waitFor(() => expect(result.current.isSuccess).toBe(true));
 
       expect(mockAxiosInstance.get).toHaveBeenCalledWith('/api/alumnos/simple', {
-        params: { gym_id: 'gym-123' },
+        params: { gym_id: 'gym-123', q: '', limit: 20 },
       });
       expect(result.current.data).toHaveLength(2);
       expect(result.current.data?.[0]).toHaveProperty('nombre');

@@ -43,7 +43,10 @@ export type Field = {
   options?: SelectOption[];
   onBlur?: (value: string) => void;
   validate?: (value: FieldValue) => string | null;
-  searchFromCache?: (gymId: string, q: string) => SelectOption[];
+  /** `search-select`: busca en el server las opciones que matchean `q` (vacío = primeras). */
+  searchRemote?: (q: string) => Promise<SelectOption[]>;
+  /** `search-select`: trae la opción del valor ya cargado (modo edición) si no vino en la búsqueda. */
+  resolveOption?: (value: FieldValue) => Promise<SelectOption | null>;
 };
 
 

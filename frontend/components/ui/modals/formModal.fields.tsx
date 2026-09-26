@@ -1,5 +1,6 @@
 import React from 'react';
 import { Box, TextField, Typography, MenuItem, Chip, Autocomplete } from '@mui/material';
+import { keepPreviousData, useQuery } from '@tanstack/react-query';
 import { Field, FieldValue, FormValues, SelectOption } from '@/models/Fields/Field';
 import { ColorPickerPopover } from '../colorSelector/colorSelector';
 
@@ -101,36 +102,74 @@ export interface SearchSelectFieldProps {
   helperText: string;
   isSmDown: boolean;
   locked: boolean;
-  gymId?: string;
   searchTerms: Record<string, string>;
   setSearchTerms: React.Dispatch<React.SetStateAction<Record<string, string>>>;
   setValues: React.Dispatch<React.SetStateAction<FormValues>>;
 }
 
+const SEARCH_DEBOUNCE_MS = 300;
+
+/**
+ * Autocomplete que busca en el server (`field.searchRemote`) mientras se
+ * escribe, en vez de filtrar una lista entera cargada de antemano.
+ */
 export const SearchSelectField: React.FC<SearchSelectFieldProps> = ({
-  field, val, style, isError, helperText, isSmDown, locked, gymId,
+  field, val, style, isError, helperText, isSmDown, locked,
   searchTerms, setSearchTerms, setValues,
 }) => {
   const term = searchTerms[field.name] ?? '';
-  const allOptions = field.searchFromCache!(gymId ?? '', '');
-  let results = term ? field.searchFromCache!(gymId ?? '', term) : allOptions;
-  if (!results || results.length === 0) results = allOptions;
+  const { searchRemote, resolveOption } = field;
 
-  const selectedOption = val
-    ? allOptions.find(o => o.value === val) || null
-    : null;
+  const [debouncedTerm, setDebouncedTerm] = React.useState(term);
+  React.useEffect(() => {
+    const t = setTimeout(() => setDebouncedTerm(term), term ? SEARCH_DEBOUNCE_MS : 0);
+    return () => clearTimeout(t);
+  }, [term]);
+
+  const search = useQuery({
+    queryKey: ['search-select', field.name, debouncedTerm],
+    queryFn: () => searchRemote!(debouncedTerm),
+    enabled: Boolean(searchRemote),
+    staleTime: 0,
+    placeholderData: keepPreviousData,
+  });
+  const results = search.data ?? [];
+
+  // Opción elegida: la que se tocó en el dropdown, la que vino en la búsqueda,
+  // o (modo edición) la que trae resolveOption para el valor ya cargado.
+  const [picked, setPicked] = React.useState<SelectOption | null>(null);
+  const hasVal = val !== null && val !== undefined && val !== '';
+  const fromPick = hasVal && picked?.value === val ? picked : undefined;
+  const fromResults = hasVal ? results.find(o => o.value === val) : undefined;
+  const resolved = useQuery({
+    queryKey: ['search-select-resolve', field.name, val],
+    queryFn: () => resolveOption!(val),
+    enabled: hasVal && !fromPick && !fromResults && Boolean(resolveOption),
+    staleTime: 5 * 60 * 1000,
+  });
+  const selectedOption = hasVal ? (fromPick ?? fromResults ?? resolved.data ?? null) : null;
+
+  // La opción elegida siempre tiene que estar entre las options del Autocomplete.
+  const options = selectedOption && !results.some(o => o.value === selectedOption.value)
+    ? [selectedOption, ...results]
+    : results;
 
   return (
     <Box style={style}>
       <Autocomplete
-        options={results}
+        options={options}
+        filterOptions={x => x}
+        loading={search.isFetching}
         isOptionEqualToValue={(o, v) => o.value === v.value}
         getOptionLabel={option => option.label}
         value={selectedOption}
-        onInputChange={(_, newInputValue) => {
+        onInputChange={(_, newInputValue, reason) => {
+          // 'reset' = MUI pone el label de la opción elegida: no es una búsqueda.
+          if (reason === 'reset') return;
           setSearchTerms(prev => ({ ...prev, [field.name]: newInputValue }));
         }}
         onChange={(_, newValue: SelectOption | null) => {
+          setPicked(newValue);
           setValues(prev => ({ ...prev, [field.name]: newValue?.value ?? null }));
         }}
         renderInput={params => (
@@ -146,7 +185,8 @@ export const SearchSelectField: React.FC<SearchSelectFieldProps> = ({
           />
         )}
         disabled={locked}
-        noOptionsText={null}
+        loadingText="Buscando…"
+        noOptionsText="Sin resultados"
         fullWidth
       />
     </Box>

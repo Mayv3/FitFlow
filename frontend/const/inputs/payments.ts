@@ -7,7 +7,8 @@ export const getInputFieldsPagos = ({
     serviceOptions,
     productOptions,
     cantidadOptions,
-    searchFromCache
+    searchAlumnos,
+    resolveAlumno,
 }: {
     // Los ids llegan mezclados: planes/cantidad como number, servicios/productos
     // como string. SelectOption cubre ambos, igual que Field['options'].
@@ -15,7 +16,8 @@ export const getInputFieldsPagos = ({
     serviceOptions: SelectOption[];
     productOptions: SelectOption[];
     cantidadOptions: SelectOption[];
-    searchFromCache: (gymId: string, q: string) => SelectOption[];
+    searchAlumnos: NonNullable<Field['searchRemote']>;
+    resolveAlumno: NonNullable<Field['resolveOption']>;
 }): Field[] => [
         {
             label: 'Alumno (obligatorio)',
@@ -23,7 +25,8 @@ export const getInputFieldsPagos = ({
             type: 'search-select',
             required: true,
             placeholder: 'Busca un alumno por nombre o DNI',
-            searchFromCache,
+            searchRemote: searchAlumnos,
+            resolveOption: resolveAlumno,
         },
         {
             label: '¿Qué vas a cobrar?',

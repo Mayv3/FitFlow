@@ -23,7 +23,7 @@ import DeleteIcon from '@mui/icons-material/Delete'
 import PersonIcon from '@mui/icons-material/Person'
 import EmailIcon from '@mui/icons-material/Email'
 import BadgeIcon from '@mui/icons-material/Badge'
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { getDiaNombre } from '@/const/inputs/sesiones'
 import { useAlumnosSimpleService } from '@/hooks/alumnos/useAlumnosApi'
 import { Sesion } from '@/models/Sesion/Sesion'
@@ -55,7 +55,13 @@ export function InscripcionesModal({
     onDesinscribir,
 }: InscripcionesModalProps) {
     const [selectedAlumno, setSelectedAlumno] = useState<AlumnoSimple | null>(null)
-    const { data: alumnos = [] } = useAlumnosSimpleService(gymId)
+    const [busqueda, setBusqueda] = useState('')
+    const [busquedaDebounced, setBusquedaDebounced] = useState('')
+    useEffect(() => {
+        const t = setTimeout(() => setBusquedaDebounced(busqueda.trim()), 300)
+        return () => clearTimeout(t)
+    }, [busqueda])
+    const { data: alumnos = [], isFetching: buscando } = useAlumnosSimpleService(gymId, busquedaDebounced)
 
     const alumnosInscritos = useMemo(() => sesion.alumnos_inscritos || [], [sesion])
     const alumnosDisponibles = useMemo(
@@ -67,6 +73,7 @@ export function InscripcionesModal({
         if (selectedAlumno) {
             onInscribir(selectedAlumno.id)
             setSelectedAlumno(null)
+            setBusqueda('')
         }
     }
 
@@ -116,9 +123,18 @@ export function InscripcionesModal({
                             size="small"
                             fullWidth
                             options={alumnosDisponibles}
+                            filterOptions={(x) => x}
+                            loading={buscando}
+                            loadingText="Buscando…"
+                            noOptionsText="Sin resultados"
                             getOptionLabel={(option) => `${option.nombre} (DNI: ${option.dni})`}
+                            isOptionEqualToValue={(o, v) => o.id === v.id}
                             value={selectedAlumno}
                             onChange={(_, newValue) => setSelectedAlumno(newValue)}
+                            onInputChange={(_, value, reason) => {
+                                // 'reset' = MUI pone el label del elegido: no es una búsqueda.
+                                if (reason !== 'reset') setBusqueda(value)
+                            }}
                             renderInput={(params) => (
                                 <TextField {...params} label="Buscar alumno" />
                             )}

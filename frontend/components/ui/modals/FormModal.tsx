@@ -47,7 +47,6 @@ export const FormModal = <T extends object>({
   asyncValidators,
   asyncTrigger = 'blur',
   asyncDebounceMs = 400,
-  gymId,
   extraActions,
   onValuesChange,
 }: FormModalProps<T>) => {
@@ -213,13 +212,13 @@ export const FormModal = <T extends object>({
     if (field.name === 'emails') {
       return <EmailsField key={field.name} field={field} val={val} style={style} mode={mode} setValues={setValues} />;
     }
-    if (field.type === 'search-select' && field.searchFromCache) {
+    if (field.type === 'search-select' && field.searchRemote) {
       return (
         <SearchSelectField
           key={field.name}
           field={field} val={val} style={style}
           isError={isError} helperText={helperText}
-          isSmDown={isSmDown} locked={locked} gymId={gymId}
+          isSmDown={isSmDown} locked={locked}
           searchTerms={searchTerms} setSearchTerms={setSearchTerms}
           setValues={setValues}
         />

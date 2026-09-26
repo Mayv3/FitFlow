@@ -8,7 +8,7 @@ import { useTheme } from '@mui/material/styles'
 import { getInputFieldsTurnos, layoutTurnos } from '@/const/inputs/appointments'
 import { useUser } from '@/context/UserContext'
 import { useServicesByGym } from '@/hooks/services/useServicesOptions'
-import { useAlumnosSimpleByGym } from '@/hooks/alumnos/useAlumnosByGym'
+import { searchAlumnoOptions, resolveAlumnoOption } from '@/hooks/alumnos/useAlumnosByGym'
 import {
   useAppointments,
   useAddAppointment,
@@ -25,8 +25,6 @@ import type { EventClickArg, EventDropArg } from '@fullcalendar/core'
 import type { DateClickArg } from '@fullcalendar/interaction'
 import type { TurnoFormValues } from '@/models/appointments/Appointment'
 
-type AlumnoSimple = { id: number; nombre: string; dni?: string }
-
 export default function Appointments() {
   const calendarRef = useRef<FullCalendar | null>(null)
   const [openDelete, setOpenDelete] = useState(false)
@@ -41,27 +39,13 @@ export default function Appointments() {
   const { data: servicesData } = useServicesByGym(gymId)
   const serviceOptions = useMemo(() => servicesData?.options ?? [], [servicesData])
 
-  const { data: alumnosRes } = useAlumnosSimpleByGym(gymId)
-  const alumnos = useMemo(
-    () => (alumnosRes?.items ?? alumnosRes ?? []) as AlumnoSimple[],
-    [alumnosRes]
-  )
-
-  const searchFromCache = useCallback(
-    (_: string, q: string) => {
-      const list = alumnos
-      if (!q) return list.map(a => ({ label: `${a.nombre} (${a.dni ?? ''})`, value: a.id }))
-      const lower = q.toLowerCase()
-      return list
-        .filter(a => a.nombre?.toLowerCase().includes(lower) || String(a.dni ?? '').includes(lower))
-        .map(a => ({ label: `${a.nombre} (${a.dni ?? ''})`, value: a.id }))
-    },
-    [alumnos]
-  )
-
   const fieldsTurnos = useMemo(
-    () => getInputFieldsTurnos({ serviceOptions, searchFromCache }),
-    [serviceOptions, searchFromCache]
+    () => getInputFieldsTurnos({
+      serviceOptions,
+      searchAlumnos: searchAlumnoOptions,
+      resolveAlumno: resolveAlumnoOption,
+    }),
+    [serviceOptions]
   )
 
   const { data } = useAppointments(gymId)

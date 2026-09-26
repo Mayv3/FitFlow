@@ -14,7 +14,7 @@ import { ReactQueryDevtools } from '@tanstack/react-query-devtools';
 import { FormModal } from '@/components/ui/modals/FormModal';
 import { getInputFieldsPagos, layoutPayments } from '@/const/inputs/payments';
 import { usePlanesPrecios } from '@/hooks/plans/usePlanesPrecios';
-import { useAlumnosSimpleByGym } from '@/hooks/alumnos/useAlumnosByGym';
+import { searchAlumnoOptions, resolveAlumnoOption } from '@/hooks/alumnos/useAlumnosByGym';
 import { useServicesByGym } from '@/hooks/services/useServicesOptions';
 import { useProducts } from '@/hooks/products/useProducts';
 import { useQueryClient } from '@tanstack/react-query';
@@ -40,13 +40,8 @@ export default function PaymentList() {
     const queryClient = useQueryClient();
     const { user } = useUser();
     const gymId = user?.gym_id ?? '';
-    const { data: alumnosRes } = useAlumnosSimpleByGym(gymId);
     const { data: services } = useServicesByGym(gymId);
     const { data: productsData } = useProducts(gymId, 1, 1000);
-    const alumnos = useMemo(
-        () => (alumnosRes?.items ?? alumnosRes ?? []) as Array<{ id: number; nombre: string; dni?: string }>,
-        [alumnosRes]
-    );
 
     const { options: planOptions } = usePlanesPrecios(gymId);
 
@@ -74,15 +69,6 @@ export default function PaymentList() {
     const addPago = useAddPago(gymId);
     const editPago = useEditPago(gymId);
     const deletePago = useDeletePago(gymId);
-
-    const searchFromCache = useCallback((_: string, q: string) => {
-        const list = alumnos;
-        if (!q) return list.map(a => ({ label: `${a.nombre} (${a.dni ?? ''})`, value: a.id }));
-        const lower = q.toLowerCase();
-        return list
-            .filter(a => a.nombre?.toLowerCase().includes(lower) || String(a.dni ?? '').includes(lower))
-            .map(a => ({ label: `${a.nombre} (${a.dni ?? ''})`, value: a.id }));
-    }, [alumnos]);
 
     const serviceOptions = useMemo(() => {
         if (!services?.items) return [];
@@ -130,8 +116,9 @@ export default function PaymentList() {
         serviceOptions,
         productOptions,
         cantidadOptions,
-        searchFromCache,
-    }), [planOptions, serviceOptions, productOptions, cantidadOptions, searchFromCache]);
+        searchAlumnos: searchAlumnoOptions,
+        resolveAlumno: resolveAlumnoOption,
+    }), [planOptions, serviceOptions, productOptions, cantidadOptions]);
 
     const handleSearchChange = useMemo(
         () =>

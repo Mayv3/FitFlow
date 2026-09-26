@@ -28,15 +28,15 @@ type GetAlumnosResponse<T = Member> = {
 };
 
 /**
- * Las tres listas de alumnos que hay en la app, cada una con su propia key.
+ * Las listas de alumnos que hay en la app, cada una con su propia key.
  * Cualquier alta/edicion/baja las invalida a todas: si solo se refrescara
- * `members`, el select de Pagos (`alumnos-simple`) seguiria sin el alumno nuevo.
+ * `members`, el buscador de inscripciones (`members-simple`) seguiria sin el
+ * alumno nuevo. (Los selects de Pagos/Turnos buscan en el server en cada tecla.)
  */
 const ALUMNOS_QUERY_KEYS = [
   ['members'],
   ['members-simple'],
   ['members-expired'],
-  ['alumnos-simple'],
 ] as const;
 
 /** Invalida por prefijo, asi alcanza a todas las variantes de page/limit/q. */
@@ -132,15 +132,20 @@ export function useExpiredAlumnos(gymId: string) {
   });
 }
 
-export function useAlumnosSimpleService(gymId: string) {
+/**
+ * Busca alumnos por nombre o DNI en el server (máx. `limit`). `q` ya tiene
+ * que venir con debounce: cada valor distinto es una request.
+ */
+export function useAlumnosSimpleService(gymId: string, q = '', limit = 20) {
   return useQuery({
-    queryKey: ['members-simple', gymId],
+    queryKey: ['members-simple', gymId, q, limit],
     enabled: Boolean(gymId),
     staleTime: 0,
     refetchOnMount: 'always',
+    placeholderData: keepPreviousData,
     queryFn: async (): Promise<AlumnoSimple[]> => {
       const { data } = await axiosInstance.get('/api/alumnos/simple', {
-        params: { gym_id: gymId },
+        params: { gym_id: gymId, q, limit },
       });
       return data;
     },

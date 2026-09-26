@@ -1,23 +1,9 @@
 import { supabaseAdmin } from '../config/supabaseClient.js';
 import moment from 'moment-timezone';
+import { fetchAllPaged } from '../utilities/fetchAllPaged.js';
 
 function getTodayArgentina() {
   return moment().tz('America/Argentina/Buenos_Aires').format('YYYY-MM-DD');
-}
-
-// Pagina sobre cualquier select de Supabase (evita el cap de 1000 filas por request)
-async function fetchAllPaged(buildQuery, pageSize = 1000) {
-  const out = [];
-  let from = 0;
-  while (true) {
-    const { data, error } = await buildQuery().range(from, from + pageSize - 1);
-    if (error) throw error;
-    if (!data || data.length === 0) break;
-    out.push(...data);
-    if (data.length < pageSize) break;
-    from += pageSize;
-  }
-  return out;
 }
 
 async function countTotalMembers(gymId) {
@@ -60,17 +46,18 @@ async function countMonthRenewals(gymId) {
   const start = now.clone().startOf('month').format('YYYY-MM-DD');
   const end = now.format('YYYY-MM-DD');
 
-  const { data, error } = await supabaseAdmin
-    .from('pagos')
-    .select('alumno_id')
-    .eq('gym_id', gymId)
-    .is('deleted_at', null)
-    .gte('fecha_de_pago', start)
-    .lte('fecha_de_pago', end);
+  const data = await fetchAllPaged(() =>
+    supabaseAdmin
+      .from('pagos')
+      .select('alumno_id')
+      .eq('gym_id', gymId)
+      .is('deleted_at', null)
+      .gte('fecha_de_pago', start)
+      .lte('fecha_de_pago', end)
+      .order('id')
+  );
 
-  if (error) throw error;
-
-  const uniqueIds = new Set((data ?? []).map(p => p.alumno_id));
+  const uniqueIds = new Set(data.map(p => p.alumno_id));
   return uniqueIds.size;
 }
 
@@ -329,6 +316,7 @@ export async function getFacturacionByPeriodo({ gymId, year, range }) {
           .from('pago_items')
           .select('pago_id, monto, metodo_de_pago_id, metodo:metodos_de_pago(nombre)')
           .in('pago_id', chunk)
+          .order('id')
       );
       items.push(...chunkItems);
     }
@@ -366,6 +354,7 @@ export async function getFacturacionByPeriodo({ gymId, year, range }) {
         .is('deleted_at', null)
         .gte('fecha_de_pago', `${year}-01-01`)
         .lte('fecha_de_pago', `${year}-12-31`)
+        .order('id')
     );
 
     const byMonth = {};
@@ -394,6 +383,7 @@ export async function getFacturacionByPeriodo({ gymId, year, range }) {
         .is('deleted_at', null)
         .gte('fecha_de_pago', startOfMonth)
         .lte('fecha_de_pago', endOfMonth)
+        .order('id')
     );
 
     const byDay = {};
@@ -419,6 +409,7 @@ export async function getFacturacionByPeriodo({ gymId, year, range }) {
         .is('deleted_at', null)
         .gte('fecha_de_pago', startOfMonth)
         .lte('fecha_de_pago', endOfMonth)
+        .order('id')
     );
 
     const byWeek = {};
@@ -488,15 +479,16 @@ export async function getDashboardDataByYear({ gymId, year }) {
 
 // PASO 3: Demografía filtrada por año de alta (fecha_inicio)
 export async function getDemografiaByYear({ gymId, year }) {
-  const { data, error } = await supabaseAdmin
-    .from('alumnos')
-    .select('sexo, fecha_nacimiento')
-    .eq('gym_id', gymId)
-    .is('deleted_at', null)
-    .gte('fecha_inicio', `${year}-01-01`)
-    .lte('fecha_inicio', `${year}-12-31`);
-
-  if (error) throw error;
+  const data = await fetchAllPaged(() =>
+    supabaseAdmin
+      .from('alumnos')
+      .select('sexo, fecha_nacimiento')
+      .eq('gym_id', gymId)
+      .is('deleted_at', null)
+      .gte('fecha_inicio', `${year}-01-01`)
+      .lte('fecha_inicio', `${year}-12-31`)
+      .order('id')
+  );
 
   const currentYear = new Date().getFullYear();
 
@@ -524,6 +516,26 @@ export async function getDemografiaByYear({ gymId, year }) {
   return Object.values(grouped);
 }
 
+// Suma de monto_total por plan_id en un rango de fechas de pago → { [plan_id]: total }
+async function sumPagosPorPlan(gymId, desde, hasta) {
+  const pagos = await fetchAllPaged(() =>
+    supabaseAdmin
+      .from('pagos')
+      .select('plan_id, monto_total')
+      .eq('gym_id', gymId)
+      .is('deleted_at', null)
+      .not('plan_id', 'is', null)
+      .gte('fecha_de_pago', desde)
+      .lte('fecha_de_pago', hasta)
+      .order('id')
+  );
+  const totales = {};
+  for (const p of pagos) {
+    totales[p.plan_id] = (totales[p.plan_id] || 0) + Number(p.monto_total || 0);
+  }
+  return totales;
+}
+
 // PASO 4: Planes filtrados por año y mes
 export async function getPlanesStatsByPeriodo({ gymId, year, month }) {
   const prevMonth = month === 1 ? 12 : month - 1;
@@ -534,34 +546,23 @@ export async function getPlanesStatsByPeriodo({ gymId, year, month }) {
   const prevStart = `${prevYear}-${String(prevMonth).padStart(2, '0')}-01`;
   const prevEnd = new Date(prevYear, prevMonth, 0).toISOString().split('T')[0];
 
-  const [planesResult, alumnosResult, pagosActualResult, pagosAnteriorResult] = await Promise.all([
+  const [planesResult, alumnos, facturacionActual, facturacionAnterior] = await Promise.all([
     supabaseAdmin.from('planes_precios').select('id, nombre').eq('gym_id', gymId).is('deleted_at', null),
-    supabaseAdmin.from('alumnos').select('plan_id').eq('gym_id', gymId).is('deleted_at', null).not('plan_id', 'is', null),
-    supabaseAdmin.from('pagos').select('plan_id, monto_total').eq('gym_id', gymId).is('deleted_at', null).not('plan_id', 'is', null).gte('fecha_de_pago', actualStart).lte('fecha_de_pago', actualEnd),
-    supabaseAdmin.from('pagos').select('plan_id, monto_total').eq('gym_id', gymId).is('deleted_at', null).not('plan_id', 'is', null).gte('fecha_de_pago', prevStart).lte('fecha_de_pago', prevEnd),
+    fetchAllPaged(() =>
+      supabaseAdmin.from('alumnos').select('plan_id').eq('gym_id', gymId).is('deleted_at', null).not('plan_id', 'is', null).order('id')
+    ),
+    sumPagosPorPlan(gymId, actualStart, actualEnd),
+    sumPagosPorPlan(gymId, prevStart, prevEnd),
   ]);
 
   if (planesResult.error) throw planesResult.error;
-  if (alumnosResult.error) throw alumnosResult.error;
-  if (pagosActualResult.error) throw pagosActualResult.error;
-  if (pagosAnteriorResult.error) throw pagosAnteriorResult.error;
 
   const planes = planesResult.data ?? [];
   if (planes.length === 0) return [];
 
   const alumnosPorPlan = {};
-  for (const a of alumnosResult.data ?? []) {
+  for (const a of alumnos) {
     alumnosPorPlan[a.plan_id] = (alumnosPorPlan[a.plan_id] || 0) + 1;
-  }
-
-  const facturacionActual = {};
-  for (const p of pagosActualResult.data ?? []) {
-    facturacionActual[p.plan_id] = (facturacionActual[p.plan_id] || 0) + Number(p.monto_total || 0);
-  }
-
-  const facturacionAnterior = {};
-  for (const p of pagosAnteriorResult.data ?? []) {
-    facturacionAnterior[p.plan_id] = (facturacionAnterior[p.plan_id] || 0) + Number(p.monto_total || 0);
   }
 
   const result = planes.map((plan) => {
@@ -595,24 +596,13 @@ export async function getFacturacionPorPlan({ gymId, year, month }) {
   const prevStart = `${prevYear}-${String(prevMonth).padStart(2, '0')}-01`;
   const prevEnd = new Date(prevYear, prevMonth, 0).toISOString().split('T')[0];
 
-  const [planesResult, pagosActualResult, pagosAnteriorResult] = await Promise.all([
+  const [planesResult, facturacionActual, facturacionAnterior] = await Promise.all([
     supabaseAdmin.from('planes_precios').select('id, nombre').eq('gym_id', gymId).is('deleted_at', null),
-    supabaseAdmin.from('pagos').select('plan_id, monto_total').eq('gym_id', gymId).is('deleted_at', null).not('plan_id', 'is', null).gte('fecha_de_pago', actualStart).lte('fecha_de_pago', actualEnd),
-    supabaseAdmin.from('pagos').select('plan_id, monto_total').eq('gym_id', gymId).is('deleted_at', null).not('plan_id', 'is', null).gte('fecha_de_pago', prevStart).lte('fecha_de_pago', prevEnd),
+    sumPagosPorPlan(gymId, actualStart, actualEnd),
+    sumPagosPorPlan(gymId, prevStart, prevEnd),
   ]);
 
   if (planesResult.error) throw planesResult.error;
-  if (pagosActualResult.error) throw pagosActualResult.error;
-  if (pagosAnteriorResult.error) throw pagosAnteriorResult.error;
-
-  const facturacionActual = {};
-  for (const p of pagosActualResult.data ?? []) {
-    facturacionActual[p.plan_id] = (facturacionActual[p.plan_id] || 0) + Number(p.monto_total || 0);
-  }
-  const facturacionAnterior = {};
-  for (const p of pagosAnteriorResult.data ?? []) {
-    facturacionAnterior[p.plan_id] = (facturacionAnterior[p.plan_id] || 0) + Number(p.monto_total || 0);
-  }
 
   return (planesResult.data ?? []).map((plan) => {
     const actual = facturacionActual[plan.id] ?? 0;
@@ -626,17 +616,18 @@ export async function countActiveMembersByMonthPayment({ gymId, year, month }) {
   const startDate = `${year}-${String(month).padStart(2, '0')}-01`;
   const endDate = new Date(year, month, 0).toISOString().split('T')[0];
 
-  const { data, error } = await supabaseAdmin
-    .from('pagos')
-    .select('alumno_id')
-    .eq('gym_id', gymId)
-    .is('deleted_at', null)
-    .gte('fecha_de_pago', startDate)
-    .lte('fecha_de_pago', endDate);
+  const data = await fetchAllPaged(() =>
+    supabaseAdmin
+      .from('pagos')
+      .select('alumno_id')
+      .eq('gym_id', gymId)
+      .is('deleted_at', null)
+      .gte('fecha_de_pago', startDate)
+      .lte('fecha_de_pago', endDate)
+      .order('id')
+  );
 
-  if (error) throw error;
-
-  const uniqueIds = new Set((data ?? []).map(p => p.alumno_id));
+  const uniqueIds = new Set(data.map(p => p.alumno_id));
   return uniqueIds.size;
 }
 
@@ -651,9 +642,9 @@ const todayStr = () => new Date().toISOString().split('T')[0];
 export async function countAbandonosByMonth({ gymId, year, month }) {
   const { startDate, endDate } = getMonthRange(year, month);
 
-  const { data, error } = await supabaseAdmin
+  const { count, error } = await supabaseAdmin
     .from('alumnos')
-    .select('id')
+    .select('id', { count: 'exact', head: true })
     .eq('gym_id', gymId)
     .is('deleted_at', null)
     .gte('fecha_de_vencimiento', startDate)
@@ -661,25 +652,26 @@ export async function countAbandonosByMonth({ gymId, year, month }) {
     .lte('fecha_de_vencimiento', todayStr());
 
   if (error) throw error;
-  return data?.length ?? 0;
+  return count ?? 0;
 }
 
 export async function getAbandonosDetails({ gymId, year, month }) {
   const { startDate, endDate } = getMonthRange(year, month);
 
-  const { data, error } = await supabaseAdmin
-    .from('alumnos')
-    .select('id, nombre, fecha_de_vencimiento, plan_id, planes_precios(nombre)')
-    .eq('gym_id', gymId)
-    .is('deleted_at', null)
-    .gte('fecha_de_vencimiento', startDate)
-    .lte('fecha_de_vencimiento', endDate)
-    .lte('fecha_de_vencimiento', todayStr())
-    .order('fecha_de_vencimiento', { ascending: false });
+  const data = await fetchAllPaged(() =>
+    supabaseAdmin
+      .from('alumnos')
+      .select('id, nombre, fecha_de_vencimiento, plan_id, planes_precios(nombre)')
+      .eq('gym_id', gymId)
+      .is('deleted_at', null)
+      .gte('fecha_de_vencimiento', startDate)
+      .lte('fecha_de_vencimiento', endDate)
+      .lte('fecha_de_vencimiento', todayStr())
+      .order('fecha_de_vencimiento', { ascending: false })
+      .order('id')
+  );
 
-  if (error) throw error;
-
-  return (data ?? []).map((a) => ({
+  return data.map((a) => ({
     id: a.id,
     alumno_nombre: a.nombre ?? 'Sin nombre',
     fecha_de_vencimiento: a.fecha_de_vencimiento,
@@ -691,28 +683,29 @@ export async function getActiveMembersPaymentDetails({ gymId, year, month }) {
   const startDate = `${year}-${String(month).padStart(2, '0')}-01`;
   const endDate = new Date(year, month, 0).toISOString().split('T')[0];
 
-  const { data, error } = await supabaseAdmin
-    .from('pagos')
-    .select(`
-      id,
-      alumno_id,
-      fecha_de_pago,
-      monto_total,
-      hora,
-      plan_id,
-      alumnos!inner(id, nombre),
-      planes_precios(nombre)
-    `)
-    .eq('gym_id', gymId)
-    .is('deleted_at', null)
-    .gte('fecha_de_pago', startDate)
-    .lte('fecha_de_pago', endDate)
-    .order('fecha_de_pago', { ascending: false })
-    .order('hora', { ascending: false });
+  const data = await fetchAllPaged(() =>
+    supabaseAdmin
+      .from('pagos')
+      .select(`
+        id,
+        alumno_id,
+        fecha_de_pago,
+        monto_total,
+        hora,
+        plan_id,
+        alumnos!inner(id, nombre),
+        planes_precios(nombre)
+      `)
+      .eq('gym_id', gymId)
+      .is('deleted_at', null)
+      .gte('fecha_de_pago', startDate)
+      .lte('fecha_de_pago', endDate)
+      .order('fecha_de_pago', { ascending: false })
+      .order('hora', { ascending: false })
+      .order('id', { ascending: false })
+  );
 
-  if (error) throw error;
-
-  return (data ?? []).map((p) => ({
+  return data.map((p) => ({
     id: p.id,
     alumno_id: p.alumno_id,
     alumno_nombre: p.alumnos?.nombre ?? 'Sin nombre',
@@ -742,18 +735,19 @@ export async function countAltasByMonth({ gymId, year, month }) {
 export async function getAltasDetails({ gymId, year, month }) {
   const { startDate, endDate } = getMonthRange(year, month);
 
-  const { data, error } = await supabaseAdmin
-    .from('alumnos')
-    .select('id, nombre, fecha_inicio, planes_precios(nombre)')
-    .eq('gym_id', gymId)
-    .is('deleted_at', null)
-    .gte('fecha_inicio', startDate)
-    .lte('fecha_inicio', endDate)
-    .order('fecha_inicio', { ascending: false });
+  const data = await fetchAllPaged(() =>
+    supabaseAdmin
+      .from('alumnos')
+      .select('id, nombre, fecha_inicio, planes_precios(nombre)')
+      .eq('gym_id', gymId)
+      .is('deleted_at', null)
+      .gte('fecha_inicio', startDate)
+      .lte('fecha_inicio', endDate)
+      .order('fecha_inicio', { ascending: false })
+      .order('id')
+  );
 
-  if (error) throw error;
-
-  return (data ?? []).map((a) => ({
+  return data.map((a) => ({
     id: a.id,
     alumno_nombre: a.nombre ?? 'Sin nombre',
     fecha_inicio: a.fecha_inicio,
@@ -773,10 +767,10 @@ export async function getFacturacionMes({ gymId, year, month }) {
 
   const [actualData, anteriorData] = await Promise.all([
     fetchAllPaged(() =>
-      supabaseAdmin.from('pagos').select('monto_total').eq('gym_id', gymId).is('deleted_at', null).gte('fecha_de_pago', actualStart).lte('fecha_de_pago', actualEnd)
+      supabaseAdmin.from('pagos').select('monto_total').eq('gym_id', gymId).is('deleted_at', null).gte('fecha_de_pago', actualStart).lte('fecha_de_pago', actualEnd).order('id')
     ),
     fetchAllPaged(() =>
-      supabaseAdmin.from('pagos').select('monto_total').eq('gym_id', gymId).is('deleted_at', null).gte('fecha_de_pago', prevStart).lte('fecha_de_pago', prevEnd)
+      supabaseAdmin.from('pagos').select('monto_total').eq('gym_id', gymId).is('deleted_at', null).gte('fecha_de_pago', prevStart).lte('fecha_de_pago', prevEnd).order('id')
     ),
   ]);
 
@@ -788,24 +782,25 @@ export async function getFacturacionMes({ gymId, year, month }) {
 }
 
 export async function getPagosByDateRange({ gymId, startDate, endDate }) {
-  const { data, error } = await supabaseAdmin
-    .from('pagos')
-    .select(`
-      id, fecha_de_pago, hora, monto_total,
-      alumno:alumnos!inner(nombre),
-      plan:planes_precios!left(nombre),
-      items:pago_items(monto, metodo_id:metodo_de_pago_id, metodo:metodos_de_pago(nombre))
-    `)
-    .eq('gym_id', gymId)
-    .is('deleted_at', null)
-    .gte('fecha_de_pago', startDate)
-    .lte('fecha_de_pago', endDate)
-    .order('fecha_de_pago', { ascending: false })
-    .order('hora', { ascending: false });
+  const data = await fetchAllPaged(() =>
+    supabaseAdmin
+      .from('pagos')
+      .select(`
+        id, fecha_de_pago, hora, monto_total,
+        alumno:alumnos!inner(nombre),
+        plan:planes_precios!left(nombre),
+        items:pago_items(monto, metodo_id:metodo_de_pago_id, metodo:metodos_de_pago(nombre))
+      `)
+      .eq('gym_id', gymId)
+      .is('deleted_at', null)
+      .gte('fecha_de_pago', startDate)
+      .lte('fecha_de_pago', endDate)
+      .order('fecha_de_pago', { ascending: false })
+      .order('hora', { ascending: false })
+      .order('id', { ascending: false })
+  );
 
-  if (error) throw error;
-
-  return (data ?? []).map((p) => ({
+  return data.map((p) => ({
     id: p.id,
     fecha_de_pago: p.fecha_de_pago,
     hora: p.hora,

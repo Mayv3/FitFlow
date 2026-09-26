@@ -1,5 +1,5 @@
 import {
-  getAllAsistencias,
+  getAsistenciasPaged,
   createAsistencia,
   getAsistenciaById,
   deleteAsistencia
@@ -7,12 +7,20 @@ import {
 import { supabaseAdmin } from '../config/supabaseClient.js'
 import * as cache from '../utilities/cache.js'
 
+// GET /api/asistencias?page=1&limit=100&fecha=YYYY-MM-DD
 export const listAsistencias = async (req, res) => {
   try {
-    const asistencias = await getAllAsistencias(req.gymId)
+    const page = Math.max(Number(req.query.page) || 1, 1)
+    const limit = Math.min(Math.max(Number(req.query.limit) || 100, 1), 500)
+    const fecha = /^\d{4}-\d{2}-\d{2}$/.test(String(req.query.fecha ?? '')) ? req.query.fecha : null
+
+    const { items, total } = await getAsistenciasPaged(req.gymId, { page, limit, fecha })
     res.json({
-      message: `Asistencias encontradas: ${asistencias.length}`,
-      asistencias
+      message: `Asistencias encontradas: ${total}`,
+      asistencias: items,
+      total,
+      page,
+      limit,
     })
   } catch (error) {
     res.status(500).json({ error: error.message })

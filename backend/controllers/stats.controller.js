@@ -1,5 +1,6 @@
 import { supabaseAdmin } from '../config/supabaseClient.js';
 import * as cache from '../utilities/cache.js'
+import { fetchAllPaged } from '../utilities/fetchAllPaged.js';
 import { getPaymentsStatsService } from '../services/paymentsStats.supabase.js';
 import {
   getDashboardData,
@@ -280,18 +281,19 @@ export const getAlumnosPorOrigenController = async (req, res) => {
 
     if (monthNum === 0) {
       // Todo el año: agrupar alumnos por origen filtrando por año de alta
-      const { data, error } = await supabaseAdmin
-        .from('alumnos')
-        .select('origen')
-        .eq('gym_id', gym_id)
-        .is('deleted_at', null)
-        .gte('fecha_inicio', `${yearNum}-01-01`)
-        .lte('fecha_inicio', `${yearNum}-12-31`);
-
-      if (error) throw error;
+      const data = await fetchAllPaged(() =>
+        supabaseAdmin
+          .from('alumnos')
+          .select('origen')
+          .eq('gym_id', gym_id)
+          .is('deleted_at', null)
+          .gte('fecha_inicio', `${yearNum}-01-01`)
+          .lte('fecha_inicio', `${yearNum}-12-31`)
+          .order('id')
+      );
 
       const grouped = {};
-      for (const a of data ?? []) {
+      for (const a of data) {
         const origen = a.origen || 'Sin datos';
         grouped[origen] = (grouped[origen] || 0) + 1;
       }

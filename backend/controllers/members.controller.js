@@ -203,14 +203,22 @@ export async function handleGetExpiredAlumnos(req, res) {
   }
 }
 
+// GET /api/alumnos/simple?q=juan&limit=20  |  ?ids=12,34
+// Sin cache: cada texto buscado sería una clave nueva en memoria, y la query
+// es chica (limit) y usa los índices trigram de nombre/dni.
 export async function handleListAlumnosSimple(req, res) {
   try {
-    const key = `alumnos:${req.gymId}:simple`
-    const cached = await cache.get(key)
-    if (cached) return res.json(cached)
+    const ids = String(req.query.ids ?? '')
+      .split(',')
+      .map(Number)
+      .filter((n) => Number.isInteger(n) && n > 0)
+      .slice(0, 50);
 
-    const alumnos = await getAlumnosSimpleService(req.supa);
-    await cache.set(key, alumnos, ALUMNOS_TTL)
+    const alumnos = await getAlumnosSimpleService(req.supa, {
+      q: String(req.query.q ?? ''),
+      ids,
+      limit: req.query.limit,
+    });
     res.json(alumnos);
   } catch (err) {
     console.error(err);

@@ -1,19 +1,22 @@
 import { supabase, supabaseAdmin } from '../config/supabaseClient.js'
+import { fetchAllPaged } from '../utilities/fetchAllPaged.js'
+import { fechaArgentina } from '../utilities/moment.js'
 
+const SIMPLE_LIMIT_DEFAULT = 20
+const SIMPLE_LIMIT_MAX = 50
+
+// El conteo se hace con GROUP BY en la DB (RPC active_alumnos_count_by_gym):
+// traer las filas para contarlas en JS se cortaba en 1000 sin avisar.
 export async function getActiveAlumnosCountByGym() {
-  const today = new Date().toISOString().slice(0, 10);
-
-  const { data, error } = await supabaseAdmin
-    .from('alumnos')
-    .select('gym_id')
-    .is('deleted_at', null)
-    .gte('fecha_de_vencimiento', today);
+  const { data, error } = await supabaseAdmin.rpc('active_alumnos_count_by_gym', {
+    p_today: fechaArgentina(),
+  });
 
   if (error) throw error;
 
   const counts = {};
   for (const row of data ?? []) {
-    counts[row.gym_id] = (counts[row.gym_id] ?? 0) + 1;
+    counts[row.gym_id] = Number(row.total);
   }
   return counts;
 }
@@ -211,22 +214,23 @@ export async function getAlumnosService({ page, limit, q = '' }, supaClient) {
 }
 
 export async function getExpiredAlumnosService(supaClient) {
-  const today = new Date().toISOString().slice(0, 10);
+  const today = fechaArgentina();
 
-  const { data, error } = await supaClient
-    .from('alumnos')
-    .select(`
-      id, dni, nombre, email, telefono,
-      fecha_de_vencimiento, plan_id,
-      plan:planes_precios ( id, nombre, precio )
-    `)
-    .is('deleted_at', null)
-    .lt('fecha_de_vencimiento', today)
-    .order('fecha_de_vencimiento', { ascending: false });
+  const data = await fetchAllPaged(() =>
+    supaClient
+      .from('alumnos')
+      .select(`
+        id, dni, nombre, email, telefono,
+        fecha_de_vencimiento, plan_id,
+        plan:planes_precios ( id, nombre, precio )
+      `)
+      .is('deleted_at', null)
+      .lt('fecha_de_vencimiento', today)
+      .order('fecha_de_vencimiento', { ascending: false })
+      .order('id')
+  );
 
-  if (error) throw error;
-
-  return (data ?? []).map(r => ({
+  return data.map(r => ({
     ...r,
     plan_nombre: r.plan?.nombre ?? null,
     plan_precio: r.plan?.precio ?? null,
@@ -234,12 +238,30 @@ export async function getExpiredAlumnosService(supaClient) {
   }));
 }
 
-export async function getAlumnosSimpleService(supaClient) {
-  const { data, error } = await supaClient
+/**
+ * Alumnos para los selects (pagos, turnos, inscripciones). Ya no baja la
+ * lista entera del gym: busca por nombre o DNI y devuelve como mucho `limit`.
+ * - `ids`: resuelve alumnos puntuales (el valor ya elegido al editar). Incluye
+ *   eliminados para que un pago viejo siga mostrando el nombre.
+ * - `q` vacío: los primeros `limit` por orden alfabético.
+ */
+export async function getAlumnosSimpleService(supaClient, { q = '', ids = [], limit = SIMPLE_LIMIT_DEFAULT } = {}) {
+  let query = supaClient
     .from('alumnos')
-    .select('id, nombre, dni, email')
-    .is('deleted_at', null)
-    .order('nombre', { ascending: true });
+    .select('id, nombre, dni, email');
+
+  if (ids.length) {
+    query = query.in('id', ids);
+  } else {
+    // `,` `(` `)` rompen la sintaxis del .or() de PostgREST; `%` `_` `*` son comodines.
+    const s = String(q).trim().replace(/[(),%_*\\]/g, ' ').replace(/\s+/g, ' ').trim();
+    query = query.is('deleted_at', null);
+    if (s) query = query.or(`nombre.ilike.%${s}%,dni.ilike.%${s}%`);
+    const safeLimit = Math.min(Math.max(Number(limit) || SIMPLE_LIMIT_DEFAULT, 1), SIMPLE_LIMIT_MAX);
+    query = query.limit(safeLimit);
+  }
+
+  const { data, error } = await query.order('nombre', { ascending: true }).order('id');
 
   if (error) throw error;
   return data;

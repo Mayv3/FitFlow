@@ -14,7 +14,9 @@ import * as cola from './colaEnvios.js'
 // - WhatsApp: un loop por gym, con las mismas pausas anti-spam de antes.
 // Si el proceso se reinicia, al arrancar sigue con los pendientes.
 
-const TICK_MS = 15_000
+// Los envíos nuevos arrancan en el acto (revisarAhora() al encolar); el tick
+// solo retoma tras reinicios/reconexiones, reintenta emails y vence lo viejo.
+const TICK_MS = 2 * 60_000
 const TANDA_SIZE = 25
 const MAX_INTENTOS_EMAIL = 3
 // Recién después de este tiempo desconectado se manda la alerta: al arrancar el

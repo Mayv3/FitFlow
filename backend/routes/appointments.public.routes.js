@@ -1,5 +1,7 @@
 import { Router } from 'express';
 import { supabaseAdmin } from '../config/supabaseClient.js';
+import { inscribirAlumnoSesion } from '../services/sesiones.supabase.js';
+import { fechaArgentina } from '../utilities/moment.js';
 
 const router = Router();
 
@@ -48,39 +50,37 @@ router.get('/service/:service_id/sessions', async (req, res) => {
 
     if (error) throw error;
 
-    // Si se proporciona alumno_id, verificar inscripciones
-    if (alumno_id && data) {
-      const sesionesConEstado = await Promise.all(
-        data.map(async (sesion) => {
-          // Verificar si el alumno está inscrito (inscripto o asistido)
-          const { data: inscripcion } = await supabaseAdmin
-            .from('clases_inscripciones')
-            .select('id, estado, es_fija')
-            .eq('sesion_id', sesion.id)
-            .eq('alumno_id', alumno_id)
-            .in('estado', ['inscripto', 'asistio'])
-            .maybeSingle();
+    // Si se proporciona alumno_id, marcar inscripción y cupos. Una sola query
+    // para todas las sesiones (antes: 2 queries por sesión).
+    if (alumno_id && data?.length) {
+      const { data: inscripciones, error: insError } = await supabaseAdmin
+        .from('clases_inscripciones')
+        .select('sesion_id, alumno_id, es_fija, alumno:alumnos(fecha_de_vencimiento)')
+        .in('sesion_id', data.map((s) => s.id))
+        .in('estado', ['inscripto', 'asistio']);
 
-          // Contar inscripciones actuales (solo inscriptos y asistidos), excluyendo fijas vencidas
-          const { data: inscripciones } = await supabaseAdmin
-            .from('clases_inscripciones')
-            .select('es_fija, alumno:alumnos(fecha_de_vencimiento)')
-            .eq('sesion_id', sesion.id)
-            .in('estado', ['inscripto', 'asistio']);
+      if (insError) throw insError;
 
-          const today = new Date().toISOString().slice(0, 10);
-          const activeCount = (inscripciones ?? []).filter(i =>
-            !i.es_fija || (i.alumno?.fecha_de_vencimiento ?? '') >= today
-          ).length;
+      // Ocupan cupo: inscriptos/asistidos, excluyendo fijas con el plan vencido
+      const today = fechaArgentina();
+      const ocupados = new Map();
+      const propias = new Map();
+      for (const i of inscripciones ?? []) {
+        if (!i.es_fija || (i.alumno?.fecha_de_vencimiento ?? '') >= today) {
+          ocupados.set(i.sesion_id, (ocupados.get(i.sesion_id) ?? 0) + 1);
+        }
+        if (String(i.alumno_id) === String(alumno_id)) propias.set(i.sesion_id, i);
+      }
 
-          return {
-            ...sesion,
-            inscrito: !!inscripcion,
-            es_fija: inscripcion?.es_fija || false,
-            cupos_disponibles: sesion.capacidad - activeCount,
-          };
-        })
-      );
+      const sesionesConEstado = data.map((sesion) => {
+        const inscripcion = propias.get(sesion.id);
+        return {
+          ...sesion,
+          inscrito: !!inscripcion,
+          es_fija: inscripcion?.es_fija || false,
+          cupos_disponibles: sesion.capacidad - (ocupados.get(sesion.id) ?? 0),
+        };
+      });
       return res.json(sesionesConEstado);
     }
 
@@ -101,70 +101,28 @@ router.post('/session/:session_id/enroll', async (req, res) => {
       return res.status(400).json({ error: 'alumno_id es requerido' });
     }
 
-    // Verificar que la sesión existe
-    const { data: sesion, error: sesionError } = await supabaseAdmin
-      .from('clases_sesiones')
-      .select('id, capacidad, clase_id, gym_id')
-      .eq('id', session_id)
-      .single();
+    // Cupo + duplicado + insert en una sola transacción (ver inscribirAlumnoSesion)
+    const inscripcion = await inscribirAlumnoSesion({
+      sesion_id: session_id,
+      alumno_id,
+      es_fija,
+    });
 
-    if (sesionError || !sesion) {
-      return res.status(404).json({ error: 'Sesión no encontrada' });
-    }
-
-    // Contar inscripciones actuales (solo inscriptos y asistidos), excluyendo fijas vencidas
-    const { data: inscripciones, error: countError } = await supabaseAdmin
-      .from('clases_inscripciones')
-      .select('es_fija, alumno:alumnos(fecha_de_vencimiento)')
-      .eq('sesion_id', session_id)
-      .in('estado', ['inscripto', 'asistio']);
-
-    if (countError) throw countError;
-
-    const today = new Date().toISOString().slice(0, 10);
-    const inscritosActuales = (inscripciones ?? []).filter(i =>
-      !i.es_fija || (i.alumno?.fecha_de_vencimiento ?? '') >= today
-    ).length;
-
-    if (inscritosActuales >= sesion.capacidad) {
-      return res.status(400).json({ error: 'No hay cupos disponibles' });
-    }
-
-    // Verificar que el alumno no esté ya inscrito (inscripto o asistido)
-    const { data: existente } = await supabaseAdmin
-      .from('clases_inscripciones')
-      .select('id, estado')
-      .eq('sesion_id', session_id)
-      .eq('alumno_id', alumno_id)
-      .in('estado', ['inscripto', 'asistio'])
-      .maybeSingle();
-
-    if (existente) {
-      return res.status(400).json({ error: 'Ya estás inscrito en esta sesión' });
-    }
-
-    // Crear inscripción
-    const { data: inscripcion, error: inscripcionError } = await supabaseAdmin
-      .from('clases_inscripciones')
-      .insert({
-        sesion_id: session_id,
-        alumno_id: alumno_id,
-        gym_id: sesion.gym_id,
-        estado: 'inscripto',
-        es_fija: es_fija,
-        created_at: new Date().toISOString(),
-      })
-      .select()
-      .single();
-
-    if (inscripcionError) throw inscripcionError;
-
-    res.json({ 
-      success: true, 
+    res.json({
+      success: true,
       message: 'Inscripción exitosa',
-      inscripcion 
+      inscripcion
     });
   } catch (error) {
+    if (error.code === 'SESION_NO_ENCONTRADA') {
+      return res.status(404).json({ error: 'Sesión no encontrada' });
+    }
+    if (error.code === 'SESION_LLENA') {
+      return res.status(400).json({ error: 'No hay cupos disponibles' });
+    }
+    if (error.code === 'YA_INSCRIPTO') {
+      return res.status(400).json({ error: 'Ya estás inscrito en esta sesión' });
+    }
     console.error('[enrollSession] Error:', error);
     res.status(500).json({ error: 'Error en la inscripción' });
   }

@@ -12,13 +12,8 @@ export interface PaymentsByTipo {
   monto: number
 }
 
-/**
- * Respuesta de /api/stats/payments. `total*` es historico y `*Filtrado` es lo
- * que cae dentro del rango pedido.
- */
+/** Respuesta de /api/stats/payments: `*Filtrado` es lo que cae dentro del rango pedido. */
 export interface PaymentsStats {
-  totalPagos: number
-  totalMonto: number
   pagosFiltrados: number
   montoFiltrado: number
   byMethod: PaymentsByMethod[]

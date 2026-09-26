@@ -1,5 +1,6 @@
 import { supabaseAdmin } from '../config/supabaseClient.js';
 import { getAlumnoById } from './alumnos.supabase.js';
+import { fechaArgentina } from '../utilities/moment.js';
 
 // El backend es la capa confiable: usa service_role y saltea el RLS (que es un
 // safety-net para acceso REST directo con anon key). El aislamiento por gimnasio
@@ -19,84 +20,61 @@ export async function getSesionesByClase(claseId) {
     .order("hora_inicio", { ascending: true });
 
   if (sesionesError) throw sesionesError;
+  if (!sesiones?.length) return [];
 
-  const result = await Promise.all(
-    sesiones.map(async (sesion) => {
-      // 2) Traer inscripciones
-      const { data: inscripciones, error: insError } = await supabase
-        .from("clases_inscripciones")
-        .select("alumno_id, es_fija")
-        .eq("sesion_id", sesion.id)
-        .eq("estado", "inscripto");
+  // 2) Inscripciones de TODAS las sesiones en una sola query (antes: 2 queries por sesión)
+  const { data: inscripciones, error: insError } = await supabase
+    .from("clases_inscripciones")
+    .select("sesion_id, alumno_id, es_fija")
+    .in("sesion_id", sesiones.map((s) => s.id))
+    .eq("estado", "inscripto");
 
-      if (insError) throw insError;
+  if (insError) throw insError;
 
-      // Verificar si hay inscripciones fijas
-      const tieneFijas = inscripciones?.some(i => i.es_fija === true) || false;
+  // 3) Todos los alumnos inscriptos en una sola query
+  const alumnoIds = [...new Set((inscripciones ?? []).map((i) => Number(i.alumno_id)))];
+  let alumnosMap = new Map();
+  if (alumnoIds.length) {
+    const { data: alumnosDb, error: alumnosError } = await supabaseAdmin
+      .from("alumnos")
+      .select("id, nombre, dni, email, fecha_de_vencimiento")
+      .in("id", alumnoIds);
 
-      if (!inscripciones || inscripciones.length === 0) {
-        return {
-          ...sesion,
-          capacidad_actual: 0,
-          alumnos_inscritos: [],
-          tiene_fijas: false
-        };
-      }
+    if (alumnosError) throw alumnosError;
+    alumnosMap = new Map(alumnosDb.map((a) => [Number(a.id), a]));
+  }
 
-      const alumnoIds = inscripciones.map((i) => Number(i.alumno_id));
+  const inscripcionesPorSesion = new Map();
+  for (const i of inscripciones ?? []) {
+    if (!inscripcionesPorSesion.has(i.sesion_id)) inscripcionesPorSesion.set(i.sesion_id, []);
+    inscripcionesPorSesion.get(i.sesion_id).push(i);
+  }
 
-      // Crear un mapa de inscripciones para saber cuál es fija
-      const inscripcionesMap = new Map(
-        inscripciones.map((i) => [Number(i.alumno_id), i.es_fija])
-      );
+  // 4) Armar cada sesión en memoria, filtrando fijas con el plan vencido
+  const today = fechaArgentina();
+  return sesiones.map((sesion) => {
+    const alumnosFinal = (inscripcionesPorSesion.get(sesion.id) ?? [])
+      .filter((i) => {
+        if (!i.es_fija) return true;
+        const alumno = alumnosMap.get(Number(i.alumno_id));
+        return (alumno?.fecha_de_vencimiento ?? '') >= today;
+      })
+      .map((i) => {
+        const id = Number(i.alumno_id);
+        const esFija = i.es_fija || false;
+        if (alumnosMap.has(id)) {
+          return { ...alumnosMap.get(id), es_fija: esFija };
+        }
+        return { id, nombre: `(ID ${id} — no encontrado)`, es_fija: esFija };
+      });
 
-      // 3) Traer los alumnos reales
-      const { data: alumnosDb, error: alumnosError } = await supabaseAdmin
-        .from("alumnos")
-        .select("id, nombre, dni, email, fecha_de_vencimiento")
-        .in("id", alumnoIds);
-
-      if (alumnosError) throw alumnosError;
-
-      // 4) Crear un mapa para acceso rápido
-      const alumnosMap = new Map(
-        alumnosDb.map((a) => [Number(a.id), a])
-      );
-
-      // 5) Construir la lista final alumno por alumno con info de es_fija, filtrando fijas vencidas
-      const today = new Date().toISOString().slice(0, 10);
-      const alumnosFinal = alumnoIds
-        .filter((id) => {
-          const esFija = inscripcionesMap.get(id) || false;
-          if (!esFija) return true;
-          const alumno = alumnosMap.get(id);
-          return (alumno?.fecha_de_vencimiento ?? '') >= today;
-        })
-        .map((id) => {
-          const esFija = inscripcionesMap.get(id) || false;
-          if (alumnosMap.has(id)) {
-            return {
-              ...alumnosMap.get(id),
-              es_fija: esFija
-            };
-          }
-          return {
-            id,
-            nombre: `(ID ${id} — no encontrado)`,
-            es_fija: esFija
-          };
-        });
-
-      return {
-        ...sesion,
-        capacidad_actual: alumnosFinal.length,
-        alumnos_inscritos: alumnosFinal,
-        tiene_fijas: alumnosFinal.some(a => a.es_fija)
-      };
-    })
-  );
-
-  return result;
+    return {
+      ...sesion,
+      capacidad_actual: alumnosFinal.length,
+      alumnos_inscritos: alumnosFinal,
+      tiene_fijas: alumnosFinal.some((a) => a.es_fija)
+    };
+  });
 }
 
 
@@ -152,53 +130,34 @@ export async function deleteSesion(id) {
 // ==================== INSCRIPCIONES ====================
 
 // Inscribir alumno a una sesión
-export async function inscribirAlumnoSesion({ sesion_id, alumno_id, gym_id, es_fija = false }) {
-  // Verificar capacidad
-  const { data: sesion, error: e1 } = await supabase
-    .from('clases_sesiones')
-    .select('capacidad')
-    .eq('id', sesion_id)
-    .is('deleted_at', null)
-    .single();
+// Errores de la RPC inscribir_alumno_sesion → código estable para los controllers.
+const INSCRIPCION_ERRORES = {
+  P0002: 'SESION_NO_ENCONTRADA',
+  GYM10: 'SESION_LLENA',
+  GYM11: 'YA_INSCRIPTO',
+  23505: 'YA_INSCRIPTO', // índice único inscripcion_unica_por_sesion
+};
 
-  if (e1) throw e1;
-  if (!sesion) throw new Error('Sesión no encontrada');
+/**
+ * Inscribe con control de cupo atómico (RPC inscribir_alumno_sesion): la DB
+ * bloquea la sesión mientras cuenta e inserta, así dos inscripciones
+ * simultáneas no pueden pasar la capacidad. Lo usan el panel y el portal.
+ */
+export async function inscribirAlumnoSesion({ sesion_id, alumno_id, gym_id = null, es_fija = false }) {
+  const { data, error } = await supabase.rpc('inscribir_alumno_sesion', {
+    p_sesion_id: sesion_id,
+    p_alumno_id: alumno_id,
+    p_es_fija: es_fija,
+    p_gym_id: gym_id,
+  });
 
-  const { data: inscripcionesCapacidad, error: e1b } = await supabase
-    .from('clases_inscripciones')
-    .select('es_fija, alumno:alumnos(fecha_de_vencimiento)')
-    .eq('sesion_id', sesion_id);
-
-  if (e1b) throw e1b;
-
-  const today = new Date().toISOString().slice(0, 10);
-  const capacidadActual = (inscripcionesCapacidad ?? [])
-    .filter(i => !i.es_fija || (i.alumno?.fecha_de_vencimiento ?? '') >= today)
-    .length;
-
-  if (capacidadActual >= sesion.capacidad) {
-    throw new Error('La sesión está llena');
+  if (error) {
+    const err = new Error(
+      error.code === '23505' ? 'El alumno ya está inscrito en esta sesión' : error.message
+    );
+    err.code = INSCRIPCION_ERRORES[error.code] ?? error.code;
+    throw err;
   }
-
-  // Verificar si ya está inscrito
-  const { data: existe, error: e2 } = await supabase
-    .from('clases_inscripciones')
-    .select('id')
-    .eq('sesion_id', sesion_id)
-    .eq('alumno_id', alumno_id)
-    .maybeSingle();
-
-  if (e2) throw e2;
-  if (existe) throw new Error('El alumno ya está inscrito en esta sesión');
-
-  // Inscribir
-  const { data, error } = await supabase
-    .from('clases_inscripciones')
-    .insert({ sesion_id, alumno_id, gym_id, estado: 'inscripto', es_fija })
-    .select('*')
-    .single();
-
-  if (error) throw error;
   return data;
 }
 

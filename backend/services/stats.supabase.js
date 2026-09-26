@@ -62,11 +62,12 @@ async function countMonthRenewals(gymId) {
 }
 
 async function countTodaysAttendance(gymId, today) {
+  // asistencias ya tiene gym_id: no hace falta el join con alumnos.
   let q = supabaseAdmin
     .from('asistencias')
-    .select('id, alumnos!inner(id,gym_id)', { count: 'exact', head: true })
+    .select('id', { count: 'exact', head: true })
     .eq('fecha', today);
-  if (gymId) q = q.eq('alumnos.gym_id', gymId);
+  if (gymId) q = q.eq('gym_id', gymId);
   const { count, error } = await q;
   if (error) throw error;
   return count ?? 0;
@@ -90,7 +91,8 @@ async function getPlansDistribution(gymId) {
   return (data ?? []).map((row) => ({
     id: row.id,
     Plan: row.nombre || `Plan ${row.id}`,
-    valor: Array.isArray(row.alumnos) ? row.alumnos.length : 0,
+    // `alumnos(count)` llega como [{ count: N }]: el largo del array siempre es 1.
+    valor: row.alumnos?.[0]?.count ?? 0,
   }));
 }
 
@@ -265,10 +267,12 @@ export async function getGymStatsService({ gymId } = {}) {
     countMonthRenewals(gymId),
   ]);
 
-  const activePct = Math.floor((activeMembers / totalMembers) * 100);
-  const withPlanPct = Math.floor((withPlanCount / totalMembers) * 100);
-  const attendancePct = Math.floor((todaysAttendance / activeMembers) * 100);
-  const renewalsPct = totalMembers > 0 ? Math.floor((monthRenewals / totalMembers) * 100) : 0;
+  // Gym sin alumnos (o sin activos): 0% en vez de NaN/Infinity.
+  const pct = (part, total) => (total > 0 ? Math.floor((part / total) * 100) : 0);
+  const activePct = pct(activeMembers, totalMembers);
+  const withPlanPct = pct(withPlanCount, totalMembers);
+  const attendancePct = pct(todaysAttendance, activeMembers);
+  const renewalsPct = pct(monthRenewals, totalMembers);
 
   return {
     totalMembers,
@@ -298,161 +302,64 @@ export async function getPlanesStatsService({ gymId }) {
   return data;
 }
 
-// PASO 1: Facturación por período (queries directas, sin RPC)
+// PASO 1: Facturación por período. Agrupa en la DB (RPC facturacion_por_periodo);
+// antes traía todos los pagos del período + sus items y sumaba acá.
 export async function getFacturacionByPeriodo({ gymId, year, range }) {
   const now = moment().tz('America/Argentina/Buenos_Aires');
+  const hoy = now.format('YYYY-MM-DD');
+  const inicioMes = now.clone().startOf('month').format('YYYY-MM-DD');
 
-  async function countMethodsByPeriod(idsByPeriod) {
-    if (!idsByPeriod || Object.keys(idsByPeriod).length === 0) return {};
-    const allIds = [...new Set(Object.values(idsByPeriod).flatMap(v => v.pagoIds))];
-    if (allIds.length === 0) return {};
-    // Trae items en chunks para evitar URLs gigantes + cap de 1000 filas
-    const items = [];
-    const idChunkSize = 200;
-    for (let i = 0; i < allIds.length; i += idChunkSize) {
-      const chunk = allIds.slice(i, i + idChunkSize);
-      const chunkItems = await fetchAllPaged(() =>
-        supabaseAdmin
-          .from('pago_items')
-          .select('pago_id, monto, metodo_de_pago_id, metodo:metodos_de_pago(nombre)')
-          .in('pago_id', chunk)
-          .order('id')
-      );
-      items.push(...chunkItems);
-    }
-    const methodByPagoId = {};
-    for (const item of items ?? []) {
-      if (!methodByPagoId[item.pago_id]) methodByPagoId[item.pago_id] = {};
-      const name = item.metodo?.nombre ?? 'Otro';
-      if (!methodByPagoId[item.pago_id][name]) methodByPagoId[item.pago_id][name] = { count: 0, total: 0 };
-      methodByPagoId[item.pago_id][name].count += 1;
-      methodByPagoId[item.pago_id][name].total += Number(item.monto || 0);
-    }
-    for (const key of Object.keys(idsByPeriod)) {
-      const metodos = {};
-      for (const pid of idsByPeriod[key].pagoIds) {
-        if (methodByPagoId[pid]) {
-          for (const [name, data] of Object.entries(methodByPagoId[pid])) {
-            if (!metodos[name]) metodos[name] = { count: 0, total: 0 };
-            metodos[name].count += data.count;
-            metodos[name].total += data.total;
-          }
-        }
-      }
-      if (Object.keys(metodos).length === 0) metodos['Sin método'] = { count: 0, total: 0 };
-      idsByPeriod[key].metodos = metodos;
-    }
-    return idsByPeriod;
-  }
+  const config = {
+    '12m': { desde: `${year}-01-01`, hasta: `${year}-12-31`, granularidad: 'month' },
+    '30d': { desde: inicioMes, hasta: hoy, granularidad: 'day' },
+    '7w': { desde: inicioMes, hasta: hoy, granularidad: 'week' },
+    '24h': { desde: hoy, hasta: hoy, granularidad: 'hour' },
+  }[range];
+  if (!config) return [];
 
+  const { data, error } = await supabaseAdmin.rpc('facturacion_por_periodo', {
+    p_gym_id: gymId,
+    p_desde: config.desde,
+    p_hasta: config.hasta,
+    p_granularidad: config.granularidad,
+  });
+  if (error) throw error;
+  // Sin ningún pago en el rango el frontend espera [] (no buckets en 0).
+  if (!data?.length) return [];
+
+  const porPeriodo = new Map(data.map((r) => [r.periodo, r]));
+  const fila = (fecha, r) => ({
+    fecha,
+    monto_centavos: Number(r?.monto ?? 0),
+    metodos: normalizarMetodos(r?.metodos),
+  });
+
+  // 12m y 24h devuelven todos los buckets (meses/horas sin pagos en 0)
   if (range === '12m') {
-    const data = await fetchAllPaged(() =>
-      supabaseAdmin
-        .from('pagos')
-        .select('id, fecha_de_pago, monto_total')
-        .eq('gym_id', gymId)
-        .is('deleted_at', null)
-        .gte('fecha_de_pago', `${year}-01-01`)
-        .lte('fecha_de_pago', `${year}-12-31`)
-        .order('id')
-    );
-
-    const byMonth = {};
-    for (let m = 1; m <= 12; m++) {
-      byMonth[m] = { fecha: `${year}-${String(m).padStart(2, '0')}-01`, monto_centavos: 0, pagoIds: [] };
-    }
-    for (const p of data ?? []) {
-      const m = parseInt(p.fecha_de_pago.slice(5, 7), 10);
-      if (byMonth[m]) {
-        byMonth[m].monto_centavos += Number(p.monto_total || 0);
-        byMonth[m].pagoIds.push(p.id);
-      }
-    }
-    const result = await countMethodsByPeriod(byMonth);
-    return Object.values(result).map((r) => ({ fecha: r.fecha, monto_centavos: r.monto_centavos, metodos: r.metodos }));
+    return Array.from({ length: 12 }, (_, i) => {
+      const mm = String(i + 1).padStart(2, '0');
+      return fila(`${year}-${mm}-01`, porPeriodo.get(`${year}-${mm}`));
+    });
   }
-
-  if (range === '30d') {
-    const startOfMonth = now.clone().startOf('month').format('YYYY-MM-DD');
-    const endOfMonth = now.format('YYYY-MM-DD');
-    const data = await fetchAllPaged(() =>
-      supabaseAdmin
-        .from('pagos')
-        .select('id, fecha_de_pago, monto_total')
-        .eq('gym_id', gymId)
-        .is('deleted_at', null)
-        .gte('fecha_de_pago', startOfMonth)
-        .lte('fecha_de_pago', endOfMonth)
-        .order('id')
-    );
-
-    const byDay = {};
-    for (const p of data ?? []) {
-      const d = p.fecha_de_pago;
-      if (!byDay[d]) byDay[d] = { fecha: d, monto_centavos: 0, pagoIds: [] };
-      byDay[d].monto_centavos += Number(p.monto_total || 0);
-      byDay[d].pagoIds.push(p.id);
-    }
-    const result = await countMethodsByPeriod(byDay);
-    return Object.values(result).map((r) => ({ fecha: r.fecha, monto_centavos: r.monto_centavos, metodos: r.metodos }))
-      .sort((a, b) => a.fecha.localeCompare(b.fecha));
-  }
-
-  if (range === '7w') {
-    const startOfMonth = now.clone().startOf('month').format('YYYY-MM-DD');
-    const endOfMonth = now.format('YYYY-MM-DD');
-    const data = await fetchAllPaged(() =>
-      supabaseAdmin
-        .from('pagos')
-        .select('id, fecha_de_pago, monto_total')
-        .eq('gym_id', gymId)
-        .is('deleted_at', null)
-        .gte('fecha_de_pago', startOfMonth)
-        .lte('fecha_de_pago', endOfMonth)
-        .order('id')
-    );
-
-    const byWeek = {};
-    for (const p of data ?? []) {
-      const ws = moment.tz(p.fecha_de_pago, 'America/Argentina/Buenos_Aires').startOf('isoWeek').format('YYYY-MM-DD');
-      if (!byWeek[ws]) byWeek[ws] = { fecha: ws, monto_centavos: 0, pagoIds: [] };
-      byWeek[ws].monto_centavos += Number(p.monto_total || 0);
-      byWeek[ws].pagoIds.push(p.id);
-    }
-    const result = await countMethodsByPeriod(byWeek);
-    return Object.values(result).map((r) => ({ fecha: r.fecha, monto_centavos: r.monto_centavos, metodos: r.metodos }))
-      .sort((a, b) => a.fecha.localeCompare(b.fecha));
-  }
-
   if (range === '24h') {
-    const today = now.format('YYYY-MM-DD');
-    const { data, error } = await supabaseAdmin
-      .from('pagos')
-      .select('id, hora, monto_total')
-      .eq('gym_id', gymId)
-      .is('deleted_at', null)
-      .eq('fecha_de_pago', today);
-    if (error) throw error;
-
-    const byHour = {};
-    for (let h = 0; h < 24; h++) {
-      const hStr = String(h).padStart(2, '0');
-      byHour[h] = { fecha: `${today}T${hStr}:00:00`, monto_centavos: 0, pagoIds: [] };
-    }
-    for (const p of data ?? []) {
-      if (p.hora) {
-        const h = parseInt(String(p.hora).slice(0, 2), 10);
-        if (byHour[h] !== undefined) {
-          byHour[h].monto_centavos += Number(p.monto_total || 0);
-          byHour[h].pagoIds.push(p.id);
-        }
-      }
-    }
-    const result = await countMethodsByPeriod(byHour);
-    return Object.values(result).map((r) => ({ fecha: r.fecha, monto_centavos: r.monto_centavos, metodos: r.metodos }));
+    return Array.from({ length: 24 }, (_, h) => {
+      const hh = String(h).padStart(2, '0');
+      return fila(`${hoy}T${hh}:00:00`, porPeriodo.get(hh));
+    });
   }
+  // 30d / 7w: solo los días/semanas con pagos
+  return data
+    .map((r) => fila(r.periodo, r))
+    .sort((a, b) => a.fecha.localeCompare(b.fecha));
+}
 
-  return [];
+function normalizarMetodos(metodos) {
+  const out = {};
+  for (const [nombre, v] of Object.entries(metodos ?? {})) {
+    out[nombre] = { count: Number(v.count), total: Number(v.total) };
+  }
+  if (Object.keys(out).length === 0) out['Sin método'] = { count: 0, total: 0 };
+  return out;
 }
 
 // PASO 2: KPIs filtrados por año

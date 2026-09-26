@@ -5,6 +5,12 @@ import { fechaArgentina } from '../utilities/moment.js'
 const SIMPLE_LIMIT_DEFAULT = 20
 const SIMPLE_LIMIT_MAX = 50
 
+// El texto buscado va dentro de un .or() de PostgREST: `,` `(` `)` `"` y `\`
+// rompen esa sintaxis (ej. buscar "Pérez, Juan" tiraba error 500).
+function limpiarBusqueda(q) {
+  return String(q ?? '').replace(/[(),"\\]/g, ' ').replace(/\s+/g, ' ').trim()
+}
+
 // El conteo se hace con GROUP BY en la DB (RPC active_alumnos_count_by_gym):
 // traer las filas para contarlas en JS se cortaba en 1000 sin avisar.
 export async function getActiveAlumnosCountByGym() {
@@ -181,8 +187,9 @@ export async function getAlumnosService({ page, limit, q = '' }, supaClient) {
     `, { count: 'exact' })
     .is('deleted_at', null);
 
-  if (q.trim()) {
-    const like = `%${q}%`;
+  const s = limpiarBusqueda(q);
+  if (s) {
+    const like = `%${s}%`;
     query = query.or([
       `dni.ilike.${like}`,
       `nombre.ilike.${like}`,
@@ -253,8 +260,7 @@ export async function getAlumnosSimpleService(supaClient, { q = '', ids = [], li
   if (ids.length) {
     query = query.in('id', ids);
   } else {
-    // `,` `(` `)` rompen la sintaxis del .or() de PostgREST; `%` `_` `*` son comodines.
-    const s = String(q).trim().replace(/[(),%_*\\]/g, ' ').replace(/\s+/g, ' ').trim();
+    const s = limpiarBusqueda(q);
     query = query.is('deleted_at', null);
     if (s) query = query.or(`nombre.ilike.%${s}%,dni.ilike.%${s}%`);
     const safeLimit = Math.min(Math.max(Number(limit) || SIMPLE_LIMIT_DEFAULT, 1), SIMPLE_LIMIT_MAX);

@@ -14,6 +14,8 @@ export async function getPagosPaged({
   const from = (page - 1) * limit;
   const to = from + limit - 1;
 
+  const s = (q ?? '').trim().replace(/\s+/g, ' ');
+
   let query = supaClient
     .from('pagos')
     .select(`
@@ -40,45 +42,46 @@ export async function getPagosPaged({
         metodo_de_pago_id,
         metodo:metodos_de_pago ( nombre )
       )
-    `, { count: 'exact' })
+    `, s ? {} : { count: 'exact' })
     .order('fecha_de_pago', { ascending: false })
-    .order('hora', { ascending: false });
+    .order('hora', { ascending: false })
+    .order('id', { ascending: false });
 
-  if (!includeDeleted) query = query.is('deleted_at', null);
-  if (filters.fromDate) query = query.gte('fecha_de_pago', filters.fromDate);
-  if (filters.toDate) query = query.lte('fecha_de_pago', filters.toDate);
+  let data, count;
+  if (s) {
+    // Búsqueda: la DB filtra (responsable, nombre del alumno o método de pago)
+    // y devuelve solo los ids de esta página + el total. Antes se armaba un
+    // `id.in.(...)` con todos los pagos del método buscado ("efectivo" = miles
+    // de ids en la URL) y la request fallaba. Corre con el JWT del usuario: RLS.
+    const { data: res, error: eBusq } = await supaClient.rpc('buscar_pagos', {
+      p_q: s,
+      p_desde: filters.fromDate || null,
+      p_hasta: filters.toDate || null,
+      p_incluir_eliminados: includeDeleted,
+      p_limit: limit,
+      p_offset: from,
+    });
+    if (eBusq) throw eBusq;
 
-  if (q && q.trim()) {
-    const s = q.trim().replace(/[(),]/g, ' ').replace(/\s+/g, ' ');
-
-    const [{ data: mpRows }, { data: alRows }] = await Promise.all([
-      supaClient.from('metodos_de_pago').select('id').ilike('nombre', `%${s}%`),
-      supaClient.from('alumnos').select('id').ilike('nombre', `%${s}%`),
-    ]);
-
-    const mpIds = (mpRows ?? []).map(r => r.id);
-    const alumnoIds = (alRows ?? []).map(r => r.id);
-
-    let pagoIdsByMetodo = [];
-    if (mpIds.length) {
-      const { data: piRows } = await supaClient
-        .from('pago_items')
-        .select('pago_id')
-        .in('metodo_de_pago_id', mpIds);
-      pagoIdsByMetodo = Array.from(new Set((piRows ?? []).map(r => r.pago_id)));
+    count = res?.total ?? 0;
+    const ids = res?.ids ?? [];
+    if (ids.length) {
+      const { data: rows, error } = await query.in('id', ids);
+      if (error) throw error;
+      data = rows;
+    } else {
+      data = [];
     }
+  } else {
+    if (!includeDeleted) query = query.is('deleted_at', null);
+    if (filters.fromDate) query = query.gte('fecha_de_pago', filters.fromDate);
+    if (filters.toDate) query = query.lte('fecha_de_pago', filters.toDate);
 
-    const ors = [`responsable.ilike.%${s}%`];
-    if (alumnoIds.length) ors.push(`alumno_id.in.(${alumnoIds.join(',')})`);
-    if (pagoIdsByMetodo.length) ors.push(`id.in.(${pagoIdsByMetodo.join(',')})`);
-
-    query = query.or(ors.join(','));
+    const res = await query.range(from, to);
+    if (res.error) throw res.error;
+    data = res.data;
+    count = res.count;
   }
-
-  query = query.range(from, to);
-
-  const { data, error, count } = await query;
-  if (error) throw error;
 
   // Detectar alumnos eliminados (alumno_id existe pero el join no devuelve nada)
   const deletedAlumnoIds = [

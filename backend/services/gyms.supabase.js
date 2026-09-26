@@ -1,4 +1,6 @@
 import { supabaseAdmin } from '../config/supabaseClient.js'
+import { fetchAllPaged } from '../utilities/fetchAllPaged.js'
+import { fechaArgentina } from '../utilities/moment.js'
 
 export async function createGym({ name, settings = {}, logo_url = null }) {
   const { data, error } = await supabaseAdmin
@@ -221,18 +223,27 @@ export const getOwnerGymStats = async (gymId, month) => {
   const nextY = m === 12 ? y + 1 : y;
   const nextM = m === 12 ? 1 : m + 1;
   const nextStart = `${nextY}-${String(nextM).padStart(2, '0')}-01`;
-  const todayStr = now.toISOString().slice(0, 10);
+  const todayStr = fechaArgentina();
 
-  // Snapshot alumnos (actual)
-  const { data: alumnos } = await supabaseAdmin
-    .from('alumnos')
-    .select('fecha_de_vencimiento')
-    .eq('gym_id', gymId)
-    .is('deleted_at', null);
-  const total = alumnos?.length || 0;
-  const activos = alumnos?.filter(
-    (a) => a.fecha_de_vencimiento && a.fecha_de_vencimiento >= todayStr
-  ).length || 0;
+  // Snapshot alumnos (actual): se cuentan en la DB, no trayendo las filas
+  // (que se cortaban en 1000).
+  const [totalRes, activosRes] = await Promise.all([
+    supabaseAdmin
+      .from('alumnos')
+      .select('id', { count: 'exact', head: true })
+      .eq('gym_id', gymId)
+      .is('deleted_at', null),
+    supabaseAdmin
+      .from('alumnos')
+      .select('id', { count: 'exact', head: true })
+      .eq('gym_id', gymId)
+      .is('deleted_at', null)
+      .gte('fecha_de_vencimiento', todayStr),
+  ]);
+  if (totalRes.error) throw totalRes.error;
+  if (activosRes.error) throw activosRes.error;
+  const total = totalRes.count ?? 0;
+  const activos = activosRes.count ?? 0;
   const vencidos = total - activos;
 
   // Serie de los últimos 6 meses (incluido el seleccionado) para gráficos
@@ -252,27 +263,33 @@ export const getOwnerGymStats = async (gymId, month) => {
   const seriesStart = `${series[0].month}-01`;
 
   // Pagos en la ventana
-  const { data: pagosWin } = await supabaseAdmin
-    .from('pagos')
-    .select('monto_total, fecha_de_pago')
-    .eq('gym_id', gymId)
-    .is('deleted_at', null)
-    .gte('fecha_de_pago', seriesStart)
-    .lt('fecha_de_pago', nextStart);
-  for (const p of pagosWin || []) {
+  const pagosWin = await fetchAllPaged(() =>
+    supabaseAdmin
+      .from('pagos')
+      .select('monto_total, fecha_de_pago')
+      .eq('gym_id', gymId)
+      .is('deleted_at', null)
+      .gte('fecha_de_pago', seriesStart)
+      .lt('fecha_de_pago', nextStart)
+      .order('id')
+  );
+  for (const p of pagosWin) {
     const i = idx[String(p.fecha_de_pago).slice(0, 7)];
     if (i != null) { series[i].facturacion += Number(p.monto_total || 0); series[i].pagos += 1; }
   }
 
   // Altas (fecha_inicio) en la ventana
-  const { data: altasWin } = await supabaseAdmin
-    .from('alumnos')
-    .select('fecha_inicio')
-    .eq('gym_id', gymId)
-    .is('deleted_at', null)
-    .gte('fecha_inicio', seriesStart)
-    .lt('fecha_inicio', nextStart);
-  for (const a of altasWin || []) {
+  const altasWin = await fetchAllPaged(() =>
+    supabaseAdmin
+      .from('alumnos')
+      .select('fecha_inicio')
+      .eq('gym_id', gymId)
+      .is('deleted_at', null)
+      .gte('fecha_inicio', seriesStart)
+      .lt('fecha_inicio', nextStart)
+      .order('id')
+  );
+  for (const a of altasWin) {
     const i = idx[String(a.fecha_inicio).slice(0, 7)];
     if (i != null) series[i].altas += 1;
   }

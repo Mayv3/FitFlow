@@ -270,10 +270,12 @@ async function sumPagosPorPlan(gymId, desde, hasta) {
       .order('id')
   );
   const totales = {};
+  const cantidades = {};
   for (const p of pagos) {
     totales[p.plan_id] = (totales[p.plan_id] || 0) + Number(p.monto_total || 0);
+    cantidades[p.plan_id] = (cantidades[p.plan_id] || 0) + 1;
   }
-  return totales;
+  return { totales, cantidades };
 }
 
 // PASO 4: Planes filtrados por año y mes
@@ -286,7 +288,7 @@ export async function getPlanesStatsByPeriodo({ gymId, year, month }) {
   const prevStart = `${prevYear}-${String(prevMonth).padStart(2, '0')}-01`;
   const prevEnd = new Date(prevYear, prevMonth, 0).toISOString().split('T')[0];
 
-  const [planesResult, alumnos, facturacionActual, facturacionAnterior] = await Promise.all([
+  const [planesResult, alumnos, pagosActual, pagosAnterior] = await Promise.all([
     supabaseAdmin.from('planes_precios').select('id, nombre').eq('gym_id', gymId).is('deleted_at', null),
     fetchAllPaged(() =>
       supabaseAdmin.from('alumnos').select('plan_id').eq('gym_id', gymId).is('deleted_at', null).not('plan_id', 'is', null).order('id')
@@ -306,13 +308,14 @@ export async function getPlanesStatsByPeriodo({ gymId, year, month }) {
   }
 
   const result = planes.map((plan) => {
-    const actual = facturacionActual[plan.id] ?? 0;
-    const anterior = facturacionAnterior[plan.id] ?? 0;
+    const actual = pagosActual.totales[plan.id] ?? 0;
+    const anterior = pagosAnterior.totales[plan.id] ?? 0;
     const variacion = anterior > 0 ? ((actual - anterior) / anterior) * 100 : 0;
     return {
       plan_id: plan.id,
       plan_nombre: plan.nombre,
       cantidad_alumnos: alumnosPorPlan[plan.id] ?? 0,
+      cantidad_pagos: pagosActual.cantidades[plan.id] ?? 0,
       facturacion_mes_actual: actual,
       facturacion_mes_anterior: anterior,
       variacion: Number(variacion.toFixed(2)),
@@ -320,7 +323,10 @@ export async function getPlanesStatsByPeriodo({ gymId, year, month }) {
     };
   });
 
-  const sorted = [...result].sort((a, b) => b.facturacion_mes_actual - a.facturacion_mes_actual);
+  // Top 5: planes con más pagos en el mes (desempata por facturación); sin pagos no entran.
+  const sorted = result
+    .filter((p) => p.cantidad_pagos > 0)
+    .sort((a, b) => b.cantidad_pagos - a.cantidad_pagos || b.facturacion_mes_actual - a.facturacion_mes_actual);
   const top5Ids = new Set(sorted.slice(0, 5).map((p) => p.plan_id));
 
   return result.map((p) => ({ ...p, is_top5: top5Ids.has(p.plan_id) }));
@@ -336,7 +342,7 @@ export async function getFacturacionPorPlan({ gymId, year, month }) {
   const prevStart = `${prevYear}-${String(prevMonth).padStart(2, '0')}-01`;
   const prevEnd = new Date(prevYear, prevMonth, 0).toISOString().split('T')[0];
 
-  const [planesResult, facturacionActual, facturacionAnterior] = await Promise.all([
+  const [planesResult, pagosActual, pagosAnterior] = await Promise.all([
     supabaseAdmin.from('planes_precios').select('id, nombre').eq('gym_id', gymId).is('deleted_at', null),
     sumPagosPorPlan(gymId, actualStart, actualEnd),
     sumPagosPorPlan(gymId, prevStart, prevEnd),
@@ -345,11 +351,47 @@ export async function getFacturacionPorPlan({ gymId, year, month }) {
   if (planesResult.error) throw planesResult.error;
 
   return (planesResult.data ?? []).map((plan) => {
-    const actual = facturacionActual[plan.id] ?? 0;
-    const anterior = facturacionAnterior[plan.id] ?? 0;
+    const actual = pagosActual.totales[plan.id] ?? 0;
+    const anterior = pagosAnterior.totales[plan.id] ?? 0;
     const variacion = anterior > 0 ? ((actual - anterior) / anterior) * 100 : 0;
     return { plan_id: plan.id, plan_nombre: plan.nombre, actual, anterior, variacion: Number(variacion.toFixed(2)) };
   });
+}
+
+// Top 5 planes más vendidos de un mes: los planes con más pagos en ese período.
+export async function getPlanMasVendidoMes({ gymId, year, month }) {
+  const desde = `${year}-${String(month).padStart(2, '0')}-01`;
+  const hasta = new Date(year, month, 0).toISOString().split('T')[0];
+
+  const [planesResult, pagos] = await Promise.all([
+    supabaseAdmin.from('planes_precios').select('id, nombre').eq('gym_id', gymId),
+    fetchAllPaged(() =>
+      supabaseAdmin
+        .from('pagos')
+        .select('plan_id')
+        .eq('gym_id', gymId)
+        .is('deleted_at', null)
+        .not('plan_id', 'is', null)
+        .gte('fecha_de_pago', desde)
+        .lte('fecha_de_pago', hasta)
+        .order('id')
+    ),
+  ]);
+  if (planesResult.error) throw planesResult.error;
+
+  const conteo = {};
+  for (const p of pagos) conteo[p.plan_id] = (conteo[p.plan_id] || 0) + 1;
+
+  const nombres = new Map((planesResult.data ?? []).map((pl) => [String(pl.id), pl.nombre]));
+
+  return Object.entries(conteo)
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 5)
+    .map(([id, count]) => ({
+      name: nombres.get(id) ?? 'Plan eliminado',
+      count,
+      sharePct: Number(((count / pagos.length) * 100).toFixed(1)),
+    }));
 }
 
 export async function countActiveMembersByMonthPayment({ gymId, year, month }) {

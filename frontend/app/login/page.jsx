@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef } from "react"
 import Cookies from "js-cookie"
 import { api } from "@/lib/api"
 import { useRouter } from "next/navigation"
@@ -8,7 +8,21 @@ import { useUser } from "@/context/UserContext"
 import { ADMINISTRADOR, RECEPCIONISTA, OWNER, SOCIO } from "@/const/roles/roles"
 import Link from "next/link"
 import Image from "next/image"
-import { Eye, EyeOff, ArrowRight } from "lucide-react"
+import { Eye, EyeOff, ArrowLeft, ArrowRight, Check } from "lucide-react"
+import ThemeToggle from "@/components/landing/ThemeToggle"
+import s from "./login.module.css"
+
+const WHATSAPP =
+  "https://wa.me/5493516978330?text=Hola%2C%20quiero%20saber%20m%C3%A1s%20sobre%20Fitness%20Flow%20para%20mi%20gimnasio."
+
+function BrandContent() {
+  return (
+    <>
+      <Image src="/images/icon.png" alt="" width={22} height={22} priority draggable={false} />
+      Fitness Flow
+    </>
+  )
+}
 
 const LoginPage = () => {
   const [email, setEmail] = useState("")
@@ -17,6 +31,10 @@ const LoginPage = () => {
   const [capsLock, setCapsLock] = useState(false)
   const [errorMessage, setErrorMessage] = useState("")
   const [loading, setLoading] = useState(false)
+  // Al ingresar bien: el botón pasa a "listo" y un círculo verde cubre la
+  // pantalla desde el botón antes de ir al panel. { nombre, x, y }
+  const [welcome, setWelcome] = useState(null)
+  const submitRef = useRef(null)
 
   const router = useRouter()
   const { setUser } = useUser()
@@ -38,10 +56,11 @@ const LoginPage = () => {
     setErrorMessage("")
 
     if (!email.trim() || !password.trim()) {
-      setErrorMessage("Por favor completá todos los campos.")
+      setErrorMessage("Completá el email y la contraseña.")
       return
     }
 
+    let ok = false
     try {
       setLoading(true)
 
@@ -70,22 +89,29 @@ const LoginPage = () => {
         gym_id: profile.gym_id,
       })
 
-      if (profile.role_id === ADMINISTRADOR) {
-        router.push("/dashboard/administrator/members")
-      } else if (profile.role_id === RECEPCIONISTA) {
-        router.push("/dashboard/receptionist/members")
-      } else if (profile.role_id === SOCIO) {
-        router.push("/dashboard/member")
-      } else if (profile.role_id === OWNER || profile.role_id === 1) {
-        router.push("/dashboard/owner")
-      } else {
-        router.push("/")
-      }
+      let destino = "/"
+      if (profile.role_id === ADMINISTRADOR) destino = "/dashboard/administrator/members"
+      else if (profile.role_id === RECEPCIONISTA) destino = "/dashboard/receptionist/members"
+      else if (profile.role_id === SOCIO) destino = "/dashboard/member"
+      else if (profile.role_id === OWNER || profile.role_id === 1) destino = "/dashboard/owner"
+
+      ok = true
+      const rect = submitRef.current?.getBoundingClientRect()
+      setLoading(false)
+      setWelcome({
+        nombre: String(profile.name ?? "").trim().split(/\s+/)[0],
+        x: rect ? rect.left + rect.width / 2 : window.innerWidth / 2,
+        y: rect ? rect.top + rect.height / 2 : window.innerHeight / 2,
+      })
+      router.prefetch(destino)
+      const reducido = window.matchMedia("(prefers-reduced-motion: reduce)").matches
+      await new Promise((r) => setTimeout(r, reducido ? 400 : 1100))
+      router.push(destino)
     } catch (err) {
       console.error("Error en login:", err)
-      setErrorMessage(err.response?.data?.error || "DNI o contraseña incorrectos.")
+      setErrorMessage(err.response?.data?.error || "El email o la contraseña no son correctos.")
     } finally {
-      setLoading(false)
+      if (!ok) setLoading(false)
     }
   }
 
@@ -103,57 +129,46 @@ const LoginPage = () => {
   }
 
   return (
-    <div className="relative min-h-screen w-full flex items-center justify-center bg-[#060C17] overflow-hidden font-quicksand px-4">
+    <div className={s.page}>
+      <aside className={s.visual} aria-hidden="true">
+        <Image
+          src="/images/landing-busy-hours.webp"
+          alt=""
+          fill
+          priority
+          sizes="50vw"
+          draggable={false}
+          className={s.visualImg}
+        />
+        <div className={s.visualTop}>
+          <span className={s.brand}><BrandContent /></span>
+        </div>
+        <div className={s.visualBottom}>
+          <p className={s.visualTitle}>Todo tu gimnasio, en un solo sistema.</p>
+          <p className={s.visualText}>Alumnos, pagos, clases, turnos y asistencias en un mismo lugar.</p>
+        </div>
+      </aside>
 
-      {/* Glow orbs */}
-      <div className="pointer-events-none absolute -top-32 -left-32 w-[520px] h-[520px] rounded-full bg-[radial-gradient(circle,rgba(34,197,94,0.10)_0%,transparent_65%)]" />
-      <div className="pointer-events-none absolute -bottom-24 -right-24 w-[440px] h-[440px] rounded-full bg-[radial-gradient(circle,rgba(74,222,128,0.07)_0%,transparent_65%)]" />
-
-      {/* Card */}
-      <div className="relative z-10 flex flex-row w-full max-w-[1080px] min-h-[560px] bg-[rgba(9,18,31,0.80)] border border-white/[0.08] rounded-[20px] overflow-hidden backdrop-blur-[28px] ">
-
-        {/* Left visual panel */}
-        <div className="hidden md:flex relative flex-[1.1] items-center justify-center overflow-hidden">
-          <Image
-            src="/images/login-illustrations.jpg"
-            alt="login illustration"
-            fill
-            draggable={false}
-            priority
-            className="object-cover select-none pointer-events-none"
-          />
-
-
+      <main className={s.panel}>
+        <div className={s.topBar}>
+          <Link href="/" className={s.back}>
+            <ArrowLeft size={16} aria-hidden="true" />
+            Volver al inicio
+          </Link>
+          <ThemeToggle className={s.themeToggle} />
         </div>
 
-        {/* Right form panel */}
-        <div className="flex flex-col justify-center flex-1 px-10 py-12 min-w-[340px]">
+        <div className={s.formWrap}>
+          <Link href="/" className={`${s.brand} ${s.mobileBrand}`}><BrandContent /></Link>
 
-          {/* Brand */}
-          <div className="flex flex-col items-center mb-8">
-            <Image
-              src="/images/icon.png"
-              alt="FitFlow icon"
-              width={70}
-              height={70}
-              draggable={false}
-              priority
-              className="mb-3 select-none pointer-events-none"
-            />
-            <div className="w-10 h-0.5 bg-gradient-to-r from-green-500 to-transparent rounded-full mb-3" />
-            <h1 className="text-[1.55rem] font-extrabold text-[#E8F0FF] tracking-tight">
-              Fitness <span className="text-green-400">Flow</span>
-            </h1>
-            <p className="text-[#7A90B5] text-sm mt-1 font-medium">Ingresá a tu cuenta</p>
+          <div className={s.heading}>
+            <h1 className={s.title}>Ingresá a tu cuenta</h1>
+            <p className={s.subtitle}>Usá el email y la contraseña de tu usuario de Fitness Flow.</p>
           </div>
 
-          <form className="flex flex-col gap-4" onSubmit={handleLogin}>
-
-            {/* Email */}
-            <div>
-              <label htmlFor="email" className="block text-[0.78rem] font-semibold text-[#7A90B5] uppercase tracking-widest mb-1.5">
-                Email
-              </label>
+          <form className={s.form} onSubmit={handleLogin} noValidate>
+            <div className={s.field}>
+              <label htmlFor="email" className={s.label}>Email</label>
               <input
                 id="email"
                 type="email"
@@ -162,20 +177,21 @@ const LoginPage = () => {
                 onChange={(e) => setEmail(e.target.value)}
                 onKeyDown={handleKeyDown}
                 autoComplete="username"
-                className="w-full bg-white/[0.04] border border-white/10 rounded-[10px] text-[#E8F0FF] text-[0.95rem] font-medium px-4 py-3 outline-none transition-all placeholder-[#3E5470] focus:border-green-500/55 focus:ring-2 focus:ring-green-500/10"
+                className={s.input}
+                aria-invalid={Boolean(errorMessage) || undefined}
               />
             </div>
 
-            {/* Password */}
-            <div>
-              <label htmlFor="password" className="block text-[0.78rem] font-semibold text-[#7A90B5] uppercase tracking-widest mb-1.5">
-                Contraseña
-              </label>
-              <div className="relative">
+            <div className={s.field}>
+              <div className={s.labelRow}>
+                <label htmlFor="password" className={s.label}>Contraseña</label>
+                <Link href="/forgot-password" className={s.forgot}>¿Olvidaste tu contraseña?</Link>
+              </div>
+              <div className={s.inputWrap}>
                 <input
                   id="password"
                   type={showPassword ? "text" : "password"}
-                  placeholder="••••••••"
+                  placeholder="Tu contraseña"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   onKeyUp={(e) => setCapsLock(e.getModifierState("CapsLock"))}
@@ -189,59 +205,77 @@ const LoginPage = () => {
                   }}
                   onBlur={() => setCapsLock(false)}
                   autoComplete="current-password"
-                  className={`w-full bg-white/[0.04] border rounded-[10px] text-[#E8F0FF] text-[0.95rem] font-medium px-4 py-3 outline-none transition-all placeholder-[#3E5470] focus:ring-2 ${capsLock ? "border-yellow-500/70 focus:border-yellow-500/70 focus:ring-yellow-500/10" : "border-white/10 focus:border-green-500/55 focus:ring-green-500/10"} ${capsLock ? "pr-20" : "pr-12"}`}
+                  className={`${s.input} ${s.inputPassword} ${capsLock ? s.inputCaps : ""}`}
+                  aria-invalid={Boolean(errorMessage) || undefined}
+                  aria-describedby={capsLock ? "caps-hint" : undefined}
                 />
-                <div className="absolute right-3.5 top-1/2 -translate-y-1/2 flex items-center gap-2">
-                  {capsLock && (
-                    <span title="Mayúsculas activadas" className="text-yellow-400 text-[0.85rem] leading-none">
-                      ⇪
-                    </span>
-                  )}
-                  <button
-                    type="button"
-                    tabIndex={-1}
-                    onClick={() => setShowPassword((p) => !p)}
-                    className="text-[#3E5470] hover:text-[#7A90B5] transition-colors"
-                  >
-                    {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
-                  </button>
-                </div>
+                <button
+                  type="button"
+                  tabIndex={-1}
+                  onClick={() => setShowPassword((p) => !p)}
+                  className={s.eye}
+                  aria-label={showPassword ? "Ocultar contraseña" : "Mostrar contraseña"}
+                >
+                  {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                </button>
               </div>
+              {capsLock && (
+                <p id="caps-hint" className={s.caps}>Tenés las mayúsculas activadas.</p>
+              )}
             </div>
 
-            {/* Submit */}
+            {errorMessage && (
+              <p className={s.error} role="alert">{errorMessage}</p>
+            )}
+
             <button
+              ref={submitRef}
               type="submit"
-              disabled={loading || !email.trim() || !password.trim()}
-              className="mt-1 flex items-center justify-center gap-2 w-full py-3.5 rounded-full bg-green-500 text-white font-bold text-[1rem] tracking-wide transition-all hover:bg-green-400 hover:-translate-y-0.5 hover:shadow-[0_10px_30px_rgba(34,197,94,0.38)] disabled:opacity-40 disabled:cursor-not-allowed disabled:transform-none disabled:shadow-none"
+              disabled={loading || Boolean(welcome) || !email.trim() || !password.trim()}
+              className={`${s.submit} ${welcome ? s.submitDone : ""}`}
             >
-              {loading ? (
-                <span className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+              {welcome ? (
+                <>
+                  <Check size={19} strokeWidth={2.6} className={s.doneIcon} aria-hidden="true" />
+                  ¡Listo!
+                </>
+              ) : loading ? (
+                <>
+                  <span className={s.spinner} aria-hidden="true" />
+                  Ingresando…
+                </>
               ) : (
                 <>
                   Ingresar
-                  <ArrowRight size={16} />
+                  <ArrowRight size={17} aria-hidden="true" />
                 </>
               )}
             </button>
-
-            {/* Forgot password */}
-            <Link
-              href="/forgot-password"
-              className="text-center text-sm text-green-400 font-semibold hover:text-green-500 transition-colors"
-            >
-              ¿Olvidaste tu contraseña?
-            </Link>
-
-            {/* Error */}
-            {errorMessage && (
-              <div className="bg-red-500/10 border border-red-500/25 rounded-lg px-4 py-2.5 text-red-300 text-sm font-medium text-center">
-                {errorMessage}
-              </div>
-            )}
           </form>
+
+          <p className={s.help}>
+            ¿Todavía no usás Fitness Flow?{" "}
+            <a href={WHATSAPP} target="_blank" rel="noopener noreferrer">Hablemos por WhatsApp</a>
+          </p>
         </div>
-      </div>
+
+        <p className={s.footer}>© 2026 Fitness Flow · Software para gimnasios</p>
+      </main>
+
+      {welcome && (
+        <div
+          className={s.splash}
+          style={{ "--x": `${welcome.x}px`, "--y": `${welcome.y}px` }}
+          role="status"
+          aria-live="polite"
+        >
+          <div className={s.splashInner}>
+            <Image src="/images/icon.png" alt="" width={56} height={56} priority draggable={false} />
+            <p className={s.splashTitle}>{welcome.nombre ? `¡Hola, ${welcome.nombre}!` : "¡Hola!"}</p>
+            <p className={s.splashText}>Entrando a tu panel…</p>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

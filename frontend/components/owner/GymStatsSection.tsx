@@ -7,32 +7,20 @@ import {
     Typography,
     MenuItem,
     Select,
-    FormControl,
-    InputLabel,
     IconButton,
     CircularProgress,
     Avatar,
     Stack,
     Checkbox,
-    Chip,
     Button,
-    Table,
-    TableHead,
-    TableBody,
-    TableRow,
-    TableCell,
-    TableContainer,
 } from "@mui/material"
-import { alpha, useTheme } from "@mui/material/styles"
+import { alpha, useTheme, type Theme } from "@mui/material/styles"
 import ChevronLeftIcon from "@mui/icons-material/ChevronLeft"
 import ChevronRightIcon from "@mui/icons-material/ChevronRight"
 import GroupIcon from "@mui/icons-material/Group"
 import PersonAddIcon from "@mui/icons-material/PersonAdd"
 import PaidIcon from "@mui/icons-material/Paid"
-import ReceiptLongIcon from "@mui/icons-material/ReceiptLong"
 import PriceCheckIcon from "@mui/icons-material/PriceCheck"
-import CheckCircleIcon from "@mui/icons-material/CheckCircle"
-import CancelIcon from "@mui/icons-material/Cancel"
 import {
     ResponsiveContainer,
     BarChart,
@@ -41,8 +29,6 @@ import {
     YAxis,
     CartesianGrid,
     Tooltip,
-    PieChart,
-    Pie,
     Cell,
 } from "recharts"
 import { api } from "@/lib/api"
@@ -54,6 +40,12 @@ const MONTHS = [
     "Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio",
     "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre",
 ]
+
+/* Colores de la marca Fitness Flow. */
+const BRAND = "#063A2B"
+const MINT = "#10C987"
+const RED = "#E5484D"
+const CARD_RADIUS = "14px"
 
 interface SeriePunto { month: string; facturacion: number; altas: number; pagos: number }
 interface PlanPrecio { id: number; nombre: string; precio: number }
@@ -68,63 +60,83 @@ interface OverviewData {
 const money = (n: number) =>
     new Intl.NumberFormat("es-AR", { style: "currency", currency: "ARS", maximumFractionDigits: 0 }).format(n || 0)
 
-const moneyShort = (v: number) =>
-    v >= 1000 ? `$${Math.round(v / 1000)}k` : `$${v}`
+/** Montos cortos para el eje: $4,5 M · $850 k · $900 */
+const moneyShort = (v: number) => {
+    if (v >= 1_000_000) return `$${(v / 1_000_000).toLocaleString("es-AR", { maximumFractionDigits: 1 })} M`
+    if (v >= 1000) return `$${Math.round(v / 1000)} k`
+    return `$${v}`
+}
 
 const shortMonth = (mk: string) => {
     const m = Number(mk.slice(5, 7))
     return (MONTHS[m - 1] || "").slice(0, 3)
 }
 
-/** Tooltip redondeado estilo dashboard admin */
+/** Acento de marca legible sobre el fondo actual. */
+const accent = (t: Theme) => (t.palette.mode === "dark" ? MINT : BRAND)
+
+/** Tooltip de los gráficos */
 function ChartTooltip({ active, payload, label, money: isMoney }: ChartTooltipProps & { money?: boolean }) {
     if (!active || !payload?.length) return null
     const p = payload[0]
     return (
         <Box sx={{
-            px: 1.5, py: 1, borderRadius: 1.5, bgcolor: "background.paper",
+            px: 1.5, py: 1, borderRadius: "10px", bgcolor: "background.paper",
             boxShadow: 3, border: (t) => `1px solid ${alpha(t.palette.divider, 0.8)}`, minWidth: 90,
         }}>
             <Typography variant="caption" color="text.secondary" display="block">{label ?? p.name}</Typography>
-            <Typography variant="body2" fontWeight={700} sx={{ color: p.payload?.color ?? "text.primary" }}>
+            <Typography variant="body2" fontWeight={700}>
                 {isMoney ? money(Number(p.value)) : Number(p.value).toLocaleString("es-AR")}
             </Typography>
         </Box>
     )
 }
 
-/** Tabla horizontal de métricas: una columna por dato */
-function StatsTable({ items }: {
-    items: { icon: React.ReactNode; label: string; value: number | string; color: string }[]
+/** Título chico de cada bloque de la sección */
+function BlockTitle({ children, hint }: { children: React.ReactNode; hint?: React.ReactNode }) {
+    return (
+        <Box sx={{ mb: 1.5 }}>
+            <Typography sx={{ fontWeight: 700, fontSize: "1rem" }}>{children}</Typography>
+            {hint && <Typography variant="body2" color="text.secondary" sx={{ mt: 0.25 }}>{hint}</Typography>}
+        </Box>
+    )
+}
+
+/** Tarjeta de un dato del resumen */
+function KpiCard({
+    icon,
+    label,
+    value,
+    detail,
+    children,
+}: {
+    icon: React.ReactNode
+    label: string
+    value: React.ReactNode
+    detail?: React.ReactNode
+    children?: React.ReactNode
 }) {
     return (
-        <TableContainer component={Paper} variant="outlined" sx={{ borderRadius: 2, overflowX: "auto" }}>
-            <Table size="small">
-                <TableHead>
-                    <TableRow>
-                        {items.map((it) => (
-                            <TableCell key={it.label} align="center" sx={{ fontWeight: 700, fontSize: "0.72rem", whiteSpace: "nowrap" }}>
-                                <Stack direction="row" spacing={0.75} alignItems="center" justifyContent="center">
-                                    <Avatar variant="rounded" sx={{ bgcolor: `${it.color}1A`, color: it.color, width: 22, height: 22 }}>
-                                        {it.icon}
-                                    </Avatar>
-                                    <span>{it.label}</span>
-                                </Stack>
-                            </TableCell>
-                        ))}
-                    </TableRow>
-                </TableHead>
-                <TableBody>
-                    <TableRow sx={{ "& td": { border: 0 } }}>
-                        {items.map((it) => (
-                            <TableCell key={it.label} align="center" sx={{ py: 0.75 }}>
-                                <Typography variant="body2" fontWeight={700} noWrap>{it.value}</Typography>
-                            </TableCell>
-                        ))}
-                    </TableRow>
-                </TableBody>
-            </Table>
-        </TableContainer>
+        <Paper variant="outlined" sx={{ borderRadius: CARD_RADIUS, p: 2, display: "flex", flexDirection: "column", gap: 1.25, minWidth: 0 }}>
+            <Stack direction="row" spacing={1} alignItems="center">
+                <Box
+                    sx={(t) => ({
+                        width: 30, height: 30, borderRadius: "9px", display: "grid", placeItems: "center", flexShrink: 0,
+                        bgcolor: alpha(MINT, 0.14), color: accent(t), "& svg": { fontSize: "1.05rem" },
+                    })}
+                >
+                    {icon}
+                </Box>
+                <Typography variant="body2" color="text.secondary" fontWeight={600} noWrap>{label}</Typography>
+            </Stack>
+            <Box>
+                <Typography sx={{ fontSize: { xs: "1.5rem", md: "1.75rem" }, fontWeight: 700, lineHeight: 1.1, letterSpacing: "-0.02em", fontVariantNumeric: "tabular-nums" }}>
+                    {value}
+                </Typography>
+                {detail && <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>{detail}</Typography>}
+            </Box>
+            {children}
+        </Paper>
     )
 }
 
@@ -203,262 +215,298 @@ export function GymStatsSection() {
     }
 
     const gridStroke = alpha(t.palette.text.primary, 0.08)
-    const chartPaperSx = {
-        p: 1.5,
-        borderRadius: 2,
-        flex: "1 1 280px",
-        minWidth: 260,
-        border: `1px solid ${alpha(t.palette.text.primary, 0.08)}`,
-        boxShadow: "0 2px 10px rgba(0,0,0,0.05)",
-    } as const
+    const tickColor = t.palette.text.secondary
+    const barOn = accent(t)
+    const barOff = alpha(MINT, t.palette.mode === "dark" ? 0.35 : 0.45)
 
-    const donut = data
-        ? [
-            { name: "Activos", value: data.alumnos.activos, color: "#059669", grad: "url(#gradAct)", css: "linear-gradient(135deg,#34d399,#059669)" },
-            { name: "Vencidos", value: data.alumnos.vencidos, color: "#e11d48", grad: "url(#gradVen)", css: "linear-gradient(135deg,#fb7185,#e11d48)" },
-        ]
-        : []
-    const bothPos = data ? data.alumnos.activos > 0 && data.alumnos.vencidos > 0 : false
-    const factData = data ? data.series.map((s) => ({ name: shortMonth(s.month), value: s.facturacion })) : []
-    const altasData = data ? data.series.map((s) => ({ name: shortMonth(s.month), value: s.altas })) : []
+    const factData = data ? data.series.map((s) => ({ name: shortMonth(s.month), value: s.facturacion, on: s.month === monthParam })) : []
+    const altasData = data ? data.series.map((s) => ({ name: shortMonth(s.month), value: s.altas, on: s.month === monthParam })) : []
+
+    const total = data?.alumnos.total ?? 0
+    const pctActivos = data && total > 0 ? Math.round((data.alumnos.activos / total) * 100) : 0
+    const precios = data?.planes.items.map((p) => p.precio) ?? []
+    const minPrecio = precios.length ? Math.min(...precios) : 0
+    const maxPrecio = precios.length ? Math.max(...precios) : 0
+    const nombreMes = MONTHS[month].toLowerCase()
+
+    const chartCardSx = { borderRadius: CARD_RADIUS, p: 2, minWidth: 0 } as const
 
     return (
         <Box>
-            <Stack direction={{ xs: "column", sm: "row" }} spacing={1.5} alignItems={{ sm: "center" }} justifyContent="space-between" mb={1.5}>
-                <FormControl size="small" sx={{ minWidth: 200 }}>
-                    <InputLabel>Gimnasio</InputLabel>
-                    <Select value={gymId} label="Gimnasio" onChange={(e) => setGymId(e.target.value)}>
-                        {gyms.map((g) => (
-                            <MenuItem key={g.id} value={g.id}>{g.name}</MenuItem>
-                        ))}
-                    </Select>
-                </FormControl>
-                <Box sx={{ display: "flex", alignItems: "center", gap: 0.5 }}>
-                    <IconButton size="small" onClick={prevMonth}><ChevronLeftIcon fontSize="small" /></IconButton>
-                    <Typography variant="body2" sx={{ fontWeight: 600, minWidth: 130, textAlign: "center" }}>
+            {/* Gimnasio y mes */}
+            <Stack direction={{ xs: "column", sm: "row" }} spacing={1.5} alignItems={{ sm: "center" }} justifyContent="space-between" mb={2.5}>
+                <Select
+                    size="small"
+                    value={gymId}
+                    onChange={(e) => setGymId(e.target.value)}
+                    displayEmpty
+                    inputProps={{ "aria-label": "Gimnasio" }}
+                    renderValue={(id) => {
+                        const g = gyms.find((x) => x.id === id)
+                        if (!g) return <Typography color="text.secondary">Elegí un gimnasio</Typography>
+                        return (
+                            <Stack direction="row" spacing={1.25} alignItems="center">
+                                <Avatar
+                                    src={g.logo_url || undefined}
+                                    sx={{ width: 26, height: 26, fontSize: "0.8rem", fontWeight: 700, bgcolor: alpha(MINT, 0.16), color: accent(t) }}
+                                >
+                                    {g.name[0]?.toUpperCase()}
+                                </Avatar>
+                                <Typography fontWeight={700} noWrap>{g.name}</Typography>
+                            </Stack>
+                        )
+                    }}
+                    sx={{
+                        minWidth: { sm: 280 },
+                        borderRadius: 999,
+                        bgcolor: "action.hover",
+                        "& .MuiOutlinedInput-notchedOutline": { borderColor: "transparent" },
+                        "& .MuiSelect-select": { py: 0.9, pl: 1 },
+                    }}
+                >
+                    {gyms.map((g) => (
+                        <MenuItem key={g.id} value={g.id}>{g.name}</MenuItem>
+                    ))}
+                </Select>
+
+                <Stack
+                    direction="row"
+                    alignItems="center"
+                    sx={{ alignSelf: { xs: "stretch", sm: "auto" }, justifyContent: "space-between", border: 1, borderColor: "divider", borderRadius: 999, p: 0.5 }}
+                >
+                    <IconButton size="small" onClick={prevMonth} aria-label="Mes anterior">
+                        <ChevronLeftIcon fontSize="small" />
+                    </IconButton>
+                    <Typography sx={{ fontWeight: 700, minWidth: 150, textAlign: "center" }}>
                         {MONTHS[month]} {year}
                     </Typography>
-                    <IconButton size="small" onClick={nextMonth} disabled={isCurrentMonth}>
+                    <IconButton size="small" onClick={nextMonth} disabled={isCurrentMonth} aria-label="Mes siguiente">
                         <ChevronRightIcon fontSize="small" />
                     </IconButton>
-                </Box>
+                </Stack>
             </Stack>
 
-            {error && <Typography color="error" sx={{ mb: 1.5 }}>{error}</Typography>}
+            {error && (
+                <Box sx={{ mb: 2, px: 2, py: 1.25, borderRadius: CARD_RADIUS, bgcolor: alpha(RED, 0.1), color: t.palette.mode === "dark" ? "#FF8A7A" : "#A1281B", fontWeight: 600 }}>
+                    {error}
+                </Box>
+            )}
 
             {loading ? (
-                <Box display="flex" justifyContent="center" py={4}><CircularProgress /></Box>
+                <Box display="flex" justifyContent="center" py={6}><CircularProgress sx={{ color: MINT }} /></Box>
             ) : data ? (
-                <>
-                    <StatsTable
-                        items={[
-                            { icon: <GroupIcon fontSize="small" />, label: "Alumnos totales", value: data.alumnos.total, color: "#16A34A" },
-                            { icon: <CheckCircleIcon fontSize="small" />, label: "Activos", value: data.alumnos.activos, color: "#16a34a" },
-                            { icon: <CancelIcon fontSize="small" />, label: "Vencidos", value: data.alumnos.vencidos, color: "#ef4444" },
-                            { icon: <PersonAddIcon fontSize="small" />, label: "Altas del mes", value: data.alumnos.altas_mes, color: "#3b82f6" },
-                            { icon: <PaidIcon fontSize="small" />, label: "Facturación del mes", value: money(data.facturacion.total), color: "#7c3aed" },
-                            { icon: <ReceiptLongIcon fontSize="small" />, label: "Pagos del mes", value: data.facturacion.cantidad, color: "#f59e0b" },
-                            { icon: <PriceCheckIcon fontSize="small" />, label: "Precio promedio planes", value: money(livePrecioPromedio), color: "#0891b2" },
-                        ]}
-                    />
+                <Stack spacing={3}>
+                    {/* 1. Resumen del mes */}
+                    <Box>
+                        <BlockTitle>Resumen de {nombreMes}</BlockTitle>
+                        <Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", sm: "1fr 1fr", lg: "repeat(4, 1fr)" }, gap: 1.5 }}>
+                            <KpiCard
+                                icon={<GroupIcon />}
+                                label="Alumnos activos"
+                                value={data.alumnos.activos.toLocaleString("es-AR")}
+                                detail={`de ${total.toLocaleString("es-AR")} alumnos en total`}
+                            >
+                                <Box>
+                                    <Box
+                                        role="img"
+                                        aria-label={`${pctActivos}% activos, ${100 - pctActivos}% vencidos`}
+                                        sx={{ display: "flex", height: 8, borderRadius: 999, overflow: "hidden", bgcolor: "action.hover" }}
+                                    >
+                                        <Box sx={{ width: `${pctActivos}%`, bgcolor: MINT }} />
+                                        <Box sx={{ width: `${total > 0 ? 100 - pctActivos : 0}%`, bgcolor: RED, opacity: 0.85 }} />
+                                    </Box>
+                                    <Stack direction="row" justifyContent="space-between" sx={{ mt: 0.75, fontSize: "0.8rem", color: "text.secondary" }}>
+                                        <Box component="span" sx={{ display: "inline-flex", alignItems: "center", gap: 0.5 }}>
+                                            <Box component="span" sx={{ width: 8, height: 8, borderRadius: "50%", bgcolor: MINT }} />
+                                            {pctActivos}% activos
+                                        </Box>
+                                        <Box component="span" sx={{ display: "inline-flex", alignItems: "center", gap: 0.5 }}>
+                                            <Box component="span" sx={{ width: 8, height: 8, borderRadius: "50%", bgcolor: RED }} />
+                                            {data.alumnos.vencidos.toLocaleString("es-AR")} vencidos
+                                        </Box>
+                                    </Stack>
+                                </Box>
+                            </KpiCard>
 
-                    {/* Planificaciones — tabla horizontal, tildar/destildar para revisar el promedio */}
-                    <Paper variant="outlined" sx={{ borderRadius: 2, mt: 1.5, overflow: "hidden" }}>
-                        <Stack direction="row" alignItems="center" spacing={1} sx={{ px: 1.5, py: 0.75, borderBottom: 1, borderColor: "divider" }}>
-                            <Typography variant="caption" fontWeight={700} sx={{ flex: 1 }}>
-                                Planificaciones — promedio ({checkedPlanIds.size}/{data.planes.items.length} incluidas): {" "}
-                                <Box component="span" sx={{ color: "#0891b2", fontWeight: 700 }}>{money(livePrecioPromedio)}</Box>
-                            </Typography>
-                            <Button
-                                size="small"
-                                sx={{ minWidth: 0, fontSize: "0.7rem" }}
-                                onClick={() => setCheckedPlanIds(new Set(data.planes.items.map((p) => p.id)))}
-                            >
-                                Tildar todos
-                            </Button>
-                            <Button
-                                size="small"
-                                sx={{ minWidth: 0, fontSize: "0.7rem" }}
-                                onClick={() => {
-                                    const excluded = new Set<number>(data.planes.excluded_ids)
-                                    setCheckedPlanIds(new Set(data.planes.items.map((p) => p.id).filter((id) => !excluded.has(id))))
-                                }}
-                            >
-                                Restablecer
-                            </Button>
+                            <KpiCard
+                                icon={<PaidIcon />}
+                                label="Facturación"
+                                value={money(data.facturacion.total)}
+                                detail={`${data.facturacion.cantidad.toLocaleString("es-AR")} pagos registrados`}
+                            />
+
+                            <KpiCard
+                                icon={<PersonAddIcon />}
+                                label="Altas"
+                                value={data.alumnos.altas_mes.toLocaleString("es-AR")}
+                                detail={`alumnos nuevos en ${nombreMes}`}
+                            />
+
+                            <KpiCard
+                                icon={<PriceCheckIcon />}
+                                label="Precio promedio de planes"
+                                value={money(livePrecioPromedio)}
+                                detail={
+                                    data.planes.items.length
+                                        ? `con ${checkedPlanIds.size} de ${data.planes.items.length} planes`
+                                        : "sin planes cargados"
+                                }
+                            />
+                        </Box>
+                    </Box>
+
+                    {/* 2. Evolución */}
+                    <Box>
+                        <BlockTitle hint="Últimos 6 meses. El mes elegido aparece resaltado.">Evolución</BlockTitle>
+                        <Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", md: "3fr 2fr" }, gap: 1.5 }}>
+                            <Paper variant="outlined" sx={chartCardSx}>
+                                <Typography variant="body2" fontWeight={700} mb={1}>Facturación</Typography>
+                                <Box sx={{ height: 200 }}>
+                                    <ResponsiveContainer>
+                                        <BarChart data={factData} margin={{ top: 8, right: 4, left: 0, bottom: 0 }} barCategoryGap="28%">
+                                            <CartesianGrid vertical={false} stroke={gridStroke} />
+                                            <XAxis dataKey="name" tickLine={false} axisLine={false} tickMargin={8} tick={{ fontSize: 12, fill: tickColor }} />
+                                            <YAxis tickLine={false} axisLine={false} width={58} tickMargin={4} tick={{ fontSize: 11, fill: tickColor }} tickFormatter={(v: number) => moneyShort(v)} />
+                                            <Tooltip cursor={{ fill: alpha(MINT, 0.08) }} content={<ChartTooltip money />} />
+                                            <Bar dataKey="value" name="Facturación" radius={[8, 8, 0, 0]} maxBarSize={42}>
+                                                {factData.map((d) => <Cell key={d.name} fill={d.on ? barOn : barOff} />)}
+                                            </Bar>
+                                        </BarChart>
+                                    </ResponsiveContainer>
+                                </Box>
+                            </Paper>
+
+                            <Paper variant="outlined" sx={chartCardSx}>
+                                <Typography variant="body2" fontWeight={700} mb={1}>Altas</Typography>
+                                <Box sx={{ height: 200 }}>
+                                    <ResponsiveContainer>
+                                        <BarChart data={altasData} margin={{ top: 8, right: 4, left: 0, bottom: 0 }} barCategoryGap="28%">
+                                            <CartesianGrid vertical={false} stroke={gridStroke} />
+                                            <XAxis dataKey="name" tickLine={false} axisLine={false} tickMargin={8} tick={{ fontSize: 12, fill: tickColor }} />
+                                            <YAxis tickLine={false} axisLine={false} width={28} tickMargin={4} tick={{ fontSize: 11, fill: tickColor }} allowDecimals={false} />
+                                            <Tooltip cursor={{ fill: alpha(MINT, 0.08) }} content={<ChartTooltip />} />
+                                            <Bar dataKey="value" name="Altas" radius={[8, 8, 0, 0]} maxBarSize={36}>
+                                                {altasData.map((d) => <Cell key={d.name} fill={d.on ? barOn : barOff} />)}
+                                            </Bar>
+                                        </BarChart>
+                                    </ResponsiveContainer>
+                                </Box>
+                            </Paper>
+                        </Box>
+                    </Box>
+
+                    {/* 3. Planes que cuentan para el precio promedio */}
+                    <Box>
+                        <Stack direction={{ xs: "column", sm: "row" }} spacing={1} alignItems={{ sm: "flex-start" }} justifyContent="space-between">
+                            <BlockTitle hint="Destildá promociones o planes especiales para que no cambien el precio promedio.">
+                                Planes en el precio promedio
+                            </BlockTitle>
+                            {data.planes.items.length > 0 && (
+                                <Stack direction="row" spacing={1} sx={{ flexShrink: 0, mb: { xs: 1.5, sm: 0 } }}>
+                                    <Button
+                                        size="small"
+                                        variant="outlined"
+                                        color="inherit"
+                                        onClick={() => setCheckedPlanIds(new Set(data.planes.items.map((p) => p.id)))}
+                                        sx={{ borderRadius: 999, borderColor: "divider", px: 1.5 }}
+                                    >
+                                        Incluir todos
+                                    </Button>
+                                    <Button
+                                        size="small"
+                                        variant="outlined"
+                                        color="inherit"
+                                        onClick={() => {
+                                            const excluded = new Set<number>(data.planes.excluded_ids)
+                                            setCheckedPlanIds(new Set(data.planes.items.map((p) => p.id).filter((id) => !excluded.has(id))))
+                                        }}
+                                        sx={{ borderRadius: 999, borderColor: "divider", px: 1.5 }}
+                                    >
+                                        Restablecer
+                                    </Button>
+                                </Stack>
+                            )}
                         </Stack>
 
                         {data.planes.items.length === 0 ? (
-                            <Typography variant="caption" color="text.secondary" sx={{ display: "block", p: 1.5 }}>
-                                Este gimnasio no tiene planificaciones cargadas.
-                            </Typography>
+                            <Paper variant="outlined" sx={{ borderRadius: CARD_RADIUS, p: 3, textAlign: "center" }}>
+                                <Typography color="text.secondary">Este gimnasio todavía no tiene planes cargados.</Typography>
+                            </Paper>
                         ) : (
-                            <TableContainer sx={{ overflowX: "auto" }}>
-                                <Table size="small">
-                                    <TableHead>
-                                        <TableRow>
-                                            <TableCell sx={{ fontWeight: 700, fontSize: "0.72rem", whiteSpace: "nowrap" }}>Plan</TableCell>
-                                            {data.planes.items.map((p) => (
-                                                <TableCell key={p.id} align="center" sx={{ fontWeight: 700, fontSize: "0.72rem", whiteSpace: "nowrap" }}>
-                                                    {p.nombre}
-                                                </TableCell>
-                                            ))}
-                                        </TableRow>
-                                    </TableHead>
-                                    <TableBody>
-                                        <TableRow>
-                                            <TableCell sx={{ fontSize: "0.72rem" }}>Incluir</TableCell>
-                                            {data.planes.items.map((p) => (
-                                                <TableCell key={p.id} align="center" sx={{ py: 0.25 }}>
-                                                    <Checkbox
-                                                        size="small"
-                                                        checked={checkedPlanIds.has(p.id)}
-                                                        onChange={() => togglePlan(p.id)}
-                                                    />
-                                                </TableCell>
-                                            ))}
-                                        </TableRow>
-                                        <TableRow sx={{ "& td": { border: 0 } }}>
-                                            <TableCell sx={{ fontSize: "0.72rem" }}>Precio</TableCell>
-                                            {data.planes.items.map((p) => {
-                                                const checked = checkedPlanIds.has(p.id)
-                                                return (
-                                                    <TableCell key={p.id} align="center" sx={{ py: 0.5 }}>
-                                                        <Typography
-                                                            variant="body2"
-                                                            fontWeight={600}
-                                                            sx={{
-                                                                textDecoration: checked ? "none" : "line-through",
-                                                                color: checked ? "text.primary" : "text.disabled",
-                                                            }}
-                                                            noWrap
-                                                        >
-                                                            {money(p.precio)}
-                                                        </Typography>
-                                                    </TableCell>
-                                                )
-                                            })}
-                                        </TableRow>
-                                        <TableRow sx={{ "& td": { border: 0 } }}>
-                                            <TableCell sx={{ fontSize: "0.72rem" }}>Nota</TableCell>
-                                            {data.planes.items.map((p) => {
-                                                const isMin = p.precio === Math.min(...data.planes.items.map((x) => x.precio))
-                                                const isMax = p.precio === Math.max(...data.planes.items.map((x) => x.precio))
-                                                return (
-                                                    <TableCell key={p.id} align="center" sx={{ py: 0.25 }}>
-                                                        {isMax && <Chip label="+ caro" size="small" color="error" variant="outlined" sx={{ height: 18, fontSize: "0.65rem" }} />}
-                                                        {isMin && !isMax && <Chip label="+ barato" size="small" color="info" variant="outlined" sx={{ height: 18, fontSize: "0.65rem" }} />}
-                                                    </TableCell>
-                                                )
-                                            })}
-                                        </TableRow>
-                                    </TableBody>
-                                </Table>
-                            </TableContainer>
-                        )}
-                    </Paper>
-
-                    <Box sx={{ display: "flex", flexWrap: "wrap", gap: 1.5, mt: 1.5 }}>
-                        {/* Donut activos vs vencidos */}
-                        <Paper variant="outlined" sx={chartPaperSx}>
-                            <Typography variant="caption" fontWeight={600} color="text.secondary" component="div" mb={0.5}>
-                                Alumnos — activos vs vencidos
-                            </Typography>
-                            <Box sx={{ height: 130 }}>
-                                <ResponsiveContainer>
-                                    <PieChart>
-                                        <defs>
-                                            <linearGradient id="gradAct" x1="0" y1="0" x2="1" y2="1">
-                                                <stop offset="0%" stopColor="#34d399" />
-                                                <stop offset="100%" stopColor="#059669" />
-                                            </linearGradient>
-                                            <linearGradient id="gradVen" x1="0" y1="0" x2="1" y2="1">
-                                                <stop offset="0%" stopColor="#fb7185" />
-                                                <stop offset="100%" stopColor="#e11d48" />
-                                            </linearGradient>
-                                        </defs>
-                                        <Pie
-                                            data={donut}
-                                            dataKey="value"
-                                            nameKey="name"
-                                            innerRadius="60%"
-                                            outerRadius="88%"
-                                            startAngle={90}
-                                            endAngle={-270}
-                                            paddingAngle={bothPos ? 2 : 0}
-                                            stroke="transparent"
+                            <Box sx={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(200px, 1fr))", gap: 1.5 }}>
+                                {data.planes.items.map((p) => {
+                                    const checked = checkedPlanIds.has(p.id)
+                                    const distintos = minPrecio !== maxPrecio
+                                    const tag = distintos && p.precio === maxPrecio ? "Más caro" : distintos && p.precio === minPrecio ? "Más barato" : null
+                                    return (
+                                        <Paper
+                                            key={p.id}
+                                            component="label"
+                                            variant="outlined"
+                                            sx={{
+                                                borderRadius: CARD_RADIUS,
+                                                p: 1.5,
+                                                pr: 2,
+                                                display: "flex",
+                                                alignItems: "flex-start",
+                                                gap: 0.5,
+                                                cursor: "pointer",
+                                                transition: "border-color .15s ease, background-color .15s ease, opacity .15s ease",
+                                                borderColor: checked ? alpha(MINT, 0.6) : "divider",
+                                                bgcolor: checked ? alpha(MINT, 0.06) : "transparent",
+                                                opacity: checked ? 1 : 0.6,
+                                                "&:hover": { borderColor: MINT },
+                                                "&:focus-within": { outline: `2px solid ${accent(t)}`, outlineOffset: 2 },
+                                            }}
                                         >
-                                            {donut.map((d) => <Cell key={d.name} fill={d.grad} />)}
-                                        </Pie>
-                                        <Tooltip content={<ChartTooltip />} />
-                                    </PieChart>
-                                </ResponsiveContainer>
+                                            <Checkbox
+                                                size="small"
+                                                checked={checked}
+                                                onChange={() => togglePlan(p.id)}
+                                                sx={{ p: 0.5, color: "text.secondary", "&.Mui-checked": { color: accent(t) } }}
+                                            />
+                                            <Box sx={{ minWidth: 0, pt: 0.35 }}>
+                                                <Typography fontWeight={700} sx={{ lineHeight: 1.3 }}>{p.nombre}</Typography>
+                                                <Typography
+                                                    sx={{
+                                                        mt: 0.25,
+                                                        fontWeight: 600,
+                                                        fontVariantNumeric: "tabular-nums",
+                                                        textDecoration: checked ? "none" : "line-through",
+                                                        color: checked ? "text.primary" : "text.secondary",
+                                                    }}
+                                                >
+                                                    {money(p.precio)}
+                                                </Typography>
+                                                {tag && (
+                                                    <Box
+                                                        component="span"
+                                                        sx={{
+                                                            display: "inline-block",
+                                                            mt: 0.75,
+                                                            px: 1,
+                                                            py: 0.2,
+                                                            borderRadius: 999,
+                                                            fontSize: "0.72rem",
+                                                            fontWeight: 700,
+                                                            bgcolor: "action.hover",
+                                                            color: "text.secondary",
+                                                        }}
+                                                    >
+                                                        {tag}
+                                                    </Box>
+                                                )}
+                                            </Box>
+                                        </Paper>
+                                    )
+                                })}
                             </Box>
-                            <Box sx={{ display: "flex", justifyContent: "center", gap: 2, mt: 0.5 }}>
-                                {donut.map((d) => (
-                                    <Box key={d.name} sx={{ display: "flex", alignItems: "center", gap: 0.75 }}>
-                                        <Box sx={{ width: 10, height: 10, borderRadius: "50%", background: d.css }} />
-                                        <Box>
-                                            <Typography variant="caption" color="text.secondary" display="block" lineHeight={1.1} sx={{ fontSize: "0.65rem" }}>{d.name}</Typography>
-                                            <Typography variant="body2" fontWeight={700} lineHeight={1.1}>{d.value.toLocaleString("es-AR")}</Typography>
-                                        </Box>
-                                    </Box>
-                                ))}
-                            </Box>
-                        </Paper>
-
-                        {/* Facturación últimos 6 meses */}
-                        <Paper variant="outlined" sx={chartPaperSx}>
-                            <Typography variant="caption" fontWeight={600} color="text.secondary" component="div" mb={0.5}>
-                                Facturación — últimos 6 meses
-                            </Typography>
-                            <Box sx={{ height: 170 }}>
-                                <ResponsiveContainer>
-                                    <BarChart data={factData} margin={{ top: 8, right: 8, left: 0, bottom: 0 }} barCategoryGap={16}>
-                                        <defs>
-                                            <linearGradient id="gradFact" x1="0" y1="0" x2="0" y2="1">
-                                                <stop offset="0%" stopColor="#22C55E" />
-                                                <stop offset="100%" stopColor="#16A34A" />
-                                            </linearGradient>
-                                        </defs>
-                                        <CartesianGrid vertical={false} stroke={gridStroke} />
-                                        <XAxis dataKey="name" tickLine={false} axisLine={false} tickMargin={8} tick={{ fontSize: 11 }} />
-                                        <YAxis tickLine={false} axisLine={false} width={40} tickMargin={4} tick={{ fontSize: 10 }} tickFormatter={(v: number) => moneyShort(v)} />
-                                        <Tooltip cursor={{ fill: alpha(t.palette.primary.main, 0.06) }} content={<ChartTooltip money />} />
-                                        <Bar dataKey="value" name="Facturación" fill="url(#gradFact)" radius={[6, 6, 0, 0]} barSize={22} />
-                                    </BarChart>
-                                </ResponsiveContainer>
-                            </Box>
-                        </Paper>
-
-                        {/* Altas últimos 6 meses */}
-                        <Paper variant="outlined" sx={chartPaperSx}>
-                            <Typography variant="caption" fontWeight={600} color="text.secondary" component="div" mb={0.5}>
-                                Altas — últimos 6 meses
-                            </Typography>
-                            <Box sx={{ height: 170 }}>
-                                <ResponsiveContainer>
-                                    <BarChart data={altasData} margin={{ top: 8, right: 8, left: 0, bottom: 0 }} barCategoryGap={16}>
-                                        <defs>
-                                            <linearGradient id="gradAltas" x1="0" y1="0" x2="0" y2="1">
-                                                <stop offset="0%" stopColor="#38BDF8" />
-                                                <stop offset="100%" stopColor="#1674FF" />
-                                            </linearGradient>
-                                        </defs>
-                                        <CartesianGrid vertical={false} stroke={gridStroke} />
-                                        <XAxis dataKey="name" tickLine={false} axisLine={false} tickMargin={8} tick={{ fontSize: 11 }} />
-                                        <YAxis tickLine={false} axisLine={false} width={24} tickMargin={4} tick={{ fontSize: 10 }} allowDecimals={false} />
-                                        <Tooltip cursor={{ fill: alpha(t.palette.primary.main, 0.06) }} content={<ChartTooltip />} />
-                                        <Bar dataKey="value" name="Altas" fill="url(#gradAltas)" radius={[6, 6, 0, 0]} barSize={22} />
-                                    </BarChart>
-                                </ResponsiveContainer>
-                            </Box>
-                        </Paper>
+                        )}
                     </Box>
-                </>
+                </Stack>
             ) : (
                 <Typography color="text.secondary" textAlign="center" py={4}>
-                    Seleccioná un gimnasio.
+                    {gyms.length ? "Elegí un gimnasio para ver sus estadísticas." : "Todavía no hay gimnasios."}
                 </Typography>
             )}
         </Box>

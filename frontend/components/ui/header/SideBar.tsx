@@ -32,7 +32,8 @@ import { useSubscription, type FeatureKey } from '@/context/SubscriptionContext'
 import { SidebarSkeleton } from './SideBarSkeleton'
 import { FlushDialogActions } from '@/components/ui/modals/FlushDialogActions'
 type TabItem = { label: string; icon: React.ReactNode; route: string; section?: string }
-type HeaderComponentProps = { tabs: TabItem[] }
+/** `color` fija el fondo del sidebar; sin él se usa el color primario del gym. */
+type HeaderComponentProps = { tabs: TabItem[]; color?: string }
 
 const ROUTE_FEATURE_MAP: Record<string, FeatureKey> = {
   'stats': 'stats',
@@ -62,7 +63,7 @@ function readPrimary(): string {
   }
 }
 
-export const SideBar = ({ tabs }: HeaderComponentProps) => {
+export const SideBar = ({ tabs, color }: HeaderComponentProps) => {
   const [selectedIndex, setSelectedIndex] = useState(0)
   const theme = useTheme()
   const isMobile = useMediaQuery(theme.breakpoints.down('md'))
@@ -191,7 +192,7 @@ export const SideBar = ({ tabs }: HeaderComponentProps) => {
         if (!isLocked) setIsHovered(false)
       }}
       sx={{
-        backgroundColor: sidebarBg,
+        backgroundColor: color ?? sidebarBg,
         minHeight: '100vh',
         width: isExpanded ? 240 : 80,
         transition: 'opacity .25s ease, width .25s ease, background-color .0s',
@@ -211,11 +212,12 @@ export const SideBar = ({ tabs }: HeaderComponentProps) => {
         sx={{
           display: 'flex',
           alignItems: 'center',
-          gap: 1.25,
+          justifyContent: isExpanded ? 'flex-start' : 'center',
+          gap: isExpanded ? 1.25 : 0,
           height: isCompact ? 48 : 60,
           width: '100%',
           py: isCompact ? 0.5 : 1,
-          px: 1,
+          px: isExpanded ? 1 : 0,
           mb: isCompact ? 0.5 : 1,
           cursor: 'pointer',
           borderRadius: 3,
@@ -525,7 +527,7 @@ export const SideBar = ({ tabs }: HeaderComponentProps) => {
           data-fitflow-sidebar
           sx={{
             position: 'fixed',
-            backgroundColor: sidebarBg,
+            backgroundColor: color ?? sidebarBg,
             bottom: 0,
             left: 0,
             right: 0,

@@ -9,6 +9,7 @@ import {
   getFacturacionController,
   getFacturacionMesController,
   getFacturacionPorPlanController,
+  getPlanMasVendidoMesController,
   getActiveMembersPaymentDetailsController,
   getAbandonosDetailsController,
   getAltasDetailsController,
@@ -44,6 +45,7 @@ router.get('/dashboard/gyms/:gym_id/alumnos/origen', getAlumnosPorOrigenControll
 router.get('/dashboard/gyms/:gym_id/facturacion', getFacturacionController);
 router.get('/dashboard/facturacion-mes', getFacturacionMesController);
 router.get('/dashboard/planes/facturacion', getFacturacionPorPlanController);
+router.get('/dashboard/plan-mas-vendido', getPlanMasVendidoMesController);
 router.get('/dashboard/activos-mes', getActiveMembersPaymentDetailsController);
 router.get('/dashboard/abandonos-mes', getAbandonosDetailsController);
 router.get('/dashboard/altas-mes', getAltasDetailsController);

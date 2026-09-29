@@ -38,9 +38,10 @@ import { YearSelector, useYearState } from './YearSelector';
  */
 type Top5Row = Omit<
   PlanStatsRow,
-  'cantidad_alumnos' | 'facturacion_mes_actual' | 'facturacion_mes_anterior' | 'variacion'
+  'cantidad_alumnos' | 'cantidad_pagos' | 'facturacion_mes_actual' | 'facturacion_mes_anterior' | 'variacion'
 > & {
   cantidad_alumnos: number | string;
+  cantidad_pagos: number | string;
   facturacion_mes_actual: number | string;
   facturacion_mes_anterior?: number | string;
   variacion: number | string;
@@ -62,8 +63,13 @@ const MONTHS = [
 ];
 
 export function PlanesSection() {
-  // Top 5 y distribución de alumnos: siempre mes actual, no cambian con el filtro
+  // Distribución de alumnos: siempre mes actual, no cambia con el filtro
   const { data, isLoading, error } = usePlanes();
+
+  // Top 5 planes más vendidos: filtro independiente de mes+año
+  const [topYear, setTopYear] = useYearState();
+  const [topMonth, setTopMonth] = useState(new Date().getMonth() + 1);
+  const { data: topData, isLoading: topLoading } = usePlanes(topYear, topMonth);
 
   // Facturación por plan: filtro independiente
   const [facYear, setFacYear] = useYearState();
@@ -120,11 +126,13 @@ export function PlanesSection() {
   if (!data) return null;
 
   // La lista siempre muestra 5 filas: las de relleno usan '—' en vez de numeros.
-  const top5: Top5Row[] = [...(data.top5 ?? [])]
+  const top5: Top5Row[] = (topData?.top5 ?? [])
+    .map(p => ({ ...p, cantidad_pagos: p.cantidad_pagos ?? 0 }))
     .sort(
       (a, b) =>
+        b.cantidad_pagos - a.cantidad_pagos ||
         Number(b.facturacion_mes_actual ?? 0) -
-        Number(a.facturacion_mes_actual ?? 0)
+          Number(a.facturacion_mes_actual ?? 0)
     )
     .slice(0, 5);
 
@@ -133,6 +141,7 @@ export function PlanesSection() {
       plan_id: `empty-${top5.length}`,
       plan_nombre: '—',
       cantidad_alumnos: '—',
+      cantidad_pagos: '—',
       facturacion_mes_actual: '—',
       variacion: '—',
     });
@@ -147,6 +156,7 @@ export function PlanesSection() {
       anterior: f.anterior !== null ? Number(f.anterior) : 0,
       variacion: f.variacion !== null ? Number(f.variacion) : 0,
     }))
+    .filter(f => f.actual > 0)
     .sort((a, b) => b.actual - a.actual);
 
   // Donut Data
@@ -184,11 +194,28 @@ export function PlanesSection() {
               flexDirection: 'column',
             }}
           >
-            <Typography variant="subtitle2" color="text.secondary" mb={2}>
-              Top 5 planes más vendidos
-            </Typography>
+            <Box display="flex" justifyContent="space-between" alignItems="center" mb={2} gap={1} flexWrap="wrap">
+              <Typography variant="subtitle2" color="text.secondary">
+                Top 5 planes más vendidos
+              </Typography>
+              <Box display="flex" gap={1}>
+                <YearSelector value={topYear} onChange={setTopYear} />
+                <TextField
+                  select
+                  size="small"
+                  value={topMonth}
+                  onChange={(e) => setTopMonth(Number(e.target.value))}
+                >
+                  {MONTHS.map((m) => (
+                    <MenuItem key={m.value} value={m.value}>{m.label}</MenuItem>
+                  ))}
+                </TextField>
+              </Box>
+            </Box>
             <Box display="flex" flexDirection="column" gap={1} flex={1}>
-              {top5.map(p => (
+              {topLoading ? (
+                <Skeleton variant="rectangular" sx={{ flex: 1 }} />
+              ) : top5.map(p => (
                 <Box
                   key={p.plan_id}
                   sx={{
@@ -212,14 +239,16 @@ export function PlanesSection() {
                   </Typography>
                   <Box textAlign="right">
                     <Typography variant="caption" color="text.secondary">
-                      Alumnos: <b>{p.cantidad_alumnos}</b>
+                      Pagos: <b>{p.cantidad_pagos}</b>
                     </Typography>
                     <Typography
                       variant="caption"
                       color="text.secondary"
                       display="block"
                     >
-                      $ {p.facturacion_mes_actual}
+                      $ {typeof p.facturacion_mes_actual === 'number'
+                        ? p.facturacion_mes_actual.toLocaleString('es-AR')
+                        : p.facturacion_mes_actual}
                     </Typography>
                   </Box>
                 </Box>

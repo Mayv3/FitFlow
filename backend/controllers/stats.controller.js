@@ -9,6 +9,7 @@ import {
   getPlanesStatsByPeriodo,
   getFacturacionByPeriodo,
   getFacturacionPorPlan,
+  getPlanMasVendidoMes,
   getFacturacionMes,
   countActiveMembersByMonthPayment,
   getActiveMembersPaymentDetails,
@@ -334,6 +335,30 @@ export async function getFacturacionPorPlanController(req, res) {
     return res.json(data);
   } catch (error) {
     console.error('❌ Error en getFacturacionPorPlan:', error);
+    return res.status(500).json({ error: 'Error interno del servidor' });
+  }
+}
+
+// Plan más vendido de un mes específico
+export async function getPlanMasVendidoMesController(req, res) {
+  try {
+    const gymId = req.user?.app_metadata?.gym_id;
+    if (!gymId) return res.status(400).json({ error: 'Falta gym_id' });
+
+    const now = new Date();
+    const year = req.query.year ? Number(req.query.year) : now.getFullYear();
+    const month = req.query.month ? Number(req.query.month) : now.getMonth() + 1;
+    if (!(month >= 1 && month <= 12)) return res.status(400).json({ error: 'Mes inválido' });
+
+    const key = `stats:top-planes:${gymId}:${year}:${month}`
+    const cached = await cache.get(key)
+    if (cached) return res.json(cached)
+
+    const data = await getPlanMasVendidoMes({ gymId, year, month });
+    await cache.set(key, data, 600)
+    return res.json(data);
+  } catch (error) {
+    console.error('❌ Error en getPlanMasVendidoMes:', error);
     return res.status(500).json({ error: 'Error interno del servidor' });
   }
 }

@@ -5,8 +5,9 @@ import {
   Card, CardContent, Box, Typography, ToggleButtonGroup, ToggleButton, Chip,
   useMediaQuery, Skeleton, Tooltip as MuiTooltip, TextField, MenuItem,
   Dialog, DialogContent, Table, TableBody,
-  TableCell, TableContainer, TableHead, TableRow, Paper,
+  TableCell, TableContainer, TableHead, TableRow, Paper, IconButton,
 } from '@mui/material';
+import CloseRoundedIcon from '@mui/icons-material/CloseRounded';
 import { alpha, useTheme } from '@mui/material/styles';
 import { GlowingEffect } from '@/components/ui/glowing-effect';
 import { useGymThemeSettings } from '@/hooks/useGymThemeSettings';
@@ -307,6 +308,21 @@ export function FacturacionSection() {
     }
     return { m: label, facturacion: monto, metodos: p.metodos ?? {}, fecha: p.fecha };
   });
+
+  // Modal de pagos: filtro por método, total y conteos por método
+  const paymentHasMethod = (p: PagoDetalle, f: string) =>
+    !!p.items?.some(i => (methodLabelMap[i.metodo] ?? i.metodo) === f);
+  const filteredBarPayments = barPayments.filter(p => barFilter === 'TODOS' || paymentHasMethod(p, barFilter));
+  const barTotal = filteredBarPayments.reduce((acc, p) => {
+    if (barFilter === 'TODOS') return acc + Number(p.monto_total ?? 0);
+    return acc + (p.items ?? [])
+      .filter(i => (methodLabelMap[i.metodo] ?? i.metodo) === barFilter)
+      .reduce((s, i) => s + Number(i.monto ?? 0), 0);
+  }, 0);
+  const barMethodCounts: Record<string, number> = { TODOS: barPayments.length };
+  for (const f of ['Efectivo', 'Tarjeta', 'MP']) {
+    barMethodCounts[f] = barPayments.filter(p => paymentHasMethod(p, f)).length;
+  }
 
   const barSizeBase = barData.length >= 28 ? 12 : barData.length >= 14 ? 18 : 28;
   const barSize = isMobile ? Math.max(10, barSizeBase - 6) : barSizeBase;
@@ -726,71 +742,113 @@ export function FacturacionSection() {
       onClose={() => setBarModalOpen(false)}
       maxWidth="sm"
       fullWidth
-      PaperProps={{ sx: { borderRadius: 1.5, overflow: 'hidden' } }}
+      PaperProps={{ sx: { borderRadius: 2, overflow: 'hidden', backgroundImage: 'none' } }}
     >
-      <Box sx={{ bgcolor: primaryColor, color: '#fff', px: 3, py: 2, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-        <Typography variant="h6" sx={{ fontWeight: 600, fontSize: '1rem' }}>
-          Pagos - {barLabel}
-        </Typography>
-        <Box component="button" onClick={() => setBarModalOpen(false)}
-          sx={{ bgcolor: 'rgba(255,255,255,0.2)', border: 'none', borderRadius: '50%', width: 28, height: 28, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: '#fff', fontSize: 16, lineHeight: 1, '&:hover': { bgcolor: 'rgba(255,255,255,0.35)' } }}>✕</Box>
+      <Box sx={{ bgcolor: primaryColor, color: '#fff', px: 3, py: 2, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 2 }}>
+        <Box sx={{ minWidth: 0 }}>
+          <Typography sx={{ fontSize: '0.75rem', opacity: 0.8, letterSpacing: 0.4, textTransform: 'uppercase' }}>
+            Pagos
+          </Typography>
+          <Typography variant="h6" noWrap sx={{ fontWeight: 700, fontSize: '1.15rem', lineHeight: 1.25 }}>
+            {barLabel}
+          </Typography>
+        </Box>
+        <IconButton
+          onClick={() => setBarModalOpen(false)}
+          aria-label="Cerrar"
+          size="small"
+          sx={{ color: '#fff', bgcolor: 'rgba(255,255,255,0.18)', '&:hover': { bgcolor: 'rgba(255,255,255,0.32)' } }}
+        >
+          <CloseRoundedIcon fontSize="small" />
+        </IconButton>
       </Box>
-      <Box sx={{ px: 3, pt: 2, pb: 1, display: 'flex', gap: 1, flexWrap: 'wrap' }}>
-        {['TODOS', 'Efectivo', 'Tarjeta', 'MP'].map((f) => (
-          <Chip
-            key={f}
-            label={f}
-            size="small"
-            onClick={() => setBarFilter(f)}
-            color={barFilter === f ? 'primary' : 'default'}
-            variant={barFilter === f ? 'filled' : 'outlined'}
-          />
-        ))}
+
+      {/* Resumen del filtro activo */}
+      <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr', borderBottom: '1px solid', borderColor: 'divider' }}>
+        <Box sx={{ px: 3, py: 1.75, borderRight: '1px solid', borderColor: 'divider' }}>
+          <Typography variant="caption" color="text.secondary">
+            {barFilter === 'TODOS' ? 'Total cobrado' : `Cobrado en ${barFilter}`}
+          </Typography>
+          <Typography sx={{ fontWeight: 700, fontSize: '1.4rem', lineHeight: 1.2, fontVariantNumeric: 'tabular-nums' }}>
+            {barLoading ? '—' : fmtARS(barTotal)}
+          </Typography>
+        </Box>
+        <Box sx={{ px: 3, py: 1.75 }}>
+          <Typography variant="caption" color="text.secondary">Pagos</Typography>
+          <Typography sx={{ fontWeight: 700, fontSize: '1.4rem', lineHeight: 1.2, fontVariantNumeric: 'tabular-nums' }}>
+            {barLoading ? '—' : filteredBarPayments.length.toLocaleString('es-AR')}
+          </Typography>
+        </Box>
       </Box>
+
+      <Box sx={{ px: 3, py: 1.5, display: 'flex', gap: 1, flexWrap: 'wrap' }}>
+        {['TODOS', 'Efectivo', 'Tarjeta', 'MP'].map((f) => {
+          const active = barFilter === f;
+          return (
+            <Chip
+              key={f}
+              label={`${f === 'TODOS' ? 'Todos' : f} · ${barMethodCounts[f] ?? 0}`}
+              size="small"
+              onClick={() => setBarFilter(f)}
+              color={active ? 'primary' : 'default'}
+              variant={active ? 'filled' : 'outlined'}
+              sx={{ fontWeight: active ? 600 : 500 }}
+            />
+          );
+        })}
+      </Box>
+
       <DialogContent dividers sx={{ p: 0, maxHeight: 380, '&::-webkit-scrollbar': { width: 5 }, '&::-webkit-scrollbar-track': { bgcolor: 'rgba(0,0,0,0.04)' }, '&::-webkit-scrollbar-thumb': { bgcolor: 'rgba(0,0,0,0.25)', borderRadius: 3 }, '&::-webkit-scrollbar-thumb:hover': { bgcolor: 'rgba(0,0,0,0.4)' }, scrollbarWidth: 'thin', scrollbarColor: 'rgba(0,0,0,0.25) rgba(0,0,0,0.04)' }}>
         {barLoading ? (
-          <Box sx={{ p: 4, textAlign: 'center' }}><Skeleton variant="rectangular" height={200} /></Box>
+          <Box sx={{ p: 3 }}><Skeleton variant="rectangular" height={200} sx={{ borderRadius: 1 }} /></Box>
+        ) : filteredBarPayments.length === 0 ? (
+          <Box sx={{ py: 6, textAlign: 'center' }}>
+            <Typography color="text.secondary">
+              {barPayments.length === 0 ? 'Sin pagos en este período' : `Sin pagos con ${barFilter} en este período`}
+            </Typography>
+          </Box>
         ) : (
-          <TableContainer component={Paper} elevation={0}>
+          <TableContainer component={Paper} elevation={0} sx={{ backgroundImage: 'none' }}>
             <Table size="small" stickyHeader>
               <TableHead>
                 <TableRow>
-                  <TableCell sx={{ fontWeight: 600, color: 'text.secondary', fontSize: '0.75rem' }}>Fecha</TableCell>
-                  <TableCell sx={{ fontWeight: 600, color: 'text.secondary', fontSize: '0.75rem' }}>Alumno</TableCell>
-                  <TableCell sx={{ fontWeight: 600, color: 'text.secondary', fontSize: '0.75rem' }}>Método</TableCell>
-                  <TableCell sx={{ fontWeight: 600, color: 'text.secondary', fontSize: '0.75rem' }} align="right">Monto</TableCell>
+                  {['Fecha', 'Alumno', 'Método'].map((h) => (
+                    <TableCell key={h} sx={{ fontWeight: 600, color: 'text.secondary', fontSize: '0.75rem', bgcolor: 'background.paper', py: 1.25 }}>{h}</TableCell>
+                  ))}
+                  <TableCell align="right" sx={{ fontWeight: 600, color: 'text.secondary', fontSize: '0.75rem', bgcolor: 'background.paper', py: 1.25 }}>Monto</TableCell>
                 </TableRow>
               </TableHead>
               <TableBody>
-                {barPayments
-                  .filter((p) => {
-                    if (barFilter === 'TODOS') return true;
-                    return p.items?.some(i => (methodLabelMap[i.metodo] ?? i.metodo) === barFilter);
-                  })
-                  .map((p) => (
-                    <TableRow key={p.id} sx={{ '&:last-child td': { border: 0 } }}>
-                      <TableCell sx={{ fontSize: '0.875rem', whiteSpace: 'nowrap' }}>
-                        {formatDay(p.fecha_de_pago)}
-                      </TableCell>
-                      <TableCell sx={{ fontSize: '0.875rem', maxWidth: 140, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                        {p.alumno_nombre}
-                      </TableCell>
-                      <TableCell sx={{ fontSize: '0.875rem' }}>
+                {filteredBarPayments.map((p) => (
+                  <TableRow
+                    key={p.id}
+                    hover
+                    sx={{ '&:last-child td': { border: 0 } }}
+                  >
+                    <TableCell sx={{ fontSize: '0.85rem', whiteSpace: 'nowrap', color: 'text.secondary', py: 1.25 }}>
+                      {formatDay(p.fecha_de_pago)}
+                    </TableCell>
+                    <TableCell sx={{ fontSize: '0.875rem', fontWeight: 500, maxWidth: 150, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', py: 1.25 }}>
+                      {p.alumno_nombre}
+                    </TableCell>
+                    <TableCell sx={{ py: 1.25 }}>
+                      <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
                         {p.items?.map((i, idx) => (
-                          <span key={idx}>
-                            {idx > 0 && ' / '}
-                            {methodLabelMap[i.metodo] ?? i.metodo}: ${Number(i.monto).toLocaleString('es-AR')}
-                          </span>
+                          <Chip
+                            key={idx}
+                            size="small"
+                            variant="outlined"
+                            label={`${methodLabelMap[i.metodo] ?? i.metodo} · $${Number(i.monto).toLocaleString('es-AR')}`}
+                            sx={{ height: 22, fontSize: '0.72rem', borderColor: alpha(t.palette.text.primary, 0.15) }}
+                          />
                         ))}
-                      </TableCell>
-                      <TableCell sx={{ fontSize: '0.875rem', fontWeight: 600 }} align="right">
-                        ${Number(p.monto_total).toLocaleString('es-AR')}
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                {barPayments.length === 0 && !barLoading && (
-                  <TableRow><TableCell colSpan={4} align="center" sx={{ py: 4, color: 'text.secondary' }}>Sin pagos en este período</TableCell></TableRow>
-                )}
+                      </Box>
+                    </TableCell>
+                    <TableCell align="right" sx={{ fontSize: '0.9rem', fontWeight: 700, whiteSpace: 'nowrap', fontVariantNumeric: 'tabular-nums', py: 1.25 }}>
+                      ${Number(p.monto_total).toLocaleString('es-AR')}
+                    </TableCell>
+                  </TableRow>
+                ))}
               </TableBody>
             </Table>
           </TableContainer>

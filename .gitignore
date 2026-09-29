@@ -7,6 +7,8 @@ skills-lock.json
 .mcp.json
 AGENT.md
 
+.impeccable/
+
 # Supabase local
 supabase/
 "Supabase LOCAL.md"

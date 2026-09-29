@@ -2,7 +2,7 @@
 import { GenericDataGrid } from '@/components/ui/tables/DataGrid';
 import {
   Box, Typography, Button, Stack,
-  Badge, Dialog, DialogContent,
+  Badge, Chip, Dialog, DialogContent,
   IconButton, Tooltip, Checkbox,
   Table, TableBody, TableCell, TableRow,
 } from '@mui/material';
@@ -30,6 +30,7 @@ import AddIcon from '@mui/icons-material/Add';
 import WarningAmberIcon from '@mui/icons-material/WarningAmber';
 import WhatsAppIcon from '@mui/icons-material/WhatsApp';
 import PersonOffIcon from '@mui/icons-material/PersonOff';
+import CloseRoundedIcon from '@mui/icons-material/CloseRounded';
 import { darken } from '@mui/material/styles';
 import { useGymThemeSettings } from '@/hooks/useGymThemeSettings';
 import { useMemberAsyncValidators } from '@/hooks/validatorsInput/UseAsyncValidators';
@@ -66,6 +67,7 @@ export default function MembersList() {
   const [waSent, setWaSent] = useState<Set<string>>(new Set());
   const [openEdit, setOpenEdit] = useState(false);
   const [editingMember, setEditingMember] = useState<Member | null>(null);
+  const [now] = useState(() => Date.now());
   const asyncValidators = useMemberAsyncValidators();
 
   const addmember = useAddAlumno();
@@ -114,6 +116,10 @@ export default function MembersList() {
   }, [expiredData]);
   const expiredCount = vencidosMembers.length;
   const inactivosCount = inactivosMembers.length;
+  // Resumen del modal: cuántos vencidos ya se marcaron como avisados
+  const avisados = [...vencidosMembers, ...inactivosMembers]
+    .filter(m => waSent.has(`${m.dni}_${m.fecha_de_vencimiento ?? 'sin-fecha'}`)).length;
+  const pendientesAvisar = expiredCount + inactivosCount - avisados;
   const alumnos = data?.items ?? [];
   const total = data?.total ?? 0;
   const { options: planOptions, byId, isLoading: plansLoading } = usePlanesPrecios(gymId);
@@ -282,30 +288,57 @@ export default function MembersList() {
       `¡Renovar es muy fácil, avisanos y te ayudamos!\nTe esperamos con las puertas abiertas`;
     const waUrl = phone ? `https://wa.me/${phone}?text=${encodeURIComponent(mensaje)}` : null;
 
+    const dias = fv ? Math.max(0, Math.floor((now - new Date(fv).getTime()) / 86_400_000)) : null;
+    const hace =
+      dias == null ? null
+        : dias < 1 ? 'Hoy'
+        : dias < 30 ? `Hace ${dias} ${dias === 1 ? 'día' : 'días'}`
+        : `Hace ${Math.floor(dias / 30)} ${Math.floor(dias / 30) === 1 ? 'mes' : 'meses'}`;
+    const haceColor = dias == null ? 'default' : dias <= 7 ? 'warning' : dias <= 60 ? 'error' : 'default';
+
     return (
       <TableRow
         key={dniKey}
-        sx={{ opacity: sent ? 0.45 : 1, transition: 'opacity 0.2s' }}
+        hover
+        sx={{ opacity: sent ? 0.5 : 1, transition: 'opacity 0.2s', '&:last-child td': { border: 0 } }}
       >
-        <TableCell padding="checkbox" sx={{ width: 48 }}>
-          <Tooltip title={sent ? 'Marcar como no enviado' : 'Marcar como enviado'}>
+        <TableCell padding="none" sx={{ width: 44, pl: 1 }}>
+          <Tooltip title={sent ? 'Marcar como no avisado' : 'Marcar como avisado'}>
             <Checkbox
               checked={sent}
               onChange={() => toggleWaSent(dniKey)}
               color="success"
-              sx={{ '& .MuiSvgIcon-root': { fontSize: 22 } }}
+              size="small"
+              sx={{ p: 0.75, '& .MuiSvgIcon-root': { fontSize: 20 } }}
             />
           </Tooltip>
         </TableCell>
-        <TableCell sx={{ fontSize: '0.875rem', fontWeight: sent ? 400 : 600 }}>
-          {m.nombre}
+        <TableCell sx={{ py: 1, px: 1 }}>
+          {/* El nombre puede ocupar dos renglones en vez de cortarse */}
+          <Typography sx={{ fontSize: '0.85rem', fontWeight: sent ? 400 : 600, lineHeight: 1.3, overflowWrap: 'anywhere' }}>
+            {m.nombre}
+          </Typography>
+          <Typography sx={{ fontSize: '0.75rem', color: 'text.secondary', lineHeight: 1.3, whiteSpace: 'nowrap' }}>
+            {m.telefono ?? 'Sin teléfono'}
+          </Typography>
         </TableCell>
-        <TableCell sx={{ fontSize: '0.875rem', color: 'error.main', fontWeight: 500 }}>{fechaVenc}</TableCell>
-        <TableCell sx={{ fontSize: '0.875rem', color: 'text.secondary' }}>{m.telefono ?? '—'}</TableCell>
-        <TableCell align="center" padding="checkbox" sx={{ width: 56 }}>
+        <TableCell align="right" sx={{ py: 1, px: 1, whiteSpace: 'nowrap', width: 128 }}>
+          {hace && (
+            <Chip
+              label={hace}
+              size="small"
+              color={haceColor}
+              variant={haceColor === 'default' ? 'outlined' : 'filled'}
+              sx={{ height: 20, fontSize: '0.7rem', fontWeight: 600, '& .MuiChip-label': { px: 1 } }}
+            />
+          )}
+          <Typography sx={{ fontSize: '0.72rem', color: 'text.secondary', lineHeight: 1.3, mt: 0.25 }}>{fechaVenc}</Typography>
+        </TableCell>
+        <TableCell align="center" padding="none" sx={{ width: 48, pr: 1 }}>
           <Tooltip title={waUrl ? 'Enviar por WhatsApp' : 'Sin teléfono registrado'}>
             <span>
               <IconButton
+                size="small"
                 sx={{ color: waUrl ? '#25D366' : 'action.disabled' }}
                 component={waUrl ? 'a' : 'button'}
                 href={waUrl ?? undefined}
@@ -313,7 +346,7 @@ export default function MembersList() {
                 rel={waUrl ? 'noopener noreferrer' : undefined}
                 disabled={!waUrl}
               >
-                <WhatsAppIcon sx={{ fontSize: 24 }} />
+                <WhatsAppIcon sx={{ fontSize: 20 }} />
               </IconButton>
             </span>
           </Tooltip>
@@ -447,21 +480,34 @@ export default function MembersList() {
 
       <ReactQueryDevtools initialIsOpen={true} />
 
-      <Dialog open={openExpired} onClose={() => setOpenExpired(false)} maxWidth="md" fullWidth
-        PaperProps={{ sx: { borderRadius: 1, overflow: 'hidden' } }}
+      <Dialog open={openExpired} onClose={() => setOpenExpired(false)} maxWidth="lg" fullWidth
+        PaperProps={{ sx: { borderRadius: 2, overflow: 'hidden', backgroundImage: 'none' } }}
       >
-        <Box sx={{ bgcolor: primaryColor, color: '#fff', px: 2, py: 1.5, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-          <Box display="flex" alignItems="center" gap={1}>
-            <WarningAmberIcon fontSize="small" sx={{ opacity: 0.9 }} />
-            <Typography variant="h6" fontWeight={600} fontSize="0.95rem">
-              Miembros vencidos ({expiredCount})
-            </Typography>
+        <Box sx={{ bgcolor: primaryColor, color: '#fff', px: 3, py: 2, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 2 }}>
+          <Box display="flex" alignItems="center" gap={1.5} sx={{ minWidth: 0 }}>
+            <Box sx={{ width: 36, height: 36, borderRadius: '50%', bgcolor: 'rgba(255,255,255,0.18)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+              <WarningAmberIcon fontSize="small" />
+            </Box>
+            <Box sx={{ minWidth: 0 }}>
+              <Typography variant="h6" fontWeight={700} fontSize="1.1rem" lineHeight={1.25}>
+                Miembros vencidos
+              </Typography>
+              <Typography sx={{ fontSize: '0.78rem', opacity: 0.85 }}>
+                {pendientesAvisar} sin avisar · {avisados} avisado{avisados !== 1 ? 's' : ''}
+              </Typography>
+            </Box>
           </Box>
-          <Box component="button" onClick={() => setOpenExpired(false)}
-            sx={{ bgcolor: 'rgba(255,255,255,0.2)', border: 'none', borderRadius: '50%', width: 28, height: 28, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: '#fff', fontSize: 16, lineHeight: 1, '&:hover': { bgcolor: 'rgba(255,255,255,0.35)' } }}>✕</Box>
+          <IconButton
+            onClick={() => setOpenExpired(false)}
+            aria-label="Cerrar"
+            size="small"
+            sx={{ color: '#fff', bgcolor: 'rgba(255,255,255,0.18)', '&:hover': { bgcolor: 'rgba(255,255,255,0.32)' } }}
+          >
+            <CloseRoundedIcon fontSize="small" />
+          </IconButton>
         </Box>
         <DialogContent sx={{
-          p: 0, maxHeight: '70vh',
+          p: 0, maxHeight: '70vh', overflowX: 'hidden',
           scrollbarWidth: 'thin',
           scrollbarColor: `${primaryColor} transparent`,
           '&::-webkit-scrollbar': { width: 6 },
@@ -470,24 +516,27 @@ export default function MembersList() {
           '&::-webkit-scrollbar-thumb:hover': { bgcolor: darken(primaryColor, 0.3) },
         }}>
           {vencidosMembers.length === 0 && inactivosMembers.length === 0 ? (
-            <Typography sx={{ p: 3, textAlign: 'center', color: 'text.secondary', fontSize: '0.875rem' }}>
-              No hay miembros vencidos
-            </Typography>
+            <Box sx={{ py: 6, textAlign: 'center', color: 'text.secondary' }}>
+              <Typography sx={{ fontWeight: 600 }}>No hay miembros vencidos</Typography>
+              <Typography sx={{ fontSize: '0.85rem' }}>Todos tus alumnos están al día.</Typography>
+            </Box>
           ) : (
             <Box sx={{ display: 'flex', flexDirection: { xs: 'column', md: 'row' }, alignItems: 'stretch' }}>
               {vencidosMembers.length > 0 && (
                 <Box sx={{ flex: 1, minWidth: 0 }}>
                   <Box sx={{
-                    px: 2, py: 1, display: 'flex', alignItems: 'center', gap: 1,
-                    bgcolor: 'action.hover',
-                    borderColor: 'divider',
+                    px: 2, py: 1.25, display: 'flex', alignItems: 'center', gap: 1,
+                    bgcolor: 'background.paper',
+                    borderBottom: '1px solid', borderColor: 'divider',
                     position: 'sticky', top: 0, zIndex: 1,
                   }}>
-                    <Typography sx={{ fontWeight: 700, fontSize: '0.8rem', color: 'text.secondary' }}>
-                      Vencidos · hace hasta 2 meses ({expiredCount})
+                    <Box sx={{ width: 8, height: 8, borderRadius: '50%', bgcolor: 'error.main' }} />
+                    <Typography sx={{ fontWeight: 700, fontSize: '0.8rem', flex: 1 }}>
+                      Vencidos · hasta 2 meses
                     </Typography>
+                    <Chip label={expiredCount} size="small" sx={{ height: 20, fontWeight: 700, fontSize: '0.72rem' }} />
                   </Box>
-                  <Table size="small">
+                  <Table size="small" sx={{ tableLayout: 'fixed', width: '100%' }}>
                     <TableBody>
                       {vencidosMembers.map(renderExpiredRow)}
                     </TableBody>
@@ -503,17 +552,18 @@ export default function MembersList() {
                   borderColor: 'divider',
                 }}>
                   <Box sx={{
-                    px: 2, py: 1, display: 'flex', alignItems: 'center', gap: 1,
-                    bgcolor: 'action.hover',
-                    borderColor: 'divider',
+                    px: 2, py: 1.25, display: 'flex', alignItems: 'center', gap: 1,
+                    bgcolor: 'background.paper',
+                    borderBottom: '1px solid', borderColor: 'divider',
                     position: 'sticky', top: 0, zIndex: 1,
                   }}>
                     <PersonOffIcon fontSize="small" sx={{ color: 'text.secondary' }} />
-                    <Typography sx={{ fontWeight: 700, fontSize: '0.8rem', color: 'text.secondary' }}>
-                      Inactivos · sin venir hace +2 meses ({inactivosCount})
+                    <Typography sx={{ fontWeight: 700, fontSize: '0.8rem', flex: 1 }}>
+                      Inactivos · más de 2 meses
                     </Typography>
+                    <Chip label={inactivosCount} size="small" sx={{ height: 20, fontWeight: 700, fontSize: '0.72rem' }} />
                   </Box>
-                  <Table size="small">
+                  <Table size="small" sx={{ tableLayout: 'fixed', width: '100%' }}>
                     <TableBody>
                       {inactivosMembers.map(renderExpiredRow)}
                     </TableBody>

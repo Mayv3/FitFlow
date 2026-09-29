@@ -3,6 +3,8 @@ export interface PlanStatsRow {
   plan_id: string;
   plan_nombre: string;
   cantidad_alumnos: number;
+  /** Pagos registrados con este plan en el período elegido. */
+  cantidad_pagos?: number;
   facturacion_mes_actual: number;
   facturacion_mes_anterior: number;
   variacion: number;

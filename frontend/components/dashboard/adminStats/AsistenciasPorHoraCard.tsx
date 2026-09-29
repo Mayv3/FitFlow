@@ -33,6 +33,7 @@ import CloseIcon from '@mui/icons-material/Close';
 import { useUser } from '@/context/UserContext';
 import { useAsistencias } from '@/hooks/assists/useAsistenciasHoy';
 import { AsistenciaAlumno } from '@/models/Stats/Asistencias';
+import type { ChartTooltipProps } from '@/models/Charts/ChartTooltip';
 import { useState } from 'react';
 
 const COLOR_MAIN = '#ff7a18';
@@ -95,7 +96,7 @@ export function AsistenciasHoyPorHoraCard({ fecha }: Props) {
   // relleno decorativo debajo de la línea) — el tooltip por defecto de
   // recharts suma una fila por cada serie, así que sin este content
   // custom se ve la cantidad duplicada.
-  const renderTooltip = ({ active, payload, label }: any) => {
+  const renderTooltip = ({ active, payload, label }: ChartTooltipProps) => {
     if (!active || !payload || payload.length === 0) return null;
     const cantidad = payload[0]?.value ?? 0;
 

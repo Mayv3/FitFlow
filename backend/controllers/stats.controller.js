@@ -45,7 +45,7 @@ export async function getGymStatsController(req, res) {
     if (cached) return res.status(200).json(cached)
 
     const stats = await getGymStatsService({ gymId });
-    await cache.set(key, stats, 600)
+    await cache.set(key, stats, 15)
     return res.status(200).json(stats);
   } catch (err) {
     console.error('[GET /stats] Error:', err);

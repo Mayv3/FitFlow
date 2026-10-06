@@ -12,6 +12,6 @@ export function useGymStats(gymId?: string) {
 
       return data as GymStats;
     },
-    staleTime: 60_000,
+    staleTime: 15_000,
   });
 }

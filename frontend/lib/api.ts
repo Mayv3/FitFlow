@@ -1,6 +1,8 @@
 import axios from 'axios'
 import Cookies from 'js-cookie'
 import { refreshAccessToken } from '@/lib/auth/tokenRefresh'
+import { aplicarSede } from '@/lib/auth/sedeSession'
+import { Gym } from '@/models/Gym/Gym'
 
 export const api = axios.create({
   baseURL: process.env.NEXT_PUBLIC_BACKEND_URL,
@@ -34,6 +36,20 @@ api.interceptors.response.use(
 
     const newToken = await refreshAccessToken()
     if (!newToken) {
+      return Promise.reject(error)
+    }
+
+    if (response?.data?.code === 'SEDE_CAMBIADA') {
+      try {
+        const { data } = await axios.get<{ active_gym_id: string | null; sedes: Gym[] }>(
+          `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/auth/sedes`,
+          { headers: { Authorization: `Bearer ${newToken}` } }
+        )
+        const sede = data.sedes.find((item) => item.id === data.active_gym_id)
+        if (sede) aplicarSede(sede)
+      } catch {
+        // El siguiente pedido volverá a intentar sincronizar la sede.
+      }
       return Promise.reject(error)
     }
 

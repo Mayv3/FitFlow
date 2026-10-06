@@ -117,6 +117,22 @@ export async function loginUser({ email, password }) {
 
   if (profileError) throw new Error("No se pudo obtener el perfil del usuario")
 
+  // Con varias sedes, la activa (app_metadata.gym_id) puede no ser la de la fila
+  // de users: el panel tiene que abrir en la que quedó elegida la última vez.
+  const sedeActivaId = user.app_metadata?.gym_id
+  if (sedeActivaId && sedeActivaId !== profile.gym_id) {
+    const { data: sedeActiva } = await supabaseAdmin
+      .from("gyms")
+      .select("name, settings, logo_url")
+      .eq("id", sedeActivaId)
+      .maybeSingle()
+
+    if (sedeActiva) {
+      profile.gym_id = sedeActivaId
+      profile.gyms = sedeActiva
+    }
+  }
+
   return { session, profile }
 }
 

@@ -23,6 +23,7 @@ import LightModeIcon from '@mui/icons-material/LightMode'
 import { useSubscription } from '@/context/SubscriptionContext'
 import { FlushDialogActions } from '@/components/ui/modals/FlushDialogActions'
 import { useDarkMode } from '@/context/DarkModeContext'
+import { WhatsappStatusButton } from '@/components/dashboard/settings/WhatsappStatusButton'
 
 function formatDate(dateStr: string | null | undefined): string {
   if (!dateStr) return 'Sin fecha'
@@ -129,7 +130,7 @@ export const SubscriptionStatusBadge = () => {
 
   return (
     <>
-      {/* Badge + toggle de tema — fixed arriba a la derecha */}
+      {/* Badge + toggle de tema + estado de WhatsApp — fixed arriba a la derecha */}
       <Box
         data-fitflow-topbar
         sx={{
@@ -186,6 +187,7 @@ export const SubscriptionStatusBadge = () => {
             {isDarkMode ? <LightModeIcon fontSize="small" /> : <DarkModeIcon fontSize="small" />}
           </IconButton>
         </Tooltip>
+        <WhatsappStatusButton />
       </Box>
 
       {/* Dialog con detalle de la suscripción */}

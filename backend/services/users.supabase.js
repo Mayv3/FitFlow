@@ -87,7 +87,8 @@ export async function updateUserRole(userId, newRoleId) {
   if (data?.auth_user_id) {
     try {
       await supabaseAdmin.auth.admin.updateUserById(data.auth_user_id, {
-        app_metadata: { gym_id: data.gym_id, role_id: newRoleId },
+        // Sin gym_id: no hay que pisar la sede activa de quien tiene varias
+        app_metadata: { role_id: newRoleId },
       })
     } catch (e) {
       console.error("No se pudo sincronizar app_metadata.role_id:", e?.message)

@@ -1,4 +1,5 @@
 import { registerUser, loginUser, logoutUser, refreshTokenService, forgotPasswordService, resetPasswordService } from '../services/auth.supabase.js'
+import { listSedes, cambiarSede } from '../services/sedes.supabase.js'
 import { supabaseAdmin } from '../config/supabaseClient.js'
 
 export async function handleRegisterUser(req, res) {
@@ -67,6 +68,31 @@ export async function handleRefreshToken(req, res) {
   } catch (err) {
     console.error('Error al refrescar token:', err)
     res.status(401).json({ error: err.message })
+  }
+}
+
+export async function handleListSedes(req, res) {
+  try {
+    const sedes = await listSedes(req.user.id)
+    res.json({ active_gym_id: req.gymId ?? null, sedes })
+  } catch (err) {
+    console.error('Error al listar sedes:', err)
+    res.status(500).json({ error: 'No se pudieron obtener las sedes' })
+  }
+}
+
+export async function handleCambiarSede(req, res) {
+  try {
+    const { gym_id } = req.body
+    if (!gym_id) {
+      return res.status(400).json({ error: 'Falta el gym_id' })
+    }
+
+    const sede = await cambiarSede(req.user.id, gym_id)
+    res.json({ sede })
+  } catch (err) {
+    console.error('Error al cambiar de sede:', err)
+    res.status(err.status || 500).json({ error: err.status ? err.message : 'No se pudo cambiar de sede' })
   }
 }
 

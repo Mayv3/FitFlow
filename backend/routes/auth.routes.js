@@ -1,6 +1,6 @@
 import express from 'express'
 import rateLimit from 'express-rate-limit'
-import { handleRegisterUser,handleLoginUser , handleLogoutUser, handleRefreshToken, handleForgotPassword, handleResetPassword } from '../controllers/auth.controller.js'
+import { handleRegisterUser,handleLoginUser , handleLogoutUser, handleRefreshToken, handleForgotPassword, handleResetPassword, handleListSedes, handleCambiarSede } from '../controllers/auth.controller.js'
 import { gymLoginController, getAlumnoInfoController } from '../controllers/gymLogin.controller.js'
 import { verifyToken } from '../middleware/auth.js'
 
@@ -19,6 +19,8 @@ router.post('/register', authLimiter, handleRegisterUser)
 router.post('/login', authLimiter, handleLoginUser)
 router.post('/refresh', authLimiter, handleRefreshToken)
 router.post('/logout', verifyToken, handleLogoutUser)
+router.get('/sedes', verifyToken, handleListSedes)
+router.post('/sedes/cambiar', verifyToken, handleCambiarSede)
 router.post("/forgot-password", handleForgotPassword)
 router.post("/reset-password", handleResetPassword)
 router.post('/gym-login', gymLoginController)

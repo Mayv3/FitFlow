@@ -31,6 +31,11 @@ import { ROLE_ROUTES } from '@/const/roles/roles'
 import { useSubscription, type FeatureKey } from '@/context/SubscriptionContext'
 import { SidebarSkeleton } from './SideBarSkeleton'
 import { FlushDialogActions } from '@/components/ui/modals/FlushDialogActions'
+import SwapHorizIcon from '@mui/icons-material/SwapHoriz'
+import { useSedes } from '@/hooks/sedes/useSedes'
+import { SedeDialog } from './SedeDialog'
+import { notify } from '@/lib/toast'
+import { getApiErrorMessage } from '@/utils/errors/apiError'
 type TabItem = { label: string; icon: React.ReactNode; route: string; section?: string }
 /** `color` fija el fondo del sidebar; sin él se usa el color primario del gym. */
 type HeaderComponentProps = { tabs: TabItem[]; color?: string }
@@ -93,6 +98,18 @@ export const SideBar = ({ tabs, color }: HeaderComponentProps) => {
   const isDefaultLogo = !gym_logo_url
 
   const logout = useLogout()
+
+  const { sedes, activeId, cambiandoA, cambiar } = useSedes()
+  const [sedeDialogOpen, setSedeDialogOpen] = useState(false)
+  const tieneVariasSedes = sedes.length > 1
+
+  const handleCambiarSede = async (gymId: string) => {
+    try {
+      await cambiar(gymId)
+    } catch (e) {
+      notify.error(getApiErrorMessage(e) || 'No se pudo cambiar de sede. Probá de nuevo.')
+    }
+  }
 
   const isTabEnabled = (route: string): boolean => {
     const feature = getFeatureFromRoute(route)
@@ -283,6 +300,43 @@ export const SideBar = ({ tabs, color }: HeaderComponentProps) => {
       <Divider sx={{ borderColor: 'rgba(255,255,255,0.18)', mb: 1 }} />
 
       <List sx={{ color: 'white', py: 0, mt: 0 }}>
+        {tieneVariasSedes && (
+        <Tooltip title={isExpanded ? '' : 'Cambiar de sede'} placement="right">
+          <ListItemButton
+            disableRipple
+            onClick={() => setSedeDialogOpen(true)}
+            sx={{
+              borderRadius: 2,
+              mb: isCompact ? 0.25 : 0.5,
+              height: isCompact ? 30 : 34,
+              px: 1.45,
+              '&:hover': { bgcolor: 'rgba(255,255,255,0.10)' },
+            }}
+          >
+            <ListItemIcon
+              sx={{
+                color: 'white',
+                minWidth: 0,
+                mr: isExpanded ? 1.5 : 0,
+                '& .MuiSvgIcon-root': { fontSize: isCompact ? 18 : 20 },
+              }}
+            >
+              <SwapHorizIcon />
+            </ListItemIcon>
+            <Box
+              sx={{
+                overflow: 'hidden',
+                whiteSpace: 'nowrap',
+                opacity: isExpanded ? 1 : 0,
+                width: isExpanded ? 'auto' : 0,
+                transition: 'opacity .25s ease, width .25s ease',
+              }}
+            >
+              <ListItemText primary="Cambiar de sede" primaryTypographyProps={{ color: 'white', fontSize: '0.875rem' }} />
+            </Box>
+          </ListItemButton>
+        </Tooltip>
+        )}
         {tabs.map((tab, index) => {
           const selected = selectedIndex === index
           const enabled = isTabEnabled(tab.route)
@@ -298,8 +352,8 @@ export const SideBar = ({ tabs, color }: HeaderComponentProps) => {
               onClick={() => enabled ? handleNav(tab.route, index, enabled) : handleBlockedClick(tab.label)}
               sx={{
                 borderRadius: 2,
-                mb: isCompact ? 0.4 : 1,
-                height: isCompact ? 34 : 40,
+                mb: isCompact ? 0.25 : 0.5,
+                height: isCompact ? 30 : 34,
                 px: 1.45,
                 bgcolor: selected && enabled ? '#fff' : 'transparent',
                 opacity: enabled ? 1 : 0.7,
@@ -320,7 +374,7 @@ export const SideBar = ({ tabs, color }: HeaderComponentProps) => {
                   color: !enabled ? '#F5CE08' : isNovedades && !selected ? '#FFD700' : selected ? 'black' : 'white',
                   minWidth: 0,
                   mr: isExpanded ? 1.5 : 0,
-                  '& .MuiSvgIcon-root': { fontSize: isCompact ? 20 : 24 },
+                  '& .MuiSvgIcon-root': { fontSize: isCompact ? 18 : 20 },
                 }}
               >
                 {!enabled ? <StarIcon /> : tab.icon}
@@ -338,7 +392,8 @@ export const SideBar = ({ tabs, color }: HeaderComponentProps) => {
                   primary={tab.label}
                   primaryTypographyProps={{
                     color: !enabled ? '#F5CE08' : isNovedades && !selected ? '#FFD700' : selected ? 'black' : 'white',
-                    sx: { 
+                    sx: {
+                      fontSize: '0.875rem',
                       textDecoration: !enabled ? 'line-through' : 'none',
                       fontWeight: isNovedades ? 700 : 400,
                     }
@@ -395,7 +450,7 @@ export const SideBar = ({ tabs, color }: HeaderComponentProps) => {
             onClick={logout}
             sx={{
               borderRadius: 2,
-              height: isCompact ? 40 : 48,
+              height: isCompact ? 34 : 40,
               px: 1.25,
               flexGrow: isExpanded ? 1 : 0,
               justifyContent: isExpanded ? 'flex-start' : 'center',
@@ -403,7 +458,7 @@ export const SideBar = ({ tabs, color }: HeaderComponentProps) => {
             }}
           >
             <ListItemIcon sx={{ color: 'white', minWidth: 0, mr: isExpanded ? 1.5 : 0, justifyContent: 'center' }}>
-              <LogoutIcon fontSize="medium" />
+              <LogoutIcon sx={{ fontSize: isCompact ? 18 : 20 }} />
             </ListItemIcon>
             <Box
               sx={{
@@ -414,7 +469,7 @@ export const SideBar = ({ tabs, color }: HeaderComponentProps) => {
                 transition: 'opacity .3s ease, width .3s ease',
               }}
             >
-              <ListItemText primary="Salir" primaryTypographyProps={{ color: 'white' }} />
+              <ListItemText primary="Salir" primaryTypographyProps={{ color: 'white', fontSize: '0.875rem' }} />
             </Box>
           </ListItemButton>
         </Tooltip>
@@ -426,8 +481,8 @@ export const SideBar = ({ tabs, color }: HeaderComponentProps) => {
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              width: isCompact ? 40 : 48,
-              height: isCompact ? 40 : 48,
+              width: isCompact ? 34 : 40,
+              height: isCompact ? 34 : 40,
               flexShrink: 0,
               borderRadius: 2,
               cursor: 'pointer',
@@ -438,7 +493,7 @@ export const SideBar = ({ tabs, color }: HeaderComponentProps) => {
             }}
           >
             <AccountCircleIcon
-              sx={{ color: pathname === getProfileRoute() ? 'black' : 'white', fontSize: isCompact ? 22 : 26 }}
+              sx={{ color: pathname === getProfileRoute() ? 'black' : 'white', fontSize: isCompact ? 20 : 22 }}
             />
           </Box>
         </Tooltip>
@@ -520,6 +575,17 @@ export const SideBar = ({ tabs, color }: HeaderComponentProps) => {
     </Dialog>
   )
 
+  const sedeDialog = (
+    <SedeDialog
+      open={sedeDialogOpen}
+      onClose={() => setSedeDialogOpen(false)}
+      sedes={sedes}
+      activeId={activeId}
+      cambiandoA={cambiandoA}
+      onSelect={handleCambiarSede}
+    />
+  )
+
   if (isMobile) {
     return (
       <>
@@ -585,6 +651,15 @@ export const SideBar = ({ tabs, color }: HeaderComponentProps) => {
                   />
                 )
               })}
+              {tieneVariasSedes && (
+                <BottomNavigationAction
+                  value={22}
+                  icon={<SwapHorizIcon />}
+                  aria-label="Cambiar de sede"
+                  onClick={() => setSedeDialogOpen(true)}
+                  sx={{ color: 'white' }}
+                />
+              )}
               <BottomNavigationAction
                 value={21}
                 icon={<LogoutIcon />}
@@ -601,6 +676,7 @@ export const SideBar = ({ tabs, color }: HeaderComponentProps) => {
           </Box>
         </Paper>
         {upgradeModal}
+        {sedeDialog}
       </>
     )
   }
@@ -609,6 +685,7 @@ export const SideBar = ({ tabs, color }: HeaderComponentProps) => {
     <>
       {desktopSidebar}
       {upgradeModal}
+      {sedeDialog}
     </>
   )
 }

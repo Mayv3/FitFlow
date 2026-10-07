@@ -34,8 +34,10 @@ export default function PortalPage() {
                 const getCookie = (name: string) => {
                     const value = `; ${document.cookie}`
                     const parts = value.split(`; ${name}=`)
-                    if (parts.length === 2) return parts.pop()?.split(';').shift()
-                    return null
+                    if (parts.length !== 2) return null
+                    const raw = parts.pop()?.split(';').shift()
+                    // js-cookie guarda el valor URL-encoded (espacio -> %20)
+                    return raw ? decodeURIComponent(raw) : null
                 }
                 const gymName = getCookie('gym_name')
                 const gymColor = getCookie('gym_primary_color')

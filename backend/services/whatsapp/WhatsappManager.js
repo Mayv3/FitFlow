@@ -278,11 +278,41 @@ class WhatsappManager {
         const restartRequired = code === DisconnectReason.restartRequired
         const replaced = code === DisconnectReason.connectionReplaced // 440
         const forbidden = code === DisconnectReason.forbidden // 403
-        logCierre(gymId, code, { Número: jidNormalizedUser(inst.sock?.user?.id || '') || undefined })
+        // Cierre mientras esperábamos el escaneo = el QR venció sin que nadie lo
+        // escaneara. El 515 sí puede llegar en estado 'qr': es el restart que pide
+        // WhatsApp justo después de escanear, y ese hay que seguirlo. Los cierres
+        // con manejo propio (401/440/403) siguen su camino.
+        const qrVencido = inst.status === 'qr' &&
+          !restartRequired && !loggedOut && !replaced && !forbidden
+        if (!qrVencido) {
+          logCierre(gymId, code, { Número: jidNormalizedUser(inst.sock?.user?.id || '') || undefined })
+        }
 
         // cerrar socket viejo SIEMPRE
         try { inst.sock?.ev?.removeAllListeners?.() } catch {}
         try { inst.sock?.end?.(undefined) } catch {}
+
+        if (qrVencido) {
+          // Reintentar acá solo genera QRs que nadie mira: cada vuelta abre un socket
+          // nuevo y en el plan free de Render eso se come la CPU de la API. Queda en
+          // 'disconnected' (reconectable): abrir el panel o tocar "Vincular" vuelve
+          // a pedir QR por getStatus/postConnect.
+          this._clearReconnect(gymId)
+          inst.sock = null
+          inst.status = 'disconnected'
+          inst.qr = null
+          inst.qrDataUrl = null
+          inst.lastError = 'El QR venció sin escanearse. Tocá "Vincular WhatsApp" para generar uno nuevo.'
+          waLog(gymId, `QR vencido sin escanear — ${code ?? '?'}`, {
+            level: 'warn',
+            detalle: {
+              'Qué hago': 'NO reintento solo, para no generar QRs en loop.',
+              'Qué hacer': 'Panel del gym → Vincular WhatsApp → escanear el QR.',
+              Recordatorios: 'NO se envía nada hasta que alguien escanee.'
+            }
+          })
+          return
+        }
 
         if (loggedOut) {
           inst.status = 'logged_out'

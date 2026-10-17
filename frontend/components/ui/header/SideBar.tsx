@@ -31,11 +31,6 @@ import { ROLE_ROUTES } from '@/const/roles/roles'
 import { useSubscription, type FeatureKey } from '@/context/SubscriptionContext'
 import { SidebarSkeleton } from './SideBarSkeleton'
 import { FlushDialogActions } from '@/components/ui/modals/FlushDialogActions'
-import SwapHorizIcon from '@mui/icons-material/SwapHoriz'
-import { useSedes } from '@/hooks/sedes/useSedes'
-import { SedeDialog } from './SedeDialog'
-import { notify } from '@/lib/toast'
-import { getApiErrorMessage } from '@/utils/errors/apiError'
 type TabItem = { label: string; icon: React.ReactNode; route: string; section?: string }
 /** `color` fija el fondo del sidebar; sin él se usa el color primario del gym. */
 type HeaderComponentProps = { tabs: TabItem[]; color?: string }
@@ -98,18 +93,6 @@ export const SideBar = ({ tabs, color }: HeaderComponentProps) => {
   const isDefaultLogo = !gym_logo_url
 
   const logout = useLogout()
-
-  const { sedes, activeId, cambiandoA, cambiar } = useSedes()
-  const [sedeDialogOpen, setSedeDialogOpen] = useState(false)
-  const tieneVariasSedes = sedes.length > 1
-
-  const handleCambiarSede = async (gymId: string) => {
-    try {
-      await cambiar(gymId)
-    } catch (e) {
-      notify.error(getApiErrorMessage(e) || 'No se pudo cambiar de sede. Probá de nuevo.')
-    }
-  }
 
   const isTabEnabled = (route: string): boolean => {
     const feature = getFeatureFromRoute(route)
@@ -300,43 +283,6 @@ export const SideBar = ({ tabs, color }: HeaderComponentProps) => {
       <Divider sx={{ borderColor: 'rgba(255,255,255,0.18)', mb: 1 }} />
 
       <List sx={{ color: 'white', py: 0, mt: 0 }}>
-        {tieneVariasSedes && (
-        <Tooltip title={isExpanded ? '' : 'Cambiar de sede'} placement="right">
-          <ListItemButton
-            disableRipple
-            onClick={() => setSedeDialogOpen(true)}
-            sx={{
-              borderRadius: 2,
-              mb: isCompact ? 0.25 : 0.5,
-              height: isCompact ? 30 : 34,
-              px: 1.45,
-              '&:hover': { bgcolor: 'rgba(255,255,255,0.10)' },
-            }}
-          >
-            <ListItemIcon
-              sx={{
-                color: 'white',
-                minWidth: 0,
-                mr: isExpanded ? 1.5 : 0,
-                '& .MuiSvgIcon-root': { fontSize: isCompact ? 18 : 20 },
-              }}
-            >
-              <SwapHorizIcon />
-            </ListItemIcon>
-            <Box
-              sx={{
-                overflow: 'hidden',
-                whiteSpace: 'nowrap',
-                opacity: isExpanded ? 1 : 0,
-                width: isExpanded ? 'auto' : 0,
-                transition: 'opacity .25s ease, width .25s ease',
-              }}
-            >
-              <ListItemText primary="Cambiar de sede" primaryTypographyProps={{ color: 'white', fontSize: '0.875rem' }} />
-            </Box>
-          </ListItemButton>
-        </Tooltip>
-        )}
         {tabs.map((tab, index) => {
           const selected = selectedIndex === index
           const enabled = isTabEnabled(tab.route)
@@ -575,17 +521,6 @@ export const SideBar = ({ tabs, color }: HeaderComponentProps) => {
     </Dialog>
   )
 
-  const sedeDialog = (
-    <SedeDialog
-      open={sedeDialogOpen}
-      onClose={() => setSedeDialogOpen(false)}
-      sedes={sedes}
-      activeId={activeId}
-      cambiandoA={cambiandoA}
-      onSelect={handleCambiarSede}
-    />
-  )
-
   if (isMobile) {
     return (
       <>
@@ -651,15 +586,6 @@ export const SideBar = ({ tabs, color }: HeaderComponentProps) => {
                   />
                 )
               })}
-              {tieneVariasSedes && (
-                <BottomNavigationAction
-                  value={22}
-                  icon={<SwapHorizIcon />}
-                  aria-label="Cambiar de sede"
-                  onClick={() => setSedeDialogOpen(true)}
-                  sx={{ color: 'white' }}
-                />
-              )}
               <BottomNavigationAction
                 value={21}
                 icon={<LogoutIcon />}
@@ -676,7 +602,6 @@ export const SideBar = ({ tabs, color }: HeaderComponentProps) => {
           </Box>
         </Paper>
         {upgradeModal}
-        {sedeDialog}
       </>
     )
   }
@@ -685,7 +610,6 @@ export const SideBar = ({ tabs, color }: HeaderComponentProps) => {
     <>
       {desktopSidebar}
       {upgradeModal}
-      {sedeDialog}
     </>
   )
 }

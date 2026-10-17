@@ -35,6 +35,7 @@ import EmailIcon from "@mui/icons-material/Email"
 import PeopleIcon from "@mui/icons-material/People"
 import CardMembershipIcon from "@mui/icons-material/CardMembership"
 import BusinessIcon from "@mui/icons-material/Business"
+import PersonAddIcon from "@mui/icons-material/PersonAdd"
 import { notify } from "@/lib/toast"
 import { Gym, useUpdateGym, useSoftDeleteGym } from "@/hooks/gyms/useGyms"
 import { useGymPlans } from "@/hooks/gymPlans/useGymPlans"
@@ -44,7 +45,7 @@ import {
   useUpdateSuscription,
 } from "@/hooks/gymSubscriptions/useSuscriptions"
 import { EmailLogs } from "@/components/owner/EmailLogs"
-import { getErrorMessage } from "@/utils/errors/apiError"
+import { getApiErrorMessage, getErrorMessage } from "@/utils/errors/apiError"
 
 interface Props {
   gym: Gym | null
@@ -476,6 +477,7 @@ function UsersTab({ gym }: { gym: Gym }) {
     data: users = [],
     isPending: loading,
     error: queryError,
+    refetch,
   } = useQuery({
     queryKey: ["owner", "gymUsers", gym.id],
     queryFn: async (): Promise<UserRow[]> => {
@@ -485,6 +487,106 @@ function UsersTab({ gym }: { gym: Gym }) {
   })
 
   const error = queryError ? "Error al cargar usuarios" : ""
+
+  const [formOpen, setFormOpen] = useState(false)
+  const [name, setName] = useState("")
+  const [dni, setDni] = useState("")
+  const [email, setEmail] = useState("")
+  const [password, setPassword] = useState("")
+  const [roleId, setRoleId] = useState(3)
+  const [formError, setFormError] = useState("")
+  const [saving, setSaving] = useState(false)
+
+  const resetForm = () => {
+    setName("")
+    setDni("")
+    setEmail("")
+    setPassword("")
+    setRoleId(3)
+    setFormError("")
+  }
+
+  const handleCreate = async () => {
+    setFormError("")
+    if (!name.trim() || !dni.trim() || !email.trim() || !password.trim()) {
+      setFormError("Completá todos los campos")
+      return
+    }
+    setSaving(true)
+    try {
+      await api.post(`/api/auth/register`, {
+        name: name.trim(),
+        dni: Number(dni),
+        email: email.trim(),
+        password,
+        gym_id: gym.id,
+        role_id: roleId,
+      })
+      notify.success("Usuario creado")
+      resetForm()
+      setFormOpen(false)
+      await refetch()
+    } catch (e: unknown) {
+      setFormError(getApiErrorMessage(e) || "No se pudo crear el usuario")
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  const form = formOpen ? (
+    <Paper variant="outlined" sx={{ p: 2, borderRadius: 1.5 }}>
+      <Stack spacing={2}>
+        <Typography fontWeight={600}>Nuevo usuario</Typography>
+        <TextField label="Nombre y apellido" size="small" value={name} onChange={(e) => setName(e.target.value)} fullWidth />
+        <Stack direction={{ xs: "column", sm: "row" }} spacing={2}>
+          <TextField
+            label="DNI"
+            size="small"
+            value={dni}
+            onChange={(e) => setDni(e.target.value.replace(/\D/g, ""))}
+            inputProps={{ inputMode: "numeric" }}
+            fullWidth
+          />
+          <FormControl size="small" fullWidth>
+            <InputLabel id="new-user-role-label">Rol</InputLabel>
+            <Select
+              labelId="new-user-role-label"
+              label="Rol"
+              value={String(roleId)}
+              onChange={(e) => setRoleId(Number(e.target.value))}
+            >
+              {Object.entries(ROLE_LABEL).map(([id, label]) => (
+                <MenuItem key={id} value={id}>{label}</MenuItem>
+              ))}
+            </Select>
+          </FormControl>
+        </Stack>
+        <TextField label="Email" type="email" size="small" value={email} onChange={(e) => setEmail(e.target.value)} fullWidth />
+        <TextField
+          label="Contraseña"
+          type="password"
+          size="small"
+          value={password}
+          onChange={(e) => setPassword(e.target.value)}
+          helperText="Mínimo 6 caracteres"
+          fullWidth
+        />
+        {formError && <Typography color="error" variant="body2">{formError}</Typography>}
+        <Stack direction="row" spacing={1} justifyContent="flex-end">
+          <Button onClick={() => { resetForm(); setFormOpen(false) }} disabled={saving}>
+            Cancelar
+          </Button>
+          <Button variant="contained" onClick={handleCreate} disabled={saving}>
+            {saving ? <CircularProgress size={20} color="inherit" /> : "Crear usuario"}
+          </Button>
+        </Stack>
+      </Stack>
+    </Paper>
+  ) : (
+    <Button variant="outlined" startIcon={<PersonAddIcon />} onClick={() => setFormOpen(true)} sx={{ alignSelf: "flex-start" }}>
+      Agregar usuario
+    </Button>
+  )
 
   if (loading) {
     return (
@@ -500,6 +602,7 @@ function UsersTab({ gym }: { gym: Gym }) {
 
   return (
     <Stack spacing={1}>
+      {form}
       {users.length === 0 ? (
         <Typography color="text.secondary" textAlign="center" py={3}>
           Sin usuarios asignados.

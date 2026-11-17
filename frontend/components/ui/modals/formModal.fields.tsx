@@ -204,15 +204,19 @@ export interface StandardFieldProps {
   helperText: string;
   isSmDown: boolean;
   locked: boolean;
+  /** Si está, el campo bloqueado se puede tocar y llama a esto en vez de editarse. */
+  onLockedClick?: () => void;
   firstInputRef: React.RefObject<HTMLInputElement | null>;
   handleChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
   handleBlur: (name: string, raw: FieldValue) => void;
 }
 
 export const StandardField: React.FC<StandardFieldProps> = ({
-  field, val, style, index, isError, helperText, isSmDown, locked,
+  field, val, style, index, isError, helperText, isSmDown, locked, onLockedClick,
   firstInputRef, handleChange, handleBlur,
 }) => {
+  // Un input disabled no recibe clics: el bloqueado-clickeable queda solo readOnly.
+  const lockedClickable = locked && !!onLockedClick;
   const trimmedVal = typeof val === 'string' ? val.trim() : val;
   const length = String(trimmedVal).length;
   const maxLen = field.maxLength ?? Infinity;
@@ -245,14 +249,18 @@ export const StandardField: React.FC<StandardFieldProps> = ({
         placeholder={field.placeholder}
         slotProps={{ htmlInput: inputProps, inputLabel: { shrink: true } }}
         error={isError}
-        helperText={helperText}
-        disabled={locked || field.disabled}
+        helperText={helperText || (lockedClickable ? 'Tocá para editar' : undefined)}
+        disabled={(locked && !lockedClickable) || field.disabled}
+        onClick={lockedClickable ? onLockedClick : undefined}
+        onKeyDown={lockedClickable ? (e => { if (e.key === ' ') { e.preventDefault(); onLockedClick?.(); } }) : undefined}
         InputProps={{
           readOnly: locked,
           sx: {
             height: '60px',
+            ...(lockedClickable && { cursor: 'pointer' }),
             '& .MuiInputBase-input': {
               py: 1,
+              ...(lockedClickable && { cursor: 'pointer' }),
             },
           },
         }}
@@ -282,7 +290,7 @@ export const StandardField: React.FC<StandardFieldProps> = ({
           ))}
       </TextField>
 
-      {field.maxLength != null && !isError && field.type === 'string' && (
+      {field.maxLength != null && !isError && !lockedClickable && field.type === 'string' && (
         <Typography
           variant="caption"
           color={reachedMax ? 'error' : 'text.secondary'}

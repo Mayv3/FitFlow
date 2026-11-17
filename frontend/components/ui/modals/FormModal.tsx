@@ -44,6 +44,7 @@ export const FormModal = <T extends object>({
   layout = {},
   mode = 'create',
   lockedFields = [],
+  onLockedFieldClick,
   asyncValidators,
   asyncTrigger = 'blur',
   asyncDebounceMs = 400,
@@ -230,6 +231,7 @@ export const FormModal = <T extends object>({
         field={field} val={val} style={style} index={index}
         isError={isError} helperText={helperText}
         isSmDown={isSmDown} locked={locked}
+        onLockedClick={locked && onLockedFieldClick ? () => onLockedFieldClick(field.name) : undefined}
         firstInputRef={firstInputRef}
         handleChange={handleChange} handleBlur={handleBlur}
       />

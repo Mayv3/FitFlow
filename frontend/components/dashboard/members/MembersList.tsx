@@ -19,6 +19,7 @@ import { estadoVencimiento } from '@/utils/date/dateUtils';
 import { ReactQueryDevtools } from '@tanstack/react-query-devtools';
 import { useChangeItem } from '@/hooks/changeItemCache/useChangeItem';
 import { MemberStats } from './stats/MemberStats';
+import { CambiarDniDialog } from './CambiarDniDialog';
 import {
   useAlumnosByGym,
   useDeleteAlumnoByDNI,
@@ -67,6 +68,7 @@ export default function MembersList() {
   const [waSent, setWaSent] = useState<Set<string>>(new Set());
   const [openEdit, setOpenEdit] = useState(false);
   const [editingMember, setEditingMember] = useState<Member | null>(null);
+  const [openCambiarDni, setOpenCambiarDni] = useState(false);
   const [now] = useState(() => Date.now());
   const asyncValidators = useMemberAsyncValidators();
 
@@ -475,6 +477,21 @@ export default function MembersList() {
           layout={layoutAlumnos}
           mode="edit"
           lockedFields={['dni']}
+          onLockedFieldClick={(name) => { if (name === 'dni') setOpenCambiarDni(true); }}
+        />
+      )}
+
+      {editingMember && (
+        <CambiarDniDialog
+          open={openCambiarDni}
+          dniActual={String(editingMember.dni)}
+          onClose={() => setOpenCambiarDni(false)}
+          onChanged={() => {
+            // El form de edición quedó con el DNI viejo: guardarlo después fallaría.
+            setOpenCambiarDni(false);
+            setOpenEdit(false);
+            notify.success('DNI actualizado correctamente');
+          }}
         />
       )}
 

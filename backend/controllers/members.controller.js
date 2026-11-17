@@ -8,6 +8,8 @@ import {
   getAlumnosSimpleService,
   getActiveAlumnosCountByGym,
   getExpiredAlumnosService,
+  cambiarDniAlumno,
+  DniEnUsoError,
 } from '../services/alumnos.supabase.js'
 import jwt from 'jsonwebtoken';
 import * as cache from '../utilities/cache.js'
@@ -119,6 +121,34 @@ export const editAlumno = async (req, res) => {
       console.warn('[editAlumno] emit fallo:', e?.message);
     }
   } catch (error) {
+    res.status(400).json({ error: error.message });
+  }
+};
+
+// PATCH /api/alumnos/:dni/dni  { nuevo_dni }
+export const cambiarDni = async (req, res) => {
+  const dniActual = String(req.params.dni ?? '').trim();
+  const nuevoDni = String(req.body?.nuevo_dni ?? '').trim();
+
+  if (!/^\d{7,8}$/.test(nuevoDni)) {
+    return res.status(400).json({ error: 'El DNI debe tener 7 u 8 dígitos' });
+  }
+  if (nuevoDni === dniActual) {
+    return res.status(400).json({ error: 'El DNI nuevo es igual al actual' });
+  }
+
+  try {
+    const actualizado = await cambiarDniAlumno(dniActual, nuevoDni, req.gymId, req.supa);
+    if (!actualizado) {
+      return res.status(404).json({ error: 'No existe alumno con ese DNI' });
+    }
+    await cache.delPattern(`alumnos:${actualizado.gym_id}:*`);
+    res.json(actualizado);
+  } catch (error) {
+    if (error instanceof DniEnUsoError) {
+      return res.status(409).json({ error: error.message });
+    }
+    console.error('[cambiarDni] Error:', error);
     res.status(400).json({ error: error.message });
   }
 };

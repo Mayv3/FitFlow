@@ -65,6 +65,8 @@ export interface FormModalProps<T> {
   layout?: Record<string, FieldLayout>;
   mode?: 'create' | 'edit';
   lockedFields?: string[];
+  /** Si está, los campos bloqueados se pueden tocar y llaman a esto con su nombre. */
+  onLockedFieldClick?: (fieldName: string) => void;
   asyncValidators?: Record<string, (value: FieldValue, values: T) => Promise<string | null>>;
   asyncTrigger?: 'blur' | 'change';
   asyncDebounceMs?: number;

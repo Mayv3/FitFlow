@@ -3,6 +3,7 @@ import {
   getAlumno,
   addAlumno,
   editAlumno,
+  cambiarDni,
   removeAlumno,
   handleListAlumnosByGym,
   handleListAlumnosSimple,
@@ -23,6 +24,7 @@ router.get('/:dni', verifyToken, supaPerRequest, getAlumno);
 
 router.post('/', verifyToken, supaPerRequest, addAlumno);
 router.put('/:dni', verifyToken, supaPerRequest, editAlumno);
+router.patch('/:dni/dni', verifyToken, supaPerRequest, cambiarDni);
 router.delete('/:dni', verifyToken, supaPerRequest, removeAlumno);
 
 

@@ -28,7 +28,8 @@
   },
   "scripts": {
     "dev": "nodemon server.js",
-    "test:auth": "node --test test/auth.middleware.test.js"
+    "test:auth": "node --test test/auth.middleware.test.js",
+    "test:alumnos": "node --test test/cambiarDni.test.js"
   },
   "devDependencies": {
     "nodemon": "^3.1.9"

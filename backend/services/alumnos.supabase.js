@@ -143,6 +143,45 @@ export async function updateAlumno(dni, nuevosDatos, supaClient) {
   };
 }
 
+export class DniEnUsoError extends Error {}
+
+// La unique (gym_id, dni) cuenta también a los alumnos borrados (soft delete),
+// así que el chequeo no filtra deleted_at. Devuelve null si no hay alumno
+// activo con `dniActual`.
+export async function cambiarDniAlumno(dniActual, nuevoDni, gymId, supaClient) {
+  const { data: existente, error: eBuscar } = await supaClient
+    .from('alumnos')
+    .select('id, deleted_at')
+    .eq('gym_id', gymId)
+    .eq('dni', nuevoDni)
+    .maybeSingle();
+
+  if (eBuscar) throw eBuscar;
+  if (existente) {
+    throw new DniEnUsoError(
+      existente.deleted_at
+        ? 'Ese DNI pertenece a un alumno eliminado de este gimnasio'
+        : 'Ese DNI ya está asignado a otro alumno de este gimnasio'
+    );
+  }
+
+  const { data, error } = await supaClient
+    .from('alumnos')
+    .update({ dni: nuevoDni })
+    .eq('gym_id', gymId)
+    .eq('dni', dniActual)
+    .is('deleted_at', null)
+    .select('id, dni, gym_id')
+    .maybeSingle();
+
+  // 23505 = unique violada: otro alumno tomó el DNI entre el chequeo y el update.
+  if (error?.code === '23505') {
+    throw new DniEnUsoError('Ese DNI ya está asignado a otro alumno de este gimnasio');
+  }
+  if (error) throw error;
+  return data;
+}
+
 export async function deleteAlumno(dni, supaClient) {
   const dniValue = Number(dni); // asegura tipo numérico
 

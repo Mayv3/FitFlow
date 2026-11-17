@@ -105,6 +105,17 @@ export function useEditAlumnoByDNI() {
   });
 }
 
+export function useCambiarDniAlumno() {
+  const invalidateAlumnos = useInvalidateAlumnos();
+  return useMutation<Pick<Member, 'id' | 'dni' | 'gym_id'>, Error, { dni: string; nuevoDni: string }>({
+    mutationFn: async ({ dni, nuevoDni }) => {
+      const res = await axiosInstance.patch(`/api/alumnos/${dni}/dni`, { nuevo_dni: nuevoDni });
+      return res.data;
+    },
+    onSuccess: invalidateAlumnos,
+  });
+}
+
 export function useAddAlumno() {
   const invalidateAlumnos = useInvalidateAlumnos();
   return useMutation({

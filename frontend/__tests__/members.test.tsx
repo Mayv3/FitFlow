@@ -45,7 +45,8 @@ import {
   useAddAlumno, 
   useEditAlumnoByDNI, 
   useDeleteAlumnoByDNI,
-  useAlumnosSimpleService 
+  useAlumnosSimpleService,
+  useCambiarDniAlumno,
 } from '@/hooks/alumnos/useAlumnosApi';
 import { Member } from '@/models/Member/Member';
 
@@ -521,6 +522,35 @@ describe('Members CRUD Operations', () => {
 
       expect(result.current.data?.plan_id).toBe(3);
       expect(result.current.data?.plan_nombre).toBe('Plan Anual');
+    });
+  });
+
+  describe('UPDATE DNI - Cambiar el DNI con useCambiarDniAlumno', () => {
+    it('debería mandar el DNI nuevo al endpoint del DNI actual', async () => {
+      mockAxiosInstance.patch.mockResolvedValueOnce({
+        data: { id: '1', dni: '11111111', gym_id: 'gym-123' },
+        status: 200,
+      });
+
+      const { result } = renderHook(() => useCambiarDniAlumno(), { wrapper: createWrapper() });
+
+      result.current.mutate({ dni: '12345678', nuevoDni: '11111111' });
+
+      await waitFor(() => expect(result.current.isSuccess).toBe(true));
+      expect(mockAxiosInstance.patch).toHaveBeenCalledWith('/api/alumnos/12345678/dni', { nuevo_dni: '11111111' });
+      expect(result.current.data?.dni).toBe('11111111');
+    });
+
+    it('debería fallar si el DNI ya está asignado en el gym (409)', async () => {
+      mockAxiosInstance.patch.mockRejectedValueOnce({
+        response: { status: 409, data: { error: 'Ese DNI ya está asignado a otro alumno de este gimnasio' } },
+      });
+
+      const { result } = renderHook(() => useCambiarDniAlumno(), { wrapper: createWrapper() });
+
+      result.current.mutate({ dni: '12345678', nuevoDni: '87654321' });
+
+      await waitFor(() => expect(result.current.isError).toBe(true));
     });
   });
 

@@ -103,27 +103,25 @@ export async function cancelarPendientes({ canal = 'whatsapp', gymId = null, mot
   return data ?? []
 }
 
-/** Gyms que tienen mensajes pendientes en un canal. */
-export async function gymsConPendientes(canal) {
+/**
+ * Una sola consulta para el tick del worker: si hay emails pendientes y qué gyms
+ * tienen WhatsApp pendiente (no vencido). Ordena por canal para que los emails
+ * no queden fuera del límite si hay muchos WhatsApp.
+ */
+export async function resumenPendientes() {
   const { data, error } = await supabaseAdmin
     .from('cola_envios')
-    .select('gym_id')
+    .select('canal, gym_id, vence_at')
     .eq('estado', 'pendiente')
-    .eq('canal', canal)
-    .gt('vence_at', new Date().toISOString())
+    .order('canal')
     .limit(1000)
   if (error) throw error
-  return [...new Set((data ?? []).map((r) => r.gym_id))]
-}
-
-export async function hayPendientes(canal) {
-  const { count, error } = await supabaseAdmin
-    .from('cola_envios')
-    .select('id', { count: 'exact', head: true })
-    .eq('estado', 'pendiente')
-    .eq('canal', canal)
-  if (error) throw error
-  return (count ?? 0) > 0
+  const ahora = Date.now()
+  const filas = data ?? []
+  return {
+    hayEmail: filas.some((r) => r.canal === 'email'),
+    gymsWhatsapp: [...new Set(filas.filter((r) => r.canal === 'whatsapp' && new Date(r.vence_at).getTime() > ahora).map((r) => r.gym_id))],
+  }
 }
 
 /** Vence pendientes viejos, marca interrumpidos (sin reintento) y limpia historial. */

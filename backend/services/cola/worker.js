@@ -16,7 +16,7 @@ import * as cola from './colaEnvios.js'
 
 // Los envíos nuevos arrancan en el acto (revisarAhora() al encolar); el tick
 // solo retoma tras reinicios/reconexiones, reintenta emails y vence lo viejo.
-const TICK_MS = 2 * 60_000
+const TICK_MS = 5 * 60_000
 const TANDA_SIZE = 25
 const MAX_INTENTOS_EMAIL = 3
 // Recién después de este tiempo desconectado se manda la alerta: al arrancar el
@@ -244,12 +244,13 @@ export function crearWorker(overrides = {}) {
         console.warn('[cola] mantenimiento falló:', e.message)
       }
 
-      if (!emailActivo && (await cola.hayPendientes('email'))) {
+      const { hayEmail, gymsWhatsapp } = await cola.resumenPendientes()
+      if (!emailActivo && hayEmail) {
         procesarEmails()
       }
 
       const ahora = Date.now()
-      for (const gymId of await cola.gymsConPendientes('whatsapp')) {
+      for (const gymId of gymsWhatsapp) {
         if (gymsActivos.has(gymId)) continue
         if ((reintentarDespues.get(gymId) ?? 0) > ahora) continue
         procesarGym(gymId)

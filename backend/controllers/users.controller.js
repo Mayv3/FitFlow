@@ -1,8 +1,16 @@
 import { listUsers, changePasswordService, updateUserRole, deleteUser } from "../services/users.supabase.js"
+import { isOwner } from "../middleware/requireRole.js"
+
+// El owner opera sobre cualquier gym (null = sin filtro); el resto, solo sobre el de su token.
+const gymPermitido = (req) => (isOwner(req) ? null : req.gymId)
+
+const noEncontrado = (err) => err?.code === "PGRST116"
 
 export async function handleListUsers(req, res) {
   try {
-    const gymId = req.query.gym_id || req.gymId
+    const gymId = isOwner(req) ? req.query.gym_id || req.gymId : req.gymId
+    if (!gymId && !isOwner(req)) return res.status(403).json({ error: "Acceso denegado" })
+
     const users = await listUsers(gymId)
     return res.status(200).json(users)
   } catch (err) {
@@ -43,10 +51,12 @@ export async function handleUpdateUserRole(req, res) {
     const { role_id } = req.body
     if (!id || !role_id) return res.status(400).json({ error: "Faltan datos" })
     if (!VALID_ROLE_IDS.includes(Number(role_id))) return res.status(400).json({ error: "Rol inválido" })
+    if (Number(role_id) === 1 && !isOwner(req)) return res.status(403).json({ error: "No podés asignar el rol owner" })
 
-    const updated = await updateUserRole(id, role_id)
+    const updated = await updateUserRole(id, role_id, gymPermitido(req))
     res.json({ message: "Rol actualizado correctamente", user: updated })
   } catch (err) {
+    if (noEncontrado(err)) return res.status(404).json({ error: "Usuario no encontrado" })
     console.error("Error al actualizar rol:", err)
     res.status(500).json({ error: "No se pudo actualizar el rol" })
   }
@@ -57,9 +67,10 @@ export async function handleDeleteUser(req, res) {
     const { id } = req.params
     if (!id) return res.status(400).json({ error: "El id es requerido" })
 
-    const deleted = await deleteUser(id)
+    const deleted = await deleteUser(id, gymPermitido(req))
     res.json({ message: "Usuario eliminado correctamente", deleted })
   } catch (err) {
+    if (noEncontrado(err)) return res.status(404).json({ error: "Usuario no encontrado" })
     console.error("Error al eliminar usuario:", err)
     res.status(500).json({ error: "No se pudo eliminar el usuario" })
   }

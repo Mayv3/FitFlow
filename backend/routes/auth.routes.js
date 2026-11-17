@@ -3,6 +3,7 @@ import rateLimit from 'express-rate-limit'
 import { handleRegisterUser,handleLoginUser , handleLogoutUser, handleRefreshToken, handleForgotPassword, handleResetPassword } from '../controllers/auth.controller.js'
 import { gymLoginController, getAlumnoInfoController } from '../controllers/gymLogin.controller.js'
 import { verifyToken } from '../middleware/auth.js'
+import { requireRole } from '../middleware/requireRole.js'
 
 const router = express.Router()
 
@@ -15,7 +16,7 @@ const authLimiter = rateLimit({
   legacyHeaders: false,
 })
 
-router.post('/register', authLimiter, handleRegisterUser)
+router.post('/register', authLimiter, verifyToken, requireRole(1, 2), handleRegisterUser)
 router.post('/login', authLimiter, handleLoginUser)
 router.post('/refresh', authLimiter, handleRefreshToken)
 router.post('/logout', verifyToken, handleLogoutUser)

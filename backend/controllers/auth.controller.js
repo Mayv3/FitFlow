@@ -1,9 +1,19 @@
 import { registerUser, loginUser, logoutUser, refreshTokenService, forgotPasswordService, resetPasswordService } from '../services/auth.supabase.js'
 import { supabaseAdmin } from '../config/supabaseClient.js'
+import { isOwner } from '../middleware/requireRole.js'
 
 export async function handleRegisterUser(req, res) {
   try {
-    const { email, password, dni, gym_id, role_id, name } = req.body
+    const { email, password, dni, role_id, name } = req.body
+    let { gym_id } = req.body
+
+    // El owner elige gym y rol; un admin solo crea staff en el gym de su token.
+    if (!isOwner(req)) {
+      if (Number(role_id) === 1) {
+        return res.status(403).json({ error: "No podés crear usuarios owner" })
+      }
+      gym_id = req.gymId
+    }
 
     if (!email || !password || !dni || !gym_id || !role_id || !name) {
       return res.status(400).json({ error: "Faltan campos requeridos" })

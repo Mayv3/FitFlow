@@ -72,14 +72,16 @@ export async function changePasswordService(email, currentPassword, newPassword)
   }
 }
 
-export async function updateUserRole(userId, newRoleId) {
-  const { data, error } = await supabaseAdmin
+// gymId: null para no filtrar (owner); cualquier otro valor limita a ese gym.
+export async function updateUserRole(userId, newRoleId, gymId = null) {
+  let query = supabaseAdmin
     .from("users")
     .update({ role_id: newRoleId })
     .eq("id", userId)
     .is("deleted_at", null)
-    .select("*")
-    .single()
+  if (gymId !== null) query = query.eq("gym_id", gymId)
+
+  const { data, error } = await query.select("*").single()
 
   if (error) throw error
 
@@ -97,13 +99,14 @@ export async function updateUserRole(userId, newRoleId) {
   return data
 }
 
-export async function deleteUser(userId) {
-  const { data, error } = await supabaseAdmin
+export async function deleteUser(userId, gymId = null) {
+  let query = supabaseAdmin
     .from("users")
     .update({ deleted_at: new Date().toISOString() })
     .eq("id", userId)
-    .select("*")
-    .single()
+  if (gymId !== null) query = query.eq("gym_id", gymId)
+
+  const { data, error } = await query.select("*").single()
 
   if (error) throw error
   return data

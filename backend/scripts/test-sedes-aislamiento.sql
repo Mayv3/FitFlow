@@ -1,7 +1,7 @@
 -- Test de aislamiento entre sedes (HerGym / Hergym Carlota) a nivel base de datos.
 --
--- Se hace pasar por un usuario parado en cada sede (mismos claims que trae el JWT)
--- y comprueba que solo ve y escribe datos de su sede activa, en todos los módulos.
+-- Se hace pasar por un usuario de cada sede (mismos claims que trae el JWT)
+-- y comprueba que solo ve y escribe datos de su propia sede, en todos los módulos.
 --
 -- NO DEJA NADA GUARDADO: el bloque termina siempre con una excepción, que deshace
 -- todo lo que insertó. El resultado se lee en el mensaje de esa excepción
@@ -11,9 +11,10 @@ do $$
 declare
   c_carlota constant uuid := '6e513100-c2a4-4db1-ba27-d82f367c246a';
   c_hergym  constant uuid := 'e0e69af7-3288-479b-af90-39edd0b53e60';
-  -- hergymtest@gmail.com parado en Carlota / Zuli parada en HerGym
-  claims_carlota constant text := '{"sub":"80734f2d-657e-4830-b144-fddbaf44d0dc","role":"authenticated","app_metadata":{"gym_id":"6e513100-c2a4-4db1-ba27-d82f367c246a","role_id":"2"}}';
+  -- hergymcarlota@gmail.com (admin de Carlota) / Zuli (admin de HerGym) / Camila (recepcionista de Carlota)
+  claims_carlota constant text := '{"sub":"982fadba-b03d-43c6-89a9-663d41f9566a","role":"authenticated","app_metadata":{"gym_id":"6e513100-c2a4-4db1-ba27-d82f367c246a","role_id":"2"}}';
   claims_hergym  constant text := '{"sub":"385028a5-433e-4e03-87e0-6d2f74055fd3","role":"authenticated","app_metadata":{"gym_id":"e0e69af7-3288-479b-af90-39edd0b53e60","role_id":"2"}}';
+  claims_recep   constant text := '{"sub":"a724e059-f0ab-4d61-a24f-43af9840077b","role":"authenticated","app_metadata":{"gym_id":"6e513100-c2a4-4db1-ba27-d82f367c246a","role_id":"3"}}';
 
   r text := '';
   fallas int := 0;
@@ -72,6 +73,26 @@ begin
   select count(*) into n from pago_items pi join pagos p on p.id = pi.pago_id where p.gym_id is distinct from c_carlota;
   ok := (n = 0); total := total + 1; if not ok then fallas := fallas + 1; end if;
   r := r || format(E'\n%s lectura pago_items: %s ítems de pagos ajenos', case when ok then 'OK   ' else 'FALLA' end, n);
+
+  -- A1b. Usuarios del staff: alta en la sede propia; ni crear ni tocar los de HerGym
+  begin
+    insert into users (dni, name, gym_id, role_id) values (99000010, 'TEST SEDES USER', c_carlota, 3);
+    total := total + 1; r := r || E'\nOK    alta de usuario en Carlota';
+  exception when others then
+    total := total + 1; fallas := fallas + 1; r := r || E'\nFALLA alta de usuario en Carlota: ' || sqlerrm;
+  end;
+
+  begin
+    insert into users (dni, name, gym_id, role_id) values (99000011, 'TEST SEDES USER AJENO', c_hergym, 3);
+    total := total + 1; fallas := fallas + 1; r := r || E'\nFALLA se pudo crear un usuario en HerGym estando en Carlota';
+  exception when others then
+    total := total + 1; r := r || E'\nOK    crear usuario en HerGym desde Carlota: rechazado';
+  end;
+
+  update users set name = name where gym_id = c_hergym;
+  get diagnostics n = row_count;
+  ok := (n = 0); total := total + 1; if not ok then fallas := fallas + 1; end if;
+  r := r || format(E'\n%s editar usuarios de HerGym desde Carlota: %s filas afectadas', case when ok then 'OK   ' else 'FALLA' end, n);
 
   -- A2. Alumnos: alta en la sede propia; no se puede crear ni tocar uno de HerGym
   begin
@@ -256,6 +277,24 @@ begin
   ok := (n = 0); total := total + 1; if not ok then fallas := fallas + 1; end if;
   r := r || format(E'\n%s lectura gyms: %s gimnasios ajenos visibles', case when ok then 'OK   ' else 'FALLA' end, n);
 
+  select count(*) into n from users where gym_id is distinct from c_hergym and auth_user_id <> auth.uid();
+  ok := (n = 0); total := total + 1; if not ok then fallas := fallas + 1; end if;
+  r := r || format(E'\n%s lectura users: %s usuarios de otro gym visibles', case when ok then 'OK   ' else 'FALLA' end, n);
+
+  begin
+    insert into users (dni, name, gym_id, role_id) values (99000012, 'TEST SEDES USER HG', c_hergym, 3);
+    total := total + 1; r := r || E'\nOK    alta de usuario en HerGym';
+  exception when others then
+    total := total + 1; fallas := fallas + 1; r := r || E'\nFALLA alta de usuario en HerGym: ' || sqlerrm;
+  end;
+
+  begin
+    insert into users (dni, name, gym_id, role_id) values (99000013, 'TEST SEDES USER AJENO', c_carlota, 3);
+    total := total + 1; fallas := fallas + 1; r := r || E'\nFALLA se pudo crear un usuario en Carlota estando en HerGym';
+  exception when others then
+    total := total + 1; r := r || E'\nOK    crear usuario en Carlota desde HerGym: rechazado';
+  end;
+
   select (select count(*) from alumnos where id = v_alumno)
        + (select count(*) from pagos where id = v_pago)
        + (select count(*) from asistencias where alumno_id = v_alumno)
@@ -294,6 +333,23 @@ begin
     r := r || format(E'\n%s facturación propia de HerGym: %s', case when ok then 'OK   ' else 'FALLA' end, coalesce(v_num::text, 'nada'));
   exception when others then
     total := total + 1; fallas := fallas + 1; r := r || E'\nFALLA rpc_facturacion_resumen: ' || sqlerrm;
+  end;
+
+  ---------------------------------------------------------------------------
+  -- B2. Recepcionista de Carlota: ve su sede pero no puede dar de alta staff
+  ---------------------------------------------------------------------------
+  perform set_config('request.jwt.claims', claims_recep, true);
+  r := r || E'\n== B2. Recepcionista de Carlota ==';
+
+  select count(*) filter (where gym_id is distinct from c_carlota), count(*) into n, n2 from alumnos where deleted_at is null;
+  ok := (n = 0 and n2 > 0); total := total + 1; if not ok then fallas := fallas + 1; end if;
+  r := r || format(E'\n%s lectura alumnos: %s activos visibles, %s de otro gym', case when ok then 'OK   ' else 'FALLA' end, n2, n);
+
+  begin
+    insert into users (dni, name, gym_id, role_id) values (99000014, 'TEST SEDES USER RECEP', c_carlota, 3);
+    total := total + 1; fallas := fallas + 1; r := r || E'\nFALLA una recepcionista pudo crear un usuario';
+  exception when others then
+    total := total + 1; r := r || E'\nOK    recepcionista crea usuario: rechazado';
   end;
 
   ---------------------------------------------------------------------------

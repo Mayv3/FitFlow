@@ -71,9 +71,10 @@ app.use(helmet());
 app.use(express.json());
 
 
-app.use('/api/alumnos', verifyToken, supaPerRequest, alumnosRoutes);
-app.use('/api/pagos', verifyToken, supaPerRequest, pagosRoutes);
-app.use('/api/planes', verifyToken, supaPerRequest, planesRoutes);
+// supaPerRequest lo monta cada router; montarlo acá también creaba dos clientes por request.
+app.use('/api/alumnos', verifyToken, alumnosRoutes);
+app.use('/api/pagos', verifyToken, pagosRoutes);
+app.use('/api/planes', verifyToken, planesRoutes);
 
 app.use('/api/turnos', appointmentsRoutes);
 

@@ -595,3 +595,47 @@ export async function getPagosByDateRange({ gymId, startDate, endDate }) {
     })),
   }));
 }
+// Alumnos con plan vigente que no vienen hace `dias` o más (o nunca vinieron).
+// El cálculo vive en la función SQL stats_en_riesgo para no traer asistencias a Node.
+export async function getAlumnosEnRiesgo({ gymId, dias = 14, hoy = getTodayArgentina() }, client = supabaseAdmin) {
+  const { data, error } = await client.rpc('stats_en_riesgo', { p_gym_id: gymId, p_dias: dias, p_hoy: hoy });
+  if (error) throw error;
+  return data;
+}
+
+// Por mes del año: alumnos cuyo plan vencía ese mes y cuántos renovaron (pagaron
+// otro plan antes de los 7 días del vencimiento), abandonaron o siguen pendientes.
+export async function getRenovacionPorMes({ gymId, year, hoy = getTodayArgentina() }, client = supabaseAdmin) {
+  const { data, error } = await client.rpc('stats_renovacion', { p_gym_id: gymId, p_year: year, p_hoy: hoy });
+  if (error) throw error;
+  return data;
+}
+
+// Asistencias por día de la semana (1 = lunes … 7 = domingo) y hora, en un mes o en el año entero.
+export async function getAsistenciasHeatmap({ gymId, year, month = null }, client = supabaseAdmin) {
+  const pad = (n) => String(n).padStart(2, '0');
+  const desde = month ? `${year}-${pad(month)}-01` : `${year}-01-01`;
+  const hasta = month
+    ? `${year}-${pad(month)}-${pad(new Date(Date.UTC(year, month, 0)).getUTCDate())}`
+    : `${year}-12-31`;
+
+  const { data, error } = await client.rpc('stats_asistencias_heatmap', { p_gym_id: gymId, p_desde: desde, p_hasta: hasta });
+  if (error) throw error;
+  return data;
+}
+
+// Cuántos meses se quedan los alumnos (del primer pago de plan al último vencimiento),
+// por tramo y separando activos de los que se fueron. Usa todo el historial del gym.
+export async function getPermanencia({ gymId, hoy = getTodayArgentina() }, client = supabaseAdmin) {
+  const { data, error } = await client.rpc('stats_permanencia', { p_gym_id: gymId, p_hoy: hoy });
+  if (error) throw error;
+  return data;
+}
+
+// Ventas de productos y servicios (pagos sin plan): por mes del año y top 5 del
+// período (el mes, o el año si month es null).
+export async function getVentasExtras({ gymId, year, month = null }, client = supabaseAdmin) {
+  const { data, error } = await client.rpc('stats_ventas_extras', { p_gym_id: gymId, p_year: year, p_month: month });
+  if (error) throw error;
+  return data;
+}

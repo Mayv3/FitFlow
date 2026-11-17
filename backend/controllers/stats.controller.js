@@ -1,6 +1,7 @@
 import { supabaseAdmin } from '../config/supabaseClient.js';
 import * as cache from '../utilities/cache.js'
 import { fetchAllPaged } from '../utilities/fetchAllPaged.js';
+import { fechaArgentina } from '../utilities/moment.js';
 import { getPaymentsStatsService } from '../services/paymentsStats.supabase.js';
 import {
   getDashboardDataByYear,
@@ -18,6 +19,11 @@ import {
   countAltasByMonth,
   getAltasDetails,
   getPagosByDateRange,
+  getAlumnosEnRiesgo,
+  getRenovacionPorMes,
+  getAsistenciasHeatmap,
+  getVentasExtras,
+  getPermanencia,
 
 } from '../services/stats.supabase.js';
 import { getOwnerGymStats } from '../services/gyms.supabase.js';
@@ -428,5 +434,100 @@ export async function getPagosByDateRangeController(req, res) {
   } catch (error) {
     console.error('❌ Error en getPagosByDateRange:', error);
     return res.status(500).json({ error: 'Error interno del servidor' });
+  }
+}
+// Alumnos con plan vigente que no vienen hace ?dias (default 14) o más.
+export async function getAlumnosEnRiesgoController(req, res) {
+  try {
+    const gymId = req.gymId;
+    if (!gymId) return res.status(403).json({ error: 'Acceso denegado' });
+
+    const dias = req.query.dias === undefined ? 14 : Number(req.query.dias);
+    if (!Number.isInteger(dias) || dias < 1 || dias > 365) {
+      return res.status(400).json({ error: 'dias debe ser un entero entre 1 y 365' });
+    }
+
+    const data = await getAlumnosEnRiesgo({ gymId, dias });
+    return res.status(200).json(data);
+  } catch (err) {
+    console.error('[GET alumnos en riesgo] Error:', err);
+    return res.status(500).json({ error: 'No se pudieron obtener los alumnos en riesgo' });
+  }
+}
+
+// Renovación y abandono por mes del año ?year (default: año actual).
+export async function getRenovacionController(req, res) {
+  try {
+    const gymId = req.gymId;
+    if (!gymId) return res.status(403).json({ error: 'Acceso denegado' });
+
+    const year = req.query.year === undefined ? Number(fechaArgentina().slice(0, 4)) : Number(req.query.year);
+    if (!Number.isInteger(year) || year < 2000 || year > 2100) {
+      return res.status(400).json({ error: 'year inválido' });
+    }
+
+    const data = await getRenovacionPorMes({ gymId, year });
+    return res.status(200).json(data);
+  } catch (err) {
+    console.error('[GET renovacion] Error:', err);
+    return res.status(500).json({ error: 'No se pudo obtener la renovación' });
+  }
+}
+
+// ?year (default: año actual en Argentina) y ?month (1-12; ausente o 0 = año entero).
+// Devuelve { year, month } o { error } con el mensaje para un 400.
+function parsePeriodo(query) {
+  const year = query.year === undefined ? Number(fechaArgentina().slice(0, 4)) : Number(query.year);
+  const month = query.month === undefined || query.month === '0' ? null : Number(query.month);
+  if (!Number.isInteger(year) || year < 2000 || year > 2100) return { error: 'year inválido' };
+  if (month !== null && (!Number.isInteger(month) || month < 1 || month > 12)) return { error: 'month inválido' };
+  return { year, month };
+}
+
+// Asistencias por día de la semana y hora en el período.
+export async function getAsistenciasHeatmapController(req, res) {
+  try {
+    const gymId = req.gymId;
+    if (!gymId) return res.status(403).json({ error: 'Acceso denegado' });
+
+    const { year, month, error } = parsePeriodo(req.query);
+    if (error) return res.status(400).json({ error });
+
+    const data = await getAsistenciasHeatmap({ gymId, year, month });
+    return res.status(200).json(data);
+  } catch (err) {
+    console.error('[GET asistencias heatmap] Error:', err);
+    return res.status(500).json({ error: 'No se pudieron obtener las asistencias' });
+  }
+}
+
+// Permanencia de los alumnos: por tramo de meses, activos y los que se fueron.
+export async function getPermanenciaController(req, res) {
+  try {
+    const gymId = req.gymId;
+    if (!gymId) return res.status(403).json({ error: 'Acceso denegado' });
+
+    const data = await getPermanencia({ gymId });
+    return res.status(200).json(data);
+  } catch (err) {
+    console.error('[GET permanencia] Error:', err);
+    return res.status(500).json({ error: 'No se pudo obtener la permanencia' });
+  }
+}
+
+// Ventas de productos y servicios: los 12 meses del año y el top 5 del período.
+export async function getVentasExtrasController(req, res) {
+  try {
+    const gymId = req.gymId;
+    if (!gymId) return res.status(403).json({ error: 'Acceso denegado' });
+
+    const { year, month, error } = parsePeriodo(req.query);
+    if (error) return res.status(400).json({ error });
+
+    const data = await getVentasExtras({ gymId, year, month });
+    return res.status(200).json(data);
+  } catch (err) {
+    console.error('[GET ventas extras] Error:', err);
+    return res.status(500).json({ error: 'No se pudieron obtener las ventas' });
   }
 }
